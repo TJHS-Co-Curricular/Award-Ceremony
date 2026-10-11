@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b0a12">
+<title>嘉宾揭晓</title>
+<style>
+:root{
+  --ink:#f6f1e4; --muted:#a99f88; --gold:#d9b25f; --gold-hi:#f7e2a6; --gold-lo:#9a7330; --line:rgba(217,178,95,.25);
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","PingFang SC","Microsoft YaHei",serif;
+  --sans:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:#0b0a12;color:var(--ink);font-family:var(--sans)}
+body{background:radial-gradient(520px 420px at 50% 42%,rgba(217,178,95,.14),transparent 70%),linear-gradient(#0e0c16,#06050a);min-height:100svh;
+  display:flex;flex-direction:column;align-items:center;padding:max(18px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+header{text-align:center;width:100%}
+.ev{font-size:13px;letter-spacing:.3em;color:var(--muted)}
+.state{margin-top:22px;text-align:center;min-height:96px}
+.state .k{font-size:12px;letter-spacing:.4em;color:var(--muted)}
+.state h1{font-family:var(--serif);font-size:clamp(28px,8vw,44px);font-weight:800;line-height:1.25;margin-top:8px;
+  background:linear-gradient(100deg,var(--gold-lo),var(--gold) 30%,var(--gold-hi) 50%,var(--gold) 70%,var(--gold-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.state p{color:var(--muted);margin-top:6px;font-size:14px}
+
+.btnwrap{position:relative;width:min(72vw,300px);aspect-ratio:1;margin:26px auto 10px;touch-action:none}
+.btnwrap svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);pointer-events:none}
+.btnwrap circle{fill:none;stroke-width:6}
+.btnwrap .track{stroke:rgba(217,178,95,.15)}
+.btnwrap .prog{stroke:var(--gold-hi);stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(247,226,166,.7))}
+#btn{position:absolute;inset:14px;border-radius:50%;border:0;font:inherit;color:#1c1405;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#fff3c9,#e6c06a 45%,#a77a2c 100%);
+  box-shadow:0 18px 50px rgba(217,178,95,.35),inset 0 -8px 20px rgba(0,0,0,.25),inset 0 4px 10px rgba(255,255,255,.5);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .12s,filter .3s,box-shadow .3s}
+#btn b{font-family:var(--serif);font-size:clamp(34px,11vw,52px);letter-spacing:.15em;padding-left:.15em}
+#btn small{font-size:14px;letter-spacing:.2em;opacity:.75}
+#btn.pressing{transform:scale(.96)}
+#btn:disabled{filter:grayscale(1) brightness(.45);box-shadow:none;cursor:not-allowed}
+.btnwrap.ready::before{content:"";position:absolute;inset:4px;border-radius:50%;border:2px solid var(--gold);animation:ring 1.8s ease-out infinite}
+@keyframes ring{from{transform:scale(.92);opacity:.9}to{transform:scale(1.12);opacity:0}}
+.hint{text-align:center;color:var(--muted);font-size:13px;min-height:20px}
+
+.list{width:100%;max-width:440px;margin-top:22px}
+.list h2{font-size:12px;letter-spacing:.3em;color:var(--muted);font-weight:500;margin-bottom:10px;text-align:center}
+.list ol{list-style:none;display:flex;flex-direction:column;gap:8px}
+.list li{display:flex;align-items:baseline;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.03);animation:in .6s ease both}
+.list li .i{color:var(--gold);font-variant-numeric:tabular-nums;width:22px}
+.list li .n{font-size:22px;font-weight:700;letter-spacing:.05em}
+.list li .d{color:var(--muted);font-size:14px;margin-left:auto;text-align:right}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#conn{position:fixed;top:10px;right:10px;font-size:12px;color:#ff9c9c;opacity:0;transition:opacity .3s}
+#conn.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="conn">● 重新连接中…</div>
+<header>
+  <div class="ev" id="ev"></div>
+  <div class="state">
+    <div class="k" id="k">请稍候</div>
+    <h1 id="title"></h1>
+    <p id="sub"></p>
+  </div>
+</header>
+
+<div class="btnwrap" id="wrap">
+  <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46"/><circle class="prog" id="prog" cx="50" cy="50" r="46" stroke-dasharray="289.03" stroke-dashoffset="289.03"/></svg>
+  <button id="btn" disabled><b>揭晓</b><small>按住</small></button>
+</div>
+<div class="hint" id="hint">等待主持人授权</div>
+
+<section class="list" id="listSec" hidden>
+  <h2>已揭晓 · 请宣读</h2>
+  <ol id="list"></ol>
+</section>
+
+<script>
+(() => {
+  const K = new URLSearchParams(location.search).get('k') || '';
+  const $ = id => document.getElementById(id);
+  const HOLD = 800, C = 289.03;
+  let V = null, busy = false;
+
+  function render(v) {
+    V = v;
+    $('ev').textContent = v.event?.title || '';
+    const onAward = (v.mode === 'title' || v.mode === 'reveal') && v.award;
+    $('k').textContent = onAward ? '当前奖项' : v.mode === 'message' ? '大屏消息' : '待机中';
+    $('title').textContent = onAward ? v.award.title : v.mode === 'message' ? (v.message || '') : (v.event?.subtitle || '');
+    $('sub').textContent = onAward ? (v.award.subtitle || '') : '';
+
+    const total = v.award?.total, shown = v.winners?.length || 0;
+    const can = !!v.canPress && !busy;
+    $('btn').disabled = !can;
+    $('wrap').classList.toggle('ready', can);
+    $('btn').querySelector('small').textContent = can ? '按住 1 秒' : '';
+    $('hint').textContent = v.blackout ? '大屏已暂停' : can
+      ? (v.mode === 'title' ? '主持人已授权，请按住按钮揭晓' : `已揭晓 ${shown}/${total}，按住揭晓下一位`)
+      : (onAward && v.mode === 'reveal' && shown === total ? '本奖项已全部揭晓 🎉' : '等待主持人授权');
+
+    const ol = $('list');
+    if (v.mode === 'reveal' && shown) {
+      $('listSec').hidden = false;
+      while (ol.children.length > shown) ol.lastChild.remove();
+      if (ol.dataset.award !== v.award.id) { ol.textContent = ''; ol.dataset.award = v.award.id; }
+      for (let i = ol.children.length; i < shown; i++) {
+        const w = v.winners[i], li = document.createElement('li');
+        li.innerHTML = '<span class="i"></span><span class="n"></span><span class="d"></span>';
+        li.children[0].textContent = i + 1; li.children[1].textContent = w.name; li.children[2].textContent = w.detail || '';
+        ol.appendChild(li);
+      }
+    } else { $('listSec').hidden = true; ol.textContent = ''; ol.dataset.award = ''; }
+  }
+
+  /* 按住揭晓 */
+  let t0 = 0, raf = 0;
+  function setProg(f) { $('prog').style.strokeDashoffset = C * (1 - f); }
+  function start(e) {
+    if ($('btn').disabled) return;
+    e.preventDefault();
+    t0 = performance.now(); $('btn').classList.add('pressing');
+    navigator.vibrate?.(10);
+    const step = now => {
+      const f = Math.min(1, (now - t0) / HOLD); setProg(f);
+      if (f >= 1) { finish(); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  function cancel() { cancelAnimationFrame(raf); t0 = 0; $('btn').classList.remove('pressing'); setProg(0); }
+  async function finish() {
+    cancel(); busy = true; render(V); navigator.vibrate?.([30, 40, 60]);
+    try {
+      const r = await fetch('/api/guest/reveal?k=' + encodeURIComponent(K), { method: 'POST', headers: { 'X-AC': '1' } });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); $('hint').textContent = j.error || '揭晓失败'; }
+    } catch { $('hint').textContent = '网络错误，请重试'; }
+    setTimeout(() => { busy = false; render(V); }, 1000);
+  }
+  const b = $('btn');
+  b.addEventListener('pointerdown', start);
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { if (t0) cancel(); });
+  addEventListener('contextmenu', e => e.preventDefault());
+
+  /* 屏幕常亮（支持的浏览器） */
+  let lock = null;
+  async function wake() { try { lock = await navigator.wakeLock?.request('screen'); } catch {} }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+  wake();
+
+  const es = new EventSource('/api/guest/stream?k=' + encodeURIComponent(K));
+  es.onopen = () => $('conn').classList.remove('show');
+  es.onmessage = e => render(JSON.parse(e.data));
+  es.onerror = () => $('conn').classList.add('show');
+})();
+</script>
+</body>
+</html>

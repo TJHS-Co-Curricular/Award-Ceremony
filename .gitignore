@@ -1,0 +1,13 @@
+# ⚠ 防泄露：名单、密码、照片、日志、结果一律不进 Git
+config.json
+data/
+logs/
+Result/
+*.tmp
+
+# 打包输出（exe 约 82 MB，超过 GitHub 单文件限制）
+dist/
+/AwardCeremony.exe
+
+# OBS 场景文件（含输出页密钥）
+obs/

@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Award Control</title>
+<style>
+:root{
+  --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a; --ink:#e9ecf1; --muted:#8b93a3;
+  --gold:#d9b25f; --go:#2fa66a; --go-hi:#38c27c; --warn:#d98b2f; --bad:#d64545; --info:#4a8fe0;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
+button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:8px 12px}
+button:hover{border-color:#3d4452;background:#252a35}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,textarea,select{font:inherit;color:var(--ink);background:#0c0e12;border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
+textarea{resize:vertical;font-family:ui-monospace,Consolas,"Microsoft YaHei",monospace;font-size:13px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.live{background:rgba(214,69,69,.15);border-color:var(--bad);color:#ff9c9c}
+.tag.done{background:rgba(47,166,106,.12);border-color:#2f7a55;color:#7fd8a7}
+
+/* 登录 */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(600px 400px at 50% 40%,#1b1d26,#0b0c10)}
+#login form{width:min(360px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px}
+#login h1{margin:0 0 4px;font-size:20px}
+#login p{margin:0 0 18px}
+#login button{width:100%;margin-top:12px;background:var(--gold);color:#1a1405;border:0;font-weight:700;padding:10px}
+#loginErr{color:#ff8e8e;min-height:20px;margin-top:8px}
+
+/* 布局 */
+#app{display:flex;flex-direction:column;height:100%}
+header.top{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header.top h1{margin:0;font-size:16px;font-weight:700;margin-right:auto}
+header.top h1 small{color:var(--muted);font-weight:400;margin-left:8px}
+.tabs{display:flex;gap:4px}
+.tabs button.on{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px}
+.dot.ok{background:var(--go-hi)}
+main{flex:1;min-height:0}
+#live{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;height:100%}
+#live>section{min-height:0;overflow:auto;padding:14px;border-right:1px solid var(--line)}
+#live>section:last-child{border-right:0}
+h2{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin:0 0 10px;font-weight:600}
+
+/* 奖项列表 */
+.alist{display:flex;flex-direction:column;gap:6px}
+.aitem{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--panel);cursor:pointer}
+.aitem:hover{border-color:#3d4452}
+.aitem.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.aitem.live{border-color:var(--bad)}
+.aitem .t{display:flex;align-items:center;gap:8px;font-weight:600}
+.aitem .t span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aitem .m{font-size:12px;color:var(--muted);margin-top:2px}
+.aitem .acts{display:flex;gap:6px;margin-top:8px}
+.aitem .acts button{padding:4px 8px;font-size:12px}
+
+/* 中间 */
+.preview{position:relative;width:100%;aspect-ratio:16/9;max-height:52vh;margin:0 auto;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.preview iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.preview .badge{position:absolute;left:10px;top:8px;z-index:2;background:rgba(214,69,69,.9);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.1em}
+.nexthint{margin:14px 0 10px;padding:10px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+.nexthint b{color:var(--gold)}
+.bigrow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px}
+.bigrow button{padding:16px 10px;font-size:15px;font-weight:700}
+#bNext{background:var(--go);border-color:var(--go);color:#fff;font-size:20px}
+#bNext:hover{background:var(--go-hi)}
+#bNext kbd{color:#d8ffe9;border-color:rgba(255,255,255,.45)}
+#bBlack.on{background:var(--bad);border-color:var(--bad);color:#fff}
+kbd{font:11px ui-monospace,Consolas,monospace;border:1px solid #444b58;border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--muted);margin-left:6px}
+.msgrow{display:flex;gap:8px;margin-top:12px}
+.msgrow input{flex:1}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.quick button{font-size:12px;padding:4px 10px}
+
+/* 右侧 */
+.wlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.wlist li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--panel)}
+.wlist li .n{flex:1;min-width:0}
+.wlist li .n .d{color:var(--muted);font-size:12px}
+.wlist li.on{background:rgba(47,166,106,.14)}
+.wlist li .idx{width:22px;color:var(--muted);font-variant-numeric:tabular-nums}
+body.privacy .secret{filter:blur(7px);transition:filter .15s}
+body.privacy .secret:hover,body.privacy .secret:focus{filter:none}
+.log{font:12px/1.6 ui-monospace,Consolas,monospace;color:var(--muted);max-height:220px;overflow:auto;background:#0c0e12;border:1px solid var(--line);border-radius:6px;padding:8px}
+.urlbox{font:12px ui-monospace,Consolas,monospace;word-break:break-all;background:#0c0e12;border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:6px}
+.urlbox .row{display:flex;gap:6px;align-items:flex-start;margin-top:4px}
+.urlbox .row span{flex:1}
+.urlbox button{padding:2px 8px;font-size:11px}
+.sec{margin-bottom:18px}
+.panel{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.panel .ph{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.panel .ph h2{margin:0;flex:1}
+.autorow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.autorow label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;white-space:nowrap}
+.autorow input{width:64px;text-align:center}
+.autorow select{width:auto}
+#bAuto{margin-left:auto;font-weight:700;min-width:150px}
+#bAuto.on{background:var(--warn);border-color:var(--warn);color:#1a1005}
+#bAuto.on kbd{color:#1a1005;border-color:rgba(0,0,0,.4)}
+.autobar{height:4px;background:#0c0e12;border-radius:2px;margin-top:10px;overflow:hidden}
+.autobar i{display:block;height:100%;width:0;background:var(--warn)}
+.tag.auto{background:rgba(217,139,47,.15);border-color:var(--warn);color:#ffc98a}
+.tag.guest{background:rgba(74,143,224,.15);border-color:var(--info);color:#a9cdff}
+#bGuest{width:100%;font-weight:700;padding:10px}
+#bGuest.on{background:var(--info);border-color:var(--info);color:#fff}
+.gstate{padding:8px 10px;border-radius:6px;background:#0c0e12;border:1px solid var(--line);margin-bottom:8px;font-size:13px}
+
+/* 编辑器 */
+#edit{height:100%;overflow:auto;padding:18px}
+.ewrap{max-width:1100px;margin:0 auto}
+.ebar{position:sticky;top:-18px;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);margin-bottom:14px}
+.ebar .grow{flex:1}
+#bSave{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+.dirty{color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label.f{display:block}
+label.f>span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.ecard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.ecard .head{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.ecard .head .no{color:var(--gold);font-weight:700;width:28px}
+.ecard .head .sp{flex:1}
+.ecard .head button{padding:4px 9px;font-size:12px}
+.ecard .row3{display:grid;grid-template-columns:2fr 2fr 1fr;gap:10px;margin-bottom:10px}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+summary{cursor:pointer;font-weight:600}
+.help{font-size:12px;color:var(--muted);margin:8px 0}
+code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius:4px;font-size:12px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#232836;border:1px solid var(--line);padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+#toast.show{opacity:1}
+#toast.err{border-color:var(--bad);color:#ffb3b3}
+
+@media (max-width:1100px){
+  #live{grid-template-columns:1fr;height:auto}
+  #live>section{border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  main{overflow:auto}
+  .bigrow{grid-template-columns:1fr 1fr}
+  .ecard .row3,.grid2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="privacy">
+
+<div id="login" class="hidden">
+  <form id="loginForm" autocomplete="off">
+    <h1>控制端登录</h1>
+    <p class="muted">颁奖公布系统 · 仅限工作人员</p>
+    <input id="pw" type="password" placeholder="控制端密码" autofocus>
+    <button type="submit">登录</button>
+    <div id="loginErr"></div>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <h1 id="hTitle">颁奖控制台<small id="hSub"></small></h1>
+    <span><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
+    <span class="tag" id="dispCount">输出页 0</span>
+    <span class="tag" id="encTag"></span>
+    <div class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button></div>
+    <button id="bPrivacy" title="名单模糊，鼠标悬停才显示">🙈 名单模糊：开</button>
+    <button id="bLogout">退出</button>
+  </header>
+
+  <div id="verWarn" class="hidden" style="padding:10px 16px;background:#5a2a12;border-bottom:1px solid var(--warn);color:#ffd9b0;font-weight:600"></div>
+  <main>
+    <!-- 现场控制 -->
+    <div id="live">
+      <section>
+        <h2>奖项（<span id="progress">0/0</span> 已公布）</h2>
+        <div class="alist" id="alist"></div>
+        <div style="margin-top:14px"><button id="bReset" style="width:100%;color:#ff9c9c">重置全部进度</button></div>
+      </section>
+
+      <section>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <h2 style="margin:0;flex:1">现场画面（与输出页同步）</h2>
+          <select id="pvSel" style="width:auto;padding:4px 8px;font-size:12px"></select>
+        </div>
+        <div class="preview" id="pvBox"><span class="badge">LIVE</span><iframe id="pv" title="preview" tabindex="-1"></iframe></div>
+        <div class="nexthint">下一步：<b id="nextTxt">—</b></div>
+        <div class="bigrow">
+          <button id="bNext">▶ 下一步<kbd>Space</kbd></button>
+          <button id="bUndo">↶ 撤销<kbd>PgUp</kbd></button>
+          <button id="bStandby">待机<kbd>H</kbd></button>
+          <button id="bBlack">黑屏<kbd>B</kbd></button>
+        </div>
+        <div class="msgrow">
+          <input id="msgIn" placeholder="自定义大字消息，例如：请获奖同学上台领奖" maxlength="300">
+          <button id="bMsg">显示消息</button>
+        </div>
+        <div class="quick" id="quickMsgs"></div>
+        <div class="panel">
+          <div class="ph"><h2>自动播放</h2><span class="tag" id="autoState">已停止</span></div>
+          <div class="autorow">
+            <label>每步 <input id="autoInt" type="number" min="1" max="120" value="3"> 秒</label>
+            <label>奖项之间停留 <input id="autoHold" type="number" min="1" max="300" value="6"> 秒</label>
+            <label>范围 <select id="autoScope"><option value="award">仅当前奖项</option><option value="show">整场连续播放</option></select></label>
+            <button id="bAuto">▶ 开始自动播放<kbd>A</kbd></button>
+          </div>
+          <div class="autobar"><i id="autoBar"></i></div>
+        </div>
+        <p class="muted" style="margin-top:14px;font-size:12px">翻页笔：<kbd>PgDn</kbd>/<kbd>→</kbd> = 下一步，<kbd>PgUp</kbd> = 撤销。连按会被忽略 0.5 秒，防止跳过名单。自动播放中做任何其它操作（撤销、黑屏、待机等）都会自动暂停。</p>
+      </section>
+
+      <section>
+        <div class="sec">
+          <h2>当前奖项名单 <span class="muted" id="curName" style="text-transform:none;letter-spacing:0"></span></h2>
+          <ul class="wlist" id="wlist"><li class="muted">—</li></ul>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <button id="bRevealAll" style="flex:1">全部揭晓当前奖项</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h2>嘉宾揭晓</h2>
+          <div class="gstate" id="gState">—</div>
+          <button id="bGuest">🎤 交给嘉宾揭晓当前奖项<kbd>G</kbd></button>
+          <div id="gUrls" style="margin-top:8px"></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="muted" style="font-size:12px;flex:1" id="gList">嘉宾手机：未连接</span>
+            <button id="bRotate" style="font-size:12px;padding:4px 8px">更换嘉宾链接</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h2>输出页地址（内网）</h2>
+          <div id="urls"></div>
+          <div class="urlbox" style="margin-top:8px">
+            <div class="row"><b style="flex:1;color:var(--ink)">OBS 场景集合（NDI 输出用）</b></div>
+            <div class="row" style="margin-top:6px;align-items:center">
+              <span class="muted" style="flex:none">OBS 所在：</span>
+              <select id="obsHost" style="width:auto;flex:1;padding:4px 6px;font-size:12px"></select>
+              <select id="obsFps" style="width:auto;padding:4px 6px;font-size:12px"><option>60</option><option>50</option><option>30</option><option>25</option></select>
+              <button id="bObs">下载</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:12px">每个屏幕用自己的地址，打开后把窗口拖到对应屏幕，按 <kbd>F</kbd> 全屏。只把输出页地址交给投影电脑。地址中的 <code>k</code> 是输出页密钥；输出页只会收到「已揭晓」的内容。</p>
+        </div>
+        <div class="sec">
+          <h2>已连接的输出页</h2>
+          <div id="dispList" class="muted">无</div>
+        </div>
+        <div class="sec">
+          <h2>本机操作记录</h2>
+          <div class="log" id="log"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 编辑 -->
+    <div id="edit" class="hidden">
+      <div class="ewrap">
+        <div class="ebar">
+          <button id="bAdd">＋ 新增奖项</button>
+          <span class="grow"></span>
+          <span id="dirtyTxt" class="muted">已保存</span>
+          <button id="bRevert">放弃修改</button>
+          <button id="bSave">保存到服务器</button>
+        </div>
+
+        <div class="ecard">
+          <div class="grid2">
+            <label class="f"><span>活动名称（待机画面大标题）</span><input id="evTitle" maxlength="120"></label>
+            <label class="f"><span>副标题</span><input id="evSub" maxlength="160"></label>
+          </div>
+        </div>
+
+        <details>
+          <summary>从 Excel / Google Sheets 批量导入</summary>
+          <p class="help">在表格里选中并复制，直接粘贴到下面（也支持 CSV）。列顺序：<code>奖项名称</code> <code>获奖者姓名</code> <code>备注（班级等，可空）</code> <code>照片文件名（可空）</code>。第一行如果是表头会自动跳过；同名奖项会合并。</p>
+          <textarea id="importTxt" rows="7" placeholder="学业优异奖	陈小明	高一甲班&#10;学业优异奖	林小华	高二乙班&#10;最佳服务奖	王小美	学生会"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="bImportAppend">追加到现有奖项</button>
+            <button id="bImportReplace">替换全部奖项</button>
+          </div>
+        </details>
+
+        <div id="elist"></div>
+        <p class="help">获奖者每行一位，格式：<code>姓名 | 备注 | 照片文件名</code>（后两项可省略）。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const CLIENT_VERSION = '1.2';
+  let V = null;          // 最新控制端视图
+  let sel = null;        // 选中的奖项 id
+  let draft = null;      // 编辑草稿
+  let dirty = false;
+  let es = null;
+
+  const QUICK = ['请获奖同学上台领奖', '请颁奖嘉宾上台', '掌声恭喜！', '合影留念', '感谢各位莅临'];
+
+  /* ---------- 小工具 ---------- */
+  function toast(t, err) {
+    const el = $('toast'); el.textContent = t; el.className = 'show' + (err ? ' err' : '');
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 2200);
+  }
+  async function api(method, url, body) {
+    const r = await fetch(url, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-AC': '1' }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401 && url !== '/api/login') { showLogin(); throw new Error('登录已失效'); }
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
+  function el(tag, attrs = {}, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v != null) e.setAttribute(k, v);
+    }
+    for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : String(k));
+    return e;
+  }
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+  function log(t) {
+    const d = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    const box = $('log'); box.prepend(el('div', {}, `${d}  ${t}`));
+    while (box.children.length > 80) box.lastChild.remove();
+  }
+
+  /* ---------- 登录 ---------- */
+  function showLogin() {
+    if (es) { es.close(); es = null; }
+    $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('pw').value = ''; $('pw').focus();
+  }
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault(); $('loginErr').textContent = '';
+    try { await api('POST', '/api/login', { password: $('pw').value }); boot(); }
+    catch (err) { $('loginErr').textContent = err.message; }
+  });
+  $('bLogout').onclick = async () => { if (dirty && !confirm('有未保存的修改，确定退出？')) return; try { await api('POST', '/api/logout'); } catch {} showLogin(); };
+
+  async function boot() {
+    try { V = await api('GET', '/api/control/state'); } catch { return; }
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    setupPreview(); fillObsHosts();
+    loadDraft(); render(); connect();
+  }
+  function connect() {
+    if (es) es.close();
+    es = new EventSource('/api/control/stream');
+    es.onopen = () => { $('connDot').classList.add('ok'); $('connTxt').textContent = '已连接'; };
+    es.onmessage = e => {
+      const prevDisplays = V?.displays?.length;
+      V = JSON.parse(e.data);
+      if (!dirty) loadDraft();
+      render();
+      if (prevDisplays != null && prevDisplays !== V.displays.length) log(`输出页数量：${V.displays.length}`);
+    };
+    es.onerror = async () => {
+      $('connDot').classList.remove('ok'); $('connTxt').textContent = '重连中…';
+      try { await api('GET', '/api/control/state'); } catch {}
+    };
+  }
+
+  /* ---------- 操作 ---------- */
+  let lastNext = 0;
+  async function act(action, extra = {}) {
+    if (action === 'next') { const t = Date.now(); if (t - lastNext < 500) return; lastNext = t; }
+    try { await api('POST', '/api/control/action', { action, ...extra }); log(labelOf(action, extra)); }
+    catch (err) { toast(err.message, true); }
+  }
+  function labelOf(a, x) {
+    const t = x.awardId && V.awards.find(w => w.id === x.awardId)?.title;
+    return ({ next: '下一步', undo: '撤销', standby: '待机', blackout: '黑屏切换', message: '消息：' + (x.text || ''), title: '公布奖项 ' + (t || ''), revealAll: '全部揭晓 ' + (t || ''), markPending: '标为未公布 ' + (t || ''), resetProgress: '重置进度', autoStart: `自动播放（每 ${x.interval}s）`, autoStop: '暂停自动播放', guestArm: '交给嘉宾', guestDisarm: '收回嘉宾授权', rotateGuestKey: '更换嘉宾链接' })[a] || a;
+  }
+  $('bNext').onclick = () => act('next');
+  $('bUndo').onclick = () => act('undo');
+  $('bStandby').onclick = () => act('standby');
+  $('bBlack').onclick = () => act('blackout');
+  $('bRevealAll').onclick = () => V.state.awardId && act('revealAll', { awardId: V.state.awardId });
+  $('bMsg').onclick = () => { const t = $('msgIn').value.trim(); if (t) act('message', { text: t }); };
+  $('msgIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('bMsg').click(); });
+  $('bReset').onclick = () => { if (confirm('确定把所有奖项重置为「未公布」并返回待机？')) act('resetProgress'); };
+  /* 自动播放 */
+  const autoPrefs = (() => { try { return JSON.parse(store.get('ac_auto') || '{}'); } catch { return {}; } })();
+  if (autoPrefs.interval) $('autoInt').value = autoPrefs.interval;
+  if (autoPrefs.hold) $('autoHold').value = autoPrefs.hold;
+  if (autoPrefs.scope) $('autoScope').value = autoPrefs.scope;
+  function toggleAuto() {
+    if (V?.auto?.on) return act('autoStop');
+    const o = { interval: Number($('autoInt').value) || 3, hold: Number($('autoHold').value) || 6, scope: $('autoScope').value };
+    store.set('ac_auto', JSON.stringify(o));
+    act('autoStart', o);
+  }
+  $('bAuto').onclick = toggleAuto;
+  let autoDeadline = 0, autoTotal = 0;
+  (function tick() {
+    const left = autoDeadline - Date.now();
+    if (V?.auto?.on && autoDeadline) {
+      $('autoBar').style.width = Math.min(100, Math.max(0, 100 - left / autoTotal * 100)) + '%';
+      $('autoState').textContent = `播放中 · ${Math.max(0, left / 1000).toFixed(1)} 秒后下一步`;
+    }
+    requestAnimationFrame(tick);
+  })();
+
+  /* 嘉宾揭晓 */
+  function toggleGuest() { act(V?.guest?.armed ? 'guestDisarm' : 'guestArm'); }
+  $('bGuest').onclick = toggleGuest;
+  $('bRotate').onclick = () => { if (confirm('更换后旧的嘉宾链接立即失效，嘉宾需要用新链接重新打开。继续？')) act('rotateGuestKey'); };
+
+  for (const q of QUICK) $('quickMsgs').append(el('button', { onclick: () => act('message', { text: q }) }, q));
+
+  addEventListener('keydown', e => {
+    if ($('app').classList.contains('hidden') || !$('edit').classList.contains('hidden')) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+    const k = e.key;
+    if (k === ' ' || k === 'PageDown' || k === 'ArrowRight') { e.preventDefault(); act('next'); }
+    else if (k === 'PageUp' || k === 'ArrowLeft') { e.preventDefault(); act('undo'); }
+    else if (k === 'b' || k === 'B' || k === '.') { e.preventDefault(); act('blackout'); }
+    else if (k === 'h' || k === 'H') { e.preventDefault(); act('standby'); }
+    else if (k === 'a' || k === 'A') { e.preventDefault(); toggleAuto(); }
+    else if (k === 'g' || k === 'G') { e.preventDefault(); toggleGuest(); }
+  });
+
+  /* 名单模糊 */
+  function setPrivacy(on) {
+    document.body.classList.toggle('privacy', on);
+    $('bPrivacy').textContent = on ? '🙈 名单模糊：开' : '👁 名单模糊：关';
+    store.set('ac_privacy', on ? '1' : '0');
+  }
+  $('bPrivacy').onclick = () => setPrivacy(!document.body.classList.contains('privacy'));
+  setPrivacy(store.get('ac_privacy') !== '0');
+
+  /* 标签页 */
+  for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => {
+    for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x === b);
+    $('live').classList.toggle('hidden', b.dataset.tab !== 'live');
+    $('edit').classList.toggle('hidden', b.dataset.tab !== 'edit');
+  };
+  addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ---------- 渲染：现场 ---------- */
+  function render() {
+    if (!V) return;
+    // 版本检查：服务端是旧版时提示重启，并补上缺省字段避免页面出错
+    const old = V.version !== CLIENT_VERSION;
+    $('verWarn').classList.toggle('hidden', !old);
+    if (old) $('verWarn').textContent = `⚠ 服务端版本（${V.version || '1.0'}）与控制端（${CLIENT_VERSION}）不一致：请关闭 server.js 窗口，重新运行 start.bat，然后刷新本页。自动播放和嘉宾揭晓在重启前无法使用。`;
+    V.auto ||= { on: false, remainingMs: 0 }; V.guest ||= { armed: false }; V.guests ||= [];
+    for (const u of V.urls || []) u.guest ||= '（需重启服务端）';
+    const s = V.state;
+    $('hSub').textContent = V.event.title;
+    $('nextTxt').textContent = V.next;
+    $('bUndo').disabled = !V.canUndo;
+    $('bBlack').classList.toggle('on', s.blackout);
+    $('bBlack').firstChild.textContent = s.blackout ? '取消黑屏' : '黑屏';
+    $('dispCount').textContent = `输出页 ${V.displays.length}`;
+    $('dispCount').className = 'tag' + (V.displays.length ? ' done' : ' live');
+    $('encTag').textContent = V.encrypted ? '🔒 名单已加密' : '⚠ 名单为明文';
+    $('encTag').className = 'tag' + (V.encrypted ? ' done' : '');
+    $('dispList').textContent = V.displays.length ? V.displays.join('、') : '无（投影电脑尚未打开输出页）';
+    $('progress').textContent = `${s.doneIds.length}/${V.awards.length}`;
+
+    // 自动播放
+    const au = V.auto;
+    $('bAuto').classList.toggle('on', au.on);
+    $('bAuto').firstChild.textContent = au.on ? '⏸ 暂停自动播放' : '▶ 开始自动播放';
+    for (const id of ['autoInt', 'autoHold', 'autoScope']) $(id).disabled = au.on;
+    $('autoState').className = 'tag' + (au.on ? ' auto' : '');
+    if (au.on && au.remainingMs) { autoTotal = au.remainingMs; autoDeadline = Date.now() + au.remainingMs; }
+    else { autoDeadline = 0; $('autoBar').style.width = '0'; $('autoState').textContent = au.on ? '播放中' : '已停止'; }
+
+    // 嘉宾
+    const g = V.guest, gAward = g.armed && V.awards.find(a => a.id === g.awardId);
+    const onAward = (s.mode === 'title' || s.mode === 'reveal') && V.awards.find(a => a.id === s.awardId);
+    $('bGuest').classList.toggle('on', g.armed);
+    $('bGuest').firstChild.textContent = g.armed ? '收回嘉宾授权' : '🎤 交给嘉宾揭晓当前奖项';
+    $('bGuest').disabled = !g.armed && !(onAward && !(s.mode === 'reveal' && s.revealed >= onAward.winners.length));
+    $('gState').textContent = g.armed ? `🎤 已授权：嘉宾可揭晓「${gAward?.title || ''}」（${s.mode === 'reveal' ? s.revealed : 0}/${gAward?.winners.length || 0}），揭晓完自动收回`
+      : V.guests.length ? '未授权：嘉宾手机显示「等待授权」' : '嘉宾手机尚未打开嘉宾页';
+    $('gList').textContent = V.guests.length ? `嘉宾手机：${V.guests.join('、')}` : '嘉宾手机：未连接';
+    const gu = $('gUrls'); gu.textContent = '';
+    for (const u of V.urls) gu.append(el('div', { class: 'urlbox' }, el('div', { class: 'row' }, el('span', {}, u.guest), el('button', { onclick: () => copy(u.guest) }, '复制'))));
+
+    // 奖项列表
+    const list = $('alist'); list.textContent = '';
+    V.awards.forEach((a, i) => {
+      const live = (s.mode === 'title' || s.mode === 'reveal') && s.awardId === a.id;
+      const done = s.doneIds.includes(a.id);
+      const item = el('div', { class: 'aitem' + (sel === a.id ? ' sel' : '') + (live ? ' live' : ''), onclick: () => { sel = a.id; render(); } },
+        el('div', { class: 't' }, el('span', {}, `${i + 1}. ${a.title}`),
+          live && V.guest.armed ? el('span', { class: 'tag guest' }, '🎤 嘉宾') : null,
+          live && V.auto.on ? el('span', { class: 'tag auto' }, '自动') : null,
+          live ? el('span', { class: 'tag live' }, s.mode === 'title' ? '标题中' : `揭晓 ${s.revealed}/${a.winners.length}`)
+               : done ? el('span', { class: 'tag done' }, '已公布') : el('span', { class: 'tag' }, '待公布')),
+        el('div', { class: 'm' }, `${a.winners.length} 位 · ${a.revealMode === 'all' ? '一次全部揭晓' : '逐一揭晓'}`)
+      );
+      if (sel === a.id) {
+        item.append(el('div', { class: 'acts' },
+          el('button', { onclick: ev => { ev.stopPropagation(); act('title', { awardId: a.id }); } }, '公布此奖项'),
+          el('button', { onclick: ev => { ev.stopPropagation(); act('revealAll', { awardId: a.id }); } }, '直接全部揭晓'),
+          done ? el('button', { onclick: ev => { ev.stopPropagation(); act('markPending', { awardId: a.id }); } }, '标为未公布') : null
+        ));
+      }
+      list.append(item);
+    });
+
+    // 当前名单（选中优先，否则正在进行的）
+    const showId = (s.mode === 'title' || s.mode === 'reveal') ? s.awardId : sel;
+    const cur = V.awards.find(a => a.id === (sel || showId)) || V.awards.find(a => a.id === showId);
+    const wl = $('wlist'); wl.textContent = '';
+    $('curName').textContent = cur ? '· ' + cur.title : '';
+    if (!cur) wl.append(el('li', { class: 'muted' }, '点选左侧奖项查看名单'));
+    else cur.winners.forEach((w, i) => {
+      const shown = s.mode === 'reveal' && s.awardId === cur.id && i < s.revealed;
+      wl.append(el('li', { class: shown ? 'on' : '' },
+        el('span', { class: 'idx' }, i + 1),
+        el('span', { class: 'n' + (shown ? '' : ' secret') }, w.name, w.detail ? el('div', { class: 'd' }, w.detail) : null, w.photo ? el('div', { class: 'd' }, '📷 ' + w.photo) : null),
+        shown ? el('span', { class: 'tag done' }, '已显示') : null));
+    });
+    $('bRevealAll').disabled = !(s.mode === 'title' || s.mode === 'reveal');
+
+    // 地址
+    const ub = $('urls'); ub.textContent = '';
+    const scr = V.screens?.length ? V.screens : [{ name: '输出页', width: 1920, height: 1080 }];
+    for (const sc of scr) {
+      const box = el('div', { class: 'urlbox' },
+        el('div', { class: 'row' }, el('b', { style: 'flex:1;color:var(--ink)' }, `${sc.name} · ${sc.width}×${sc.height}`),
+          el('button', { onclick: () => openScreen(sc) }, '在本机打开窗口')));
+      for (const u of V.urls) box.append(el('div', { class: 'row' }, el('span', {}, screenUrl(u, sc)), el('button', { onclick: () => copy(screenUrl(u, sc)) }, '复制')));
+      ub.append(box);
+    }
+  }
+  /* 预览：选择按哪个屏幕的比例显示 */
+  function setupPreview() {
+    const sel = $('pvSel'); sel.textContent = '';
+    sel.append(el('option', { value: '' }, '16:9'));
+    for (const sc of V.screens || []) sel.append(el('option', { value: `${sc.width}x${sc.height}` }, `${sc.name} ${sc.width}×${sc.height}`));
+    const saved = store.get('ac_pv');
+    sel.value = [...sel.options].some(o => o.value === saved) ? saved : (V.screens?.[0] ? `${V.screens[0].width}x${V.screens[0].height}` : '');
+    sel.onchange = () => { store.set('ac_pv', sel.value); applyPreview(); };
+    applyPreview();
+  }
+  function applyPreview() {
+    const r = $('pvSel').value;
+    const [w, h] = r ? r.split('x').map(Number) : [16, 9];
+    $('pvBox').style.aspectRatio = `${w} / ${h}`;
+    $('pv').src = '/display?k=' + encodeURIComponent(V.displayKey) + '&preview=1' + (r ? '&res=' + r : '');
+  }
+  function screenUrl(u, sc) { return `${u.display}&res=${sc.width}x${sc.height}&name=${encodeURIComponent(sc.name)}`; }
+  function openScreen(sc) {
+    const url = `/display?k=${encodeURIComponent(V.displayKey)}&res=${sc.width}x${sc.height}&name=${encodeURIComponent(sc.name)}`;
+    const w = window.open(url, 'award_' + sc.name, `popup,width=${Math.min(sc.width, screen.availWidth)},height=${Math.min(sc.height, screen.availHeight)},left=40,top=40`);
+    if (!w) toast('浏览器拦截了弹出窗口，请允许本站弹窗', true);
+  }
+  function fillObsHosts() {
+    const sel = $('obsHost'); if (sel.options.length) return;
+    sel.append(el('option', { value: '127.0.0.1' }, '和服务端同一台电脑'));
+    for (const u of V.urls || []) sel.append(el('option', { value: u.ip }, `其他电脑（经 ${u.ip}）`));
+  }
+  $('bObs').onclick = () => {
+    const a = el('a', { href: `/api/control/obs?host=${encodeURIComponent($('obsHost').value)}&fps=${$('obsFps').value}`, download: '表扬大会-OBS场景.json' });
+    document.body.append(a); a.click(); a.remove();
+  };
+  async function copy(t) {
+    try { await navigator.clipboard.writeText(t); return toast('已复制'); } catch {}
+    // 内网 http 不是安全上下文，clipboard API 不可用时退回旧方法
+    const ta = el('textarea', { style: 'position:fixed;opacity:0' }); ta.value = t; document.body.append(ta); ta.select();
+    try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败，请手动选择', true); }
+    ta.remove();
+  }
+
+  /* ---------- 编辑器 ---------- */
+  const clone = o => JSON.parse(JSON.stringify(o));
+  function loadDraft() { draft = { event: clone(V.event), awards: clone(V.awards) }; setDirty(false); renderEditor(); }
+  function setDirty(d) { dirty = d; $('dirtyTxt').textContent = d ? '● 有未保存的修改' : '已保存'; $('dirtyTxt').className = d ? 'dirty' : 'muted'; }
+  const winnersToText = ws => ws.map(w => [w.name, w.detail || '', w.photo || ''].join(' | ').replace(/( \| )+$/, '')).join('\n');
+  function textToWinners(t) {
+    return t.split(/\r?\n/).map(l => l.split('|').map(x => x.trim())).filter(p => p[0])
+      .map(([name, detail = '', photo = '']) => (photo ? { name, detail, photo } : { name, detail }));
+  }
+  function renderEditor() {
+    if (!draft) return;
+    $('evTitle').value = draft.event.title; $('evSub').value = draft.event.subtitle || '';
+    const box = $('elist'); box.textContent = '';
+    draft.awards.forEach((a, i) => {
+      const n = draft.awards.length;
+      const move = d => { const j = i + d; if (j < 0 || j >= n) return; [draft.awards[i], draft.awards[j]] = [draft.awards[j], draft.awards[i]]; setDirty(true); renderEditor(); };
+      const ta = el('textarea', { rows: Math.min(14, Math.max(3, a.winners.length + 1)), placeholder: '姓名 | 备注 | 照片.jpg', class: 'secret' });
+      ta.value = winnersToText(a.winners);
+      ta.addEventListener('input', () => { a.winners = textToWinners(ta.value); cnt.textContent = `${a.winners.length} 位`; setDirty(true); });
+      const cnt = el('span', { class: 'tag' }, `${a.winners.length} 位`);
+      const inp = (key, ph) => { const x = el('input', { placeholder: ph, maxlength: key === 'title' ? 120 : 160 }); x.value = a[key] || ''; x.addEventListener('input', () => { a[key] = x.value; setDirty(true); }); return x; };
+      const mode = el('select', {}, el('option', { value: 'one' }, '逐一揭晓'), el('option', { value: 'all' }, '一次全部揭晓'));
+      mode.value = a.revealMode; mode.onchange = () => { a.revealMode = mode.value; setDirty(true); };
+      box.append(el('div', { class: 'ecard' },
+        el('div', { class: 'head' }, el('span', { class: 'no' }, `#${i + 1}`), cnt, el('span', { class: 'sp' }),
+          el('button', { onclick: () => move(-1), disabled: i === 0 ? '' : null }, '↑'),
+          el('button', { onclick: () => move(1), disabled: i === n - 1 ? '' : null }, '↓'),
+          el('button', { onclick: () => { if (confirm(`删除奖项「${a.title}」？`)) { draft.awards.splice(i, 1); setDirty(true); renderEditor(); } }, style: 'color:#ff9c9c' }, '删除')),
+        el('div', { class: 'row3' },
+          el('label', { class: 'f' }, el('span', {}, '奖项名称'), inp('title', '例如：学业优异奖')),
+          el('label', { class: 'f' }, el('span', {}, '副标题（可空）'), inp('subtitle', '例如：Academic Excellence')),
+          el('label', { class: 'f' }, el('span', {}, '揭晓方式'), mode)),
+        el('label', { class: 'f' }, el('span', {}, '获奖者（每行一位）'), ta)));
+    });
+    if (!draft.awards.length) box.append(el('p', { class: 'muted' }, '还没有奖项，点上方「新增奖项」或用批量导入。'));
+  }
+  $('evTitle').addEventListener('input', e => { draft.event.title = e.target.value; setDirty(true); });
+  $('evSub').addEventListener('input', e => { draft.event.subtitle = e.target.value; setDirty(true); });
+  $('bAdd').onclick = () => { draft.awards.push({ title: '新奖项', subtitle: '', revealMode: 'one', winners: [] }); setDirty(true); renderEditor(); $('elist').lastChild?.scrollIntoView({ behavior: 'smooth' }); };
+  $('bRevert').onclick = () => { if (!dirty || confirm('放弃所有未保存的修改？')) loadDraft(); };
+  $('bSave').onclick = async () => {
+    const live = V.state.mode === 'title' || V.state.mode === 'reveal';
+    if (live && !confirm('颁奖正在进行中，保存会立即影响现场画面。继续？')) return;
+    try { const r = await api('PUT', '/api/control/data', draft); V.awards = r.data.awards; V.event = r.data.event; loadDraft(); render(); toast('已保存'); log('保存奖项数据'); }
+    catch (err) { toast(err.message, true); }
+  };
+
+  function parseRows(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const tab = lines.some(l => l.includes('\t'));
+    const splitCsv = l => { const out = []; let cur = '', q = false;
+      for (let i = 0; i < l.length; i++) { const c = l[i];
+        if (q) { if (c === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+        else if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }
+      out.push(cur); return out; };
+    const rows = lines.map(l => (tab ? l.split('\t') : splitCsv(l)).map(x => x.trim()));
+    if (rows.length && /奖项|award|category/i.test(rows[0][0]) && /姓名|名字|name/i.test(rows[0][1] || '')) rows.shift();
+    return rows.filter(r => r[0] && r[1]);
+  }
+  function doImport(replace) {
+    const rows = parseRows($('importTxt').value);
+    if (!rows.length) return toast('没有可导入的行（至少需要「奖项」和「姓名」两列）', true);
+    const awards = replace ? [] : draft.awards;
+    let added = 0;
+    for (const [title, name, detail = '', photo = ''] of rows) {
+      let a = awards.find(x => x.title === title);
+      if (!a) { a = { title, subtitle: '', revealMode: 'one', winners: [] }; awards.push(a); }
+      a.winners.push(photo ? { name, detail, photo } : { name, detail }); added++;
+    }
+    for (const a of awards) if (a.winners.length > 6 && !a.id) a.revealMode = 'all';
+    draft.awards = awards; setDirty(true); renderEditor();
+    $('importTxt').value = ''; toast(`已导入 ${added} 位获奖者，记得点「保存到服务器」`);
+  }
+  $('bImportAppend').onclick = () => doImport(false);
+  $('bImportReplace').onclick = () => { if (confirm('替换全部现有奖项？')) doImport(true); };
+
+  boot().catch(() => showLogin());
+})();
+</script>
+</body>
+</html>
