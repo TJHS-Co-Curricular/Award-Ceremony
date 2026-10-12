@@ -38,7 +38,8 @@ public/display.html    输出页（纯输出，1920×1080 为基准自适应任�
 public/guest.html      嘉宾揭晓页（手机，按住 1 秒揭晓）
 build.bat              双击编译 exe
 build/build-exe.js     SEA 打包脚本（离线）
-build/vendor/          随附的 postject（MIT），注入 SEA blob 用
+build/vendor/          随附的 postject（注入 SEA blob）和 resedit（改 exe 图标与版本信息），都是 MIT
+build/icon/            应用图标源文件：icon.svg（≥48px）、icon-small.svg（≤40px）、icon.ico、PNG
 build/使用说明.txt      便携版说明（只在输出到 dist 时复制）
 start.bat              启动源码版
 README.md              用户文档（中文）
@@ -98,6 +99,12 @@ README.md              用户文档（中文）
   - 用 Linux 的 node 作为底座、`EXE_NAME=xxx` 打一个 Linux 版 SEA，实际跑起来验证 SEA 代码路径。
   - Windows 版 exe 只能检查 PE 结构：签名表已清空、包含 `NODE_SEA_BLOB`、fuse 已翻转。
 - **杀进程**：不要用 `pkill -f "node server.js"`，它会连执行命令的 shell 一起杀掉。按 `/proc/*/cwd` 或端口找进程。
+
+## 图标
+
+- 改图标：编辑 `build/icon/icon.svg` 和 `icon-small.svg`，然后重新生成 `icon.ico`。用 Chromium 把 SVG 渲染成 16/20/24/32/40（小版）和 48/64/128/256（大版）的 PNG，再写进 ICO：**256 px 用 PNG，其余尺寸用 BMP（32 位 BGRA + AND 遮罩）**。小尺寸如果也用 PNG，资源管理器有时读不出来，会继续显示 Node 的默认图标。
+- 三个网页 `<head>` 里的 `<link rel="icon">` 是 `icon-small.svg` 的 base64，改图标时要一起更新。
+- `build-exe.js` 的顺序必须是：去签名 → postject 注入 → `setIconAndVersion()`。如果先改图标再注入，postject（LIEF）会报 “Relocation corrupted”。
 
 ## 格式与编码
 

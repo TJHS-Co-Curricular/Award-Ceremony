@@ -2,6 +2,15 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [未发布]
+
+### 新增
+- **应用图标**：黑金风格，金色桂冠环绕一颗星；16～40 px 用只有星的简化版，保证小尺寸清晰。
+  - 源文件在 `build/icon/`：`icon.svg`、`icon-small.svg`、`icon.ico`（16～256 px 共 9 种尺寸，256 px 为 PNG，其余为 BMP）、`icon-256.png`、`icon-512.png`。
+- 编译时自动把图标和文件属性（产品名「表扬大会 · 颁奖公布系统」、版本号取自 `VERSION`）写进 `AwardCeremony.exe`。用随附的 resedit（`build/vendor/resedit.cjs`，MIT），不需要 Windows 工具、不需要联网。
+- `build.bat` 编译完成后执行 `ie4uinit.exe -show`，刷新 Windows 图标缓存。
+- 控制端、输出页、嘉宾页都有浏览器标签图标（内嵌在网页里，离线可用）。
+
 ## [1.2] — 2026-10-11
 
 ### 新增

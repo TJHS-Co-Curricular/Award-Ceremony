@@ -34,7 +34,8 @@
   - 主目录有 `public\` 文件夹，所以 exe 会优先用里面的网页；把 exe 单独拿走时则用内置网页。
   - 编译前请先关闭正在运行的 `AwardCeremony.exe`。
   - 想做 U 盘便携版（单独文件夹）：在命令行运行 `set "OUT_DIR=dist" && node build\build-exe.js`，输出到 `dist\`，会附带使用说明。
-  - 打包工具 postject 已随附在 `build\vendor\`（MIT 许可）。
+  - 打包工具 postject 和 resedit 已随附在 `build\vendor\`（MIT 许可）。
+  - 编译时会自动换上应用图标（`build\icon\icon.ico`）并写入产品名和版本号。想换图标：替换 `icon.ico` 后重新编译。
 - `AwardCeremony.exe` 和 `dist/` 已加入 `.gitignore`（exe 约 82 MB，不适合放进仓库），请用 GitHub Releases 或 U 盘分发。
 
 ## 现场操作

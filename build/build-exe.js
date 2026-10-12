@@ -64,6 +64,7 @@ function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
   // 3. 注入（使用随附的 postject，无需联网）
   const { inject } = require('./vendor/postject-api.js');
   await inject(work, 'NODE_SEA_BLOB', fs.readFileSync(blobPath), { sentinelFuse: FUSE, overwrite: true });
+  setIconAndVersion(work);   // 注入之后再改图标：resedit 会保留 NODE_SEA_BLOB 资源
 
   // 4. 放到输出目录
   console.log(`[4/4] 写入 ${IN_ROOT ? '项目主目录' : DIST} …`);
@@ -82,6 +83,39 @@ function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
 
   console.log(`\n✓ 编译完成：${exe}（${(fs.statSync(exe).size / 1048576).toFixed(1)} MB）`);
 })().catch(e => fail(e.stack || e.message));
+
+// 换上 build/icon/icon.ico，并写入文件属性（产品名、版本号）。用随附的 resedit（纯 JS，MIT），不需要 Windows 工具。
+function setIconAndVersion(file) {
+  const buf = fs.readFileSync(file);
+  if (buf.toString('latin1', 0, 2) !== 'MZ') return;   // 非 Windows 底座（仅用于测试）
+  const icoPath = path.join(__dirname, 'icon', 'icon.ico');
+  if (!fs.existsSync(icoPath)) { console.log('      （找不到 build/icon/icon.ico，保留默认图标）'); return; }
+  const RE = require('./vendor/resedit.cjs');
+  const exe = RE.NtExecutable.from(buf, { ignoreCert: true });
+  const res = RE.NtExecutableResource.from(exe);
+  const icons = RE.Data.IconFile.from(fs.readFileSync(icoPath)).icons.map(i => i.data);
+  const groups = RE.Resource.IconGroupEntry.fromEntries(res.entries);
+  const gid = groups.length ? groups[0].id : 1, glang = groups.length ? groups[0].lang : 1033;
+  RE.Resource.IconGroupEntry.replaceIconsForResource(res.entries, gid, glang, icons);
+
+  const ver = (fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8').match(/const VERSION = '([\d.]+)'/) || [, '1.0'])[1];
+  const [a = 1, b = 0, c = 0] = ver.split('.').map(Number);
+  const vi = RE.Resource.VersionInfo.fromEntries(res.entries)[0] || RE.Resource.VersionInfo.createEmpty();
+  const langs = vi.getAllLanguagesForStringValues();
+  const lang = langs[0] || { lang: 1033, codepage: 1200 };
+  for (const l of langs.slice(1)) vi.removeAllStringValues(l);
+  vi.removeAllStringValues(lang);
+  vi.setStringValues(lang, {
+    ProductName: '表扬大会 · 颁奖公布系统', FileDescription: '表扬大会 · 颁奖公布系统',
+    ProductVersion: ver, FileVersion: ver, InternalName: 'AwardCeremony', OriginalFilename: EXE_NAME,
+    CompanyName: '', LegalCopyright: ''
+  });
+  vi.setFileVersion(a, b, c, 0, lang.lang); vi.setProductVersion(a, b, c, 0, lang.lang);
+  vi.outputToResourceEntries(res.entries);
+  res.outputResource(exe);
+  fs.writeFileSync(file, Buffer.from(exe.generate()));
+  console.log(`      已设置图标和文件属性（v${ver}）`);
+}
 
 function stripSignature(file) {
   const buf = fs.readFileSync(file);
