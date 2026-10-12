@@ -1,0 +1,3 @@
+# Windows 批处理必须是 CRLF，否则 cmd 会解析错乱、闪退
+*.bat text eol=crlf
+*.cmd text eol=crlf
