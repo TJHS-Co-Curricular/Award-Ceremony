@@ -38,8 +38,36 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .kicker{font-size:30px;letter-spacing:.6em;padding-left:.6em;color:var(--muted);text-transform:uppercase}
 
 /* 待机 */
-#s-standby h1{font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.08em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:44px 0 28px}
-#s-standby .sub{font-size:40px;letter-spacing:.5em;padding-left:.5em;color:var(--muted);margin-top:30px}
+/* 待机：黑金粒子光河背景；文字放在光带上方 */
+#s-standby{justify-content:flex-start;padding-top:calc(var(--sh,1080px) * .13)}
+#goldfx{position:absolute;inset:0;z-index:0}
+#s-standby > :not(canvas){position:relative;z-index:1}
+#s-standby .en{font-family:var(--serif);font-weight:500;font-size:84px;letter-spacing:.42em;padding-left:.42em;line-height:1;text-transform:uppercase;text-align:center;max-width:calc(100% - 200px);
+  background:linear-gradient(180deg,#fff6d8 0%,#e9c873 45%,#9a7330 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(0,0,0,.6))}
+#s-standby .en:empty{display:none}
+#s-standby h1{white-space:nowrap;font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.08em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:18px 0 24px;
+  filter:drop-shadow(0 0 26px rgba(255,190,70,.35)) drop-shadow(0 6px 14px rgba(0,0,0,.65))}
+#s-standby .line{display:flex;align-items:center;gap:24px;color:var(--gold-hi);opacity:.85}
+#s-standby .line i{display:block;height:1.5px;width:min(560px,28vw);background:linear-gradient(90deg,transparent,rgba(247,226,166,.9))}
+#s-standby .line i:last-child{background:linear-gradient(270deg,transparent,rgba(247,226,166,.9))}
+#s-standby .line b{width:10px;height:10px;transform:rotate(45deg);border:1.5px solid var(--gold-hi)}
+
+/* 分类标题（进入新分类时） */
+#s-group .kicker{margin-bottom:40px}
+#s-group h1{font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.1em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:36px 0 18px}
+#s-group .gsub{font-size:42px;letter-spacing:.42em;padding-left:.42em;color:var(--muted);text-transform:uppercase;text-align:center;max-width:calc(100% - 220px)}
+#s-group ol{list-style:none;margin-top:70px;display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+#s-group li{display:flex;align-items:baseline;gap:30px;font-size:44px;letter-spacing:.08em}
+#s-group li b{font-family:var(--serif);color:var(--gold);font-size:52px;min-width:2.4em}
+#s-group li small{font-size:28px;color:var(--muted);letter-spacing:.06em}
+#s-group.enter li{animation:rise 1s cubic-bezier(.2,.7,.2,1) both}
+#s-group.enter li:nth-child(2){animation-delay:.12s}#s-group.enter li:nth-child(3){animation-delay:.24s}#s-group.enter li:nth-child(4){animation-delay:.36s}#s-group.enter li:nth-child(n+5){animation-delay:.48s}
+#s-group.many ol{display:grid;grid-template-columns:1fr 1fr;column-gap:90px;row-gap:16px}
+#s-group.many li{font-size:36px}#s-group.many li b{font-size:42px}
+#s-group.nonum ol{align-items:center}#s-group.nonum li{justify-content:center}
+.gline{font-size:30px;letter-spacing:.35em;padding-left:.35em;color:var(--gold);opacity:.9}
+.gline:empty{display:none}
+#s-title .gline{margin-bottom:26px;font-size:34px}
 
 /* 奖项标题 */
 #s-title .kicker{margin-bottom:46px}
@@ -47,8 +75,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #s-title .sub{font-size:44px;color:var(--muted);letter-spacing:.2em;margin-top:34px}
 #s-title .soon{margin-top:80px;font-size:32px;letter-spacing:.8em;padding-left:.8em;color:var(--gold);animation:pulse 2.2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
-.spot{position:absolute;top:-10%;width:900px;height:120%;background:radial-gradient(closest-side,rgba(247,226,166,.10),transparent);filter:blur(10px);animation:sweep 9s ease-in-out infinite alternate;pointer-events:none}
-@keyframes sweep{from{left:-20%}to{left:70%}}
+.spot{position:absolute;top:-10%;left:0;width:900px;height:120%;background:radial-gradient(closest-side,rgba(247,226,166,.10),transparent);animation:sweep 9s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
+@keyframes sweep{from{transform:translateX(calc(var(--sw,1920px) * -.2))}to{transform:translateX(calc(var(--sw,1920px) * .7))}}
+.scene:not(.active) *{animation-play-state:paused!important}   /* 看不见的画面不跑动画 */
 .scene.enter h2,.scene.enter h1{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s linear infinite}
 @keyframes rise{from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
 
@@ -63,19 +92,38 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
   border:1px solid rgba(217,178,95,.35);box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
 .card::after{content:"";position:absolute;inset:6px;border:1px solid rgba(217,178,95,.12);border-radius:3px;pointer-events:none}
-.card .ph{flex:none;height:var(--ph,300px);aspect-ratio:var(--ar,16/9);width:auto;border-radius:4px;object-fit:cover;margin-bottom:var(--phgap,14px);border:2px solid rgba(217,178,95,.6);background:rgba(255,255,255,.04)}
 .card .tx{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:100%}
-#grid.photo .card{padding:var(--pad,18px)}
-#grid.h .card{flex-direction:row;justify-content:flex-start;text-align:left}
-#grid.h .card .ph{margin:0 var(--phgap,14px) 0 0}
-#grid.h .card .tx{flex:1;align-items:flex-start}
-#grid.h .card.hidden{justify-content:center}
-#grid.nophoto .card .ph{display:none}
+
+/* 照片奖项：整张 3:2 照片做卡片，名字 / 班级 / 学号叠在左边（拍照时左边是灰色幕布，人站在右边） */
+#grid.photo{display:flex;flex-wrap:wrap;justify-content:center;align-content:center}   /* 用 flex：最后一行不满时居中 */
+#grid.photo .card{flex:none;width:var(--cw);height:var(--ch);padding:0;border-color:rgba(217,178,95,.55)}
+#grid.photo .card::after{inset:0;border:1px solid rgba(217,178,95,.35);border-radius:6px;z-index:3}
+.card .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity .45s ease}
+.card .ph.ok{opacity:1}
+.card .shade{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,6,12,.72) 0%,rgba(8,6,12,.5) 30%,rgba(8,6,12,.18) 48%,transparent 58%)}
+.card.nopic{background:linear-gradient(90deg,#55535a 0%,#7c7a80 51%,#a57a22 52%,#c79530 100%)}   /* 没有照片：模拟灰 / 金幕布 */
+#grid.photo .card .tx{position:absolute;z-index:2;left:6%;top:0;bottom:0;width:41%;justify-content:center;align-items:flex-start;text-align:left}
+#grid.photo .card .nm{font-size:var(--name,72px);line-height:1.15;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.65),0 0 2px rgba(0,0,0,.5)}
+#grid.photo .card .rule{width:2.6em;height:max(2px,.09em);margin:.42em 0 .5em;font-size:var(--name,72px);background:linear-gradient(90deg,var(--gold-hi),var(--gold),transparent)}
+#grid.photo .card .ln{font-size:var(--detail,30px);line-height:1.4;letter-spacing:.1em;color:var(--gold-hi);white-space:nowrap;max-width:100%;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+#grid.photo .card .ln.sid{font-variant-numeric:tabular-nums;letter-spacing:.14em;color:#efe6cf}
+#grid.photo .card.pop::before{z-index:4}
+/* 有团体的奖项（.cap）：照片完整居中在上，名字等在照片下面 */
+#grid.photo.cap .card{display:flex;flex-direction:column;justify-content:flex-start;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+#grid.photo.cap .card .phbox{position:relative;flex:none;width:100%;aspect-ratio:3/2;overflow:hidden;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(217,178,95,.45)}
+#grid.photo.cap .card .phbox.nopic{background:radial-gradient(120% 90% at 50% 35%,#a9822f,#3e3016)}
+#grid.photo.cap .card .shade{display:none}
+#grid.photo.cap .card .tx{position:static;flex:1;width:100%;padding:0 6%;justify-content:center;align-items:center;text-align:center}
+#grid.photo.cap .card .nm{text-shadow:none}
+#grid.photo.cap .card .rule{width:3em;margin:.28em 0 .32em;background:linear-gradient(90deg,transparent,var(--gold-hi),transparent)}
+#grid.photo.cap .card .lns{display:flex;flex-wrap:wrap;justify-content:center;gap:0 .9em;max-width:100%}
+#grid.photo.cap .card .ln{text-shadow:none}
+#grid.photo .card .ln.note{color:var(--muted);font-size:calc(var(--detail,30px) * .85)}
 #s-reveal.dense{padding-top:60px;padding-bottom:64px}
 #s-reveal.dense header{margin-bottom:18px;gap:4px}
 #s-reveal.dense header h3{font-size:60px}
 #s-reveal.dense header .sub{font-size:22px}
-.card .nm{font-weight:800;font-size:var(--name,72px);line-height:1.2;letter-spacing:.06em;color:var(--ink);white-space:nowrap;max-width:100%}
+.card .nm{font-family:var(--namef,inherit);font-weight:800;font-size:var(--name,72px);line-height:1.2;letter-spacing:.06em;color:var(--ink);white-space:nowrap;max-width:100%}
 .card .dt{font-size:var(--detail,30px);color:var(--muted);margin-top:.45em;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .card.hidden{border-style:dashed;border-color:rgba(217,178,95,.22);background:rgba(255,255,255,.015);box-shadow:none}
 .card.hidden .q{font-family:var(--serif);font-size:calc(var(--name,72px) * 1.1);color:rgba(217,178,95,.35);animation:pulse 2.4s ease-in-out infinite}
@@ -84,6 +132,25 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 @keyframes pop{0%{opacity:0;transform:scale(.6) rotateX(70deg);filter:blur(10px)}60%{opacity:1;transform:scale(1.04);filter:none}100%{transform:none}}
 @keyframes glint{to{transform:translateX(120%)}}
 .single .card{border-color:rgba(217,178,95,.6)}
+
+/* 入围揭晓：介绍入围者 → 悬念 → 得主放大到中央，其他人变暗留在后面 */
+#rTag{font-size:26px;letter-spacing:.6em;padding-left:.6em;color:var(--gold);margin-top:6px}
+#rTag:empty{display:none}
+#s-reveal .card{transition:transform 1s cubic-bezier(.2,.8,.2,1),filter .7s ease,opacity .7s ease,box-shadow .7s ease}
+#grid.noanim .card,#grid.noanim + #susp{transition:none!important}
+#s-reveal.suspense #grid .card{filter:brightness(.42) saturate(.6)}
+#s-reveal.crowned #grid .card:not(.win){filter:brightness(.32) grayscale(.55);transform:scale(.92)}
+#s-reveal.crowned #grid .card.win{z-index:30;background-color:#16131c;transform:translate(var(--wx,0),var(--wy,0)) scale(var(--ws,1.3));border-color:var(--gold-hi);
+  box-shadow:0 0 0 3px rgba(247,226,166,.9),0 0 90px rgba(247,226,166,.45),0 30px 80px rgba(0,0,0,.6)}
+.card .badge{position:absolute;z-index:6;left:50%;top:0;transform:translate(-50%,-50%) scale(0);padding:.25em 1.1em;border-radius:99px;white-space:nowrap;
+  font:800 var(--badge,28px)/1.3 var(--serif);letter-spacing:.3em;color:#1a1405;background:linear-gradient(100deg,var(--gold-lo),var(--gold-hi),var(--gold));
+  box-shadow:0 6px 24px rgba(0,0,0,.5);transition:transform .6s .5s cubic-bezier(.3,1.6,.5,1)}
+#s-reveal.crowned .card.win{overflow:visible}
+#s-reveal.crowned .card.win .badge{transform:translate(-50%,-50%) scale(1)}
+#susp{position:absolute;left:0;right:0;top:46%;transform:translateY(-50%);z-index:25;text-align:center;pointer-events:none;opacity:0;transition:opacity .6s ease}
+#susp b{display:block;font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.2em;padding-left:.2em}
+#susp i{display:block;font-style:normal;font-size:60px;letter-spacing:.5em;color:var(--gold-hi);animation:pulse 1.6s ease-in-out infinite}
+#s-reveal.suspense #susp{opacity:1}
 
 /* 消息 */
 #s-message p{font-family:var(--serif);font-weight:700;font-size:110px;line-height:1.35;text-align:center;max-width:calc(100% - 270px);letter-spacing:.06em;white-space:pre-wrap}
@@ -101,15 +168,25 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   <div class="frame"></div>
 
   <section class="scene" id="s-standby">
-    <div class="ornament"><i></i><b></b><i></i></div>
+    <canvas id="goldfx" width="1920" height="1080"></canvas>
+    <div class="en" id="evSub"></div>
     <h1 class="goldtext" id="evTitle"></h1>
+    <div class="line"><i></i><b></b><i></i></div>
+  </section>
+
+  <section class="scene" id="s-group">
+    <div class="spot"></div>
+    <div class="kicker">奖 项 类 别</div>
     <div class="ornament"><i></i><b></b><i></i></div>
-    <div class="sub" id="evSub"></div>
+    <h1 class="goldtext" id="gTitle"></h1>
+    <div class="gsub" id="gSub"></div>
+    <ol id="gList"></ol>
   </section>
 
   <section class="scene" id="s-title">
     <div class="spot"></div>
-    <div class="kicker">颁 发 奖 项</div>
+    <div class="gline" id="tGroup"></div>
+    <div class="kicker" id="tKick">颁 发 奖 项</div>
     <h2 class="goldtext" id="tTitle"></h2>
     <div class="sub" id="tSub"></div>
     <div class="soon" id="tSoon">即 将 揭 晓</div>
@@ -117,10 +194,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
   <section class="scene" id="s-reveal">
     <header>
+      <div class="gline" id="rGroup"></div>
       <h3 class="goldtext" id="rTitle"></h3>
       <div class="sub" id="rSub"></div>
+      <div id="rTag"></div>
     </header>
     <div id="grid"></div>
+    <div id="susp"><b class="goldtext">得主是</b><i>……</i></div>
   </section>
 
   <section class="scene" id="s-message">
@@ -154,6 +234,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     const changed = nw !== SW || nh !== SH;
     SW = nw; SH = nh;
     stage.style.width = SW + 'px'; stage.style.height = SH + 'px';
+    stage.style.setProperty('--sw', SW + 'px'); stage.style.setProperty('--sh', SH + 'px');
     for (const c of document.querySelectorAll('canvas')) if (c.width !== SW || c.height !== SH) { c.width = SW; c.height = SH; }
     const s = Math.min(innerWidth / SW, innerHeight / SH);
     stage.style.transform = `translate(-50%,-50%) scale(${s})`;
@@ -178,50 +259,231 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     x: Math.random() * SW, y: Math.random() * SH, r: Math.random() * 2.2 + .4,
     vy: -(Math.random() * .25 + .05), vx: (Math.random() - .5) * .15, a: Math.random() * .5 + .1, t: Math.random() * 6.28
   }));
+  let bgOdd = false;
   (function drawBg() {
+    requestAnimationFrame(drawBg);
+    if ((bgOdd = !bgOdd)) return;   // 隔帧画一次（≈30 fps）
     bg.clearRect(0, 0, SW, SH);
     for (const d of dust) {
-      d.x += d.vx; d.y += d.vy; d.t += .02;
+      d.x += d.vx * 2; d.y += d.vy * 2; d.t += .04;   // 隔帧画，步长加倍保持原速度
       if (d.y < -10 || d.x > SW + 10) { d.y = SH + 10; d.x = Math.random() * SW; }
       bg.globalAlpha = d.a * (.6 + .4 * Math.sin(d.t));
       bg.fillStyle = '#f2d48a';
       bg.beginPath(); bg.arc(d.x, d.y, d.r, 0, 6.283); bg.fill();
     }
-    requestAnimationFrame(drawBg);
   })();
 
-  /* ---------- 彩带 ---------- */
+  /* ---------- 揭晓效果：摄影闪光灯（像台下记者拍照，四处陆续闪光） ----------
+   * burst(n)：n 越大闪光越多（揭晓一位 ≈ 26 下，多位 ≈ 37 下，得主 ≈ 46 下），约 2 秒内陆续闪完。
+   * 每一下：极快亮起 → 慢慢熄灭；白色光晕 + 十字星芒；少数是「大闪」，会让整个画面微微一亮。 */
   const fx = $('fx').getContext('2d');
-  const COLORS = ['#f7e2a6', '#d9b25f', '#b8862f', '#ffffff', '#f3c86b', '#c9a24d'];
-  let parts = [], running = false;
+  let flashes = [], running = false;
+  const flashSprite = (() => {   // 预画好的闪光光晕
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d'), r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.08, 'rgba(255,255,255,.95)'); r.addColorStop(.22, 'rgba(255,246,225,.55)');
+    r.addColorStop(.5, 'rgba(255,225,170,.16)'); r.addColorStop(1, 'rgba(255,210,140,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 256, 256); return c;
+  })();
   function burst(n = 160) {
-    if (PREVIEW) n = Math.round(n / 3); else n = Math.round(n * Math.max(1, SW / 1920));
-    for (let side = 0; side < 2; side++) for (let i = 0; i < n / 2; i++) {
-      const ang = (side ? -1 : 1) * (Math.random() * .5 + .35) - Math.PI / 2 + (side ? 0 : 0);
-      const sp = (Math.random() * 22 + 14) * Math.sqrt(SH / 1080);
-      parts.push({
-        x: side ? SW : 0, y: SH, vx: Math.cos(ang) * sp * (side ? 1 : 1), vy: Math.sin(ang) * sp,
-        w: Math.random() * 10 + 6, h: Math.random() * 6 + 4, rot: Math.random() * 6, vr: (Math.random() - .5) * .3,
-        c: COLORS[(Math.random() * COLORS.length) | 0], life: 0, tilt: Math.random() * 6
+    const count = Math.round(n / 7 * (PREVIEW ? .5 : Math.min(1.8, Math.max(1, SW / 1920 * .8))));
+    const now = performance.now(), k = SH / 1080;
+    for (let i = 0; i < count; i++) {
+      const low = Math.random() < .65;   // 多数在下方（台下观众席），少数在两侧上方
+      flashes.push({
+        x: Math.random() * SW,
+        y: low ? SH * (.6 + Math.random() * .38) : SH * (.08 + Math.random() * .5),
+        t0: now + (i < 3 ? i * 70 : Math.random() * 2200),   // 一开始就有三下，之后约 2 秒内陆续闪
+        dur: 170 + Math.random() * 150,
+        r: (55 + Math.random() * 85) * k * (low ? 1.15 : .8),
+        big: Math.random() < .16, rot: Math.random() * Math.PI / 4
       });
     }
     if (!running) { running = true; requestAnimationFrame(stepFx); }
   }
-  function stepFx() {
+  function stepFx(now) {
     fx.clearRect(0, 0, SW, SH);
-    parts = parts.filter(p => p.y < SH + 70 && p.life < 420);
-    for (const p of parts) {
-      p.life++; p.vy += .32; p.vx *= .985; p.vy *= .985; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.tilt += .1;
-      fx.save(); fx.translate(p.x, p.y); fx.rotate(p.rot); fx.scale(1, Math.cos(p.tilt));
-      fx.fillStyle = p.c; fx.globalAlpha = Math.min(1, (420 - p.life) / 60);
-      fx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); fx.restore();
+    flashes = flashes.filter(f => now < f.t0 + f.dur);
+    fx.globalCompositeOperation = 'lighter';
+    let white = 0;
+    for (const f of flashes) {
+      const t = (now - f.t0) / f.dur;
+      if (t < 0) continue;
+      const e = t < .12 ? t / .12 : Math.pow(1 - (t - .12) / .88, 2.2);   // 亮起很快，熄灭较慢
+      const R = f.r * (.85 + .3 * e);
+      fx.globalAlpha = e;
+      fx.drawImage(flashSprite, f.x - R * 2.2, f.y - R * 2.2, R * 4.4, R * 4.4);
+      // 星芒：横竖两道长的 + 斜向两道短的
+      fx.save(); fx.translate(f.x, f.y); fx.rotate(f.rot);
+      for (const [ang, len, w] of [[0, 3.6, .07], [Math.PI / 2, 2.6, .06], [Math.PI / 4, 1.5, .04], [-Math.PI / 4, 1.5, .04]]) {
+        fx.save(); fx.rotate(ang);
+        const L = R * len * (.6 + .4 * e), gr = fx.createLinearGradient(-L, 0, L, 0);
+        gr.addColorStop(0, 'rgba(255,250,235,0)'); gr.addColorStop(.5, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,250,235,0)');
+        fx.fillStyle = gr; fx.fillRect(-L, -R * w / 2, L * 2, R * w);
+        fx.restore();
+      }
+      fx.restore();
+      if (f.big) white = Math.max(white, e);
     }
-    if (parts.length) requestAnimationFrame(stepFx); else { running = false; fx.clearRect(0, 0, SW, SH); }
+    if (white > 0) { fx.globalAlpha = white * .16; fx.fillStyle = '#fff'; fx.fillRect(0, 0, SW, SH); }   // 大闪：整个画面微微一亮
+    fx.globalAlpha = 1; fx.globalCompositeOperation = 'source-over';
+    if (flashes.length) requestAnimationFrame(stepFx); else { running = false; fx.clearRect(0, 0, SW, SH); }
+  }
+
+  /* ---------- 自定义字体（奖项编辑里设定；上传的字体文件从服务端下载，离线可用） ---------- */
+  const rootCss = getComputedStyle(document.documentElement);
+  const DEF = { serif: rootCss.getPropertyValue('--serif').trim(), sans: rootCss.getPropertyValue('--sans').trim() };
+  // 系统字体名称 → CSS 字体列表：去掉 PowerPoint 的「(Headings)」「(Body)」「（正文）」等标签，中文名同时补上英文名
+  const FONT_ALIAS = { '华文楷体': 'STKaiti', '楷体': 'KaiTi', '楷体_GB2312': 'KaiTi_GB2312', '宋体': 'SimSun', '新宋体': 'NSimSun', '黑体': 'SimHei', '仿宋': 'FangSong', '微软雅黑': 'Microsoft YaHei', '微软正黑体': 'Microsoft JhengHei', '等线': 'DengXian',
+    '华文宋体': 'STSong', '华文中宋': 'STZhongsong', '华文仿宋': 'STFangsong', '华文细黑': 'STXihei', '华文黑体': 'STHeiti', '华文行楷': 'STXingkai', '华文新魏': 'STXinwei', '华文隶书': 'STLiti', '华文琥珀': 'STHupo', '华文彩云': 'STCaiyun',
+    '隶书': 'LiSu', '幼圆': 'YouYuan', '方正舒体': 'FZShuTi', '方正姚体': 'FZYaoti', '思源宋体': 'Source Han Serif SC', '思源黑体': 'Source Han Sans SC', '标楷体': 'DFKai-SB', '细明体': 'MingLiU', '新细明体': 'PMingLiU' };
+  function sysFont(spec) {
+    const name = String(spec).replace(/^\s*\+\s*/, '').replace(/\s*[（(]\s*(headings?|body|标题|正文|title|text)\s*[)）]\s*$/i, '').replace(/["\\]/g, '').trim();
+    if (!name) return '';
+    const en = FONT_ALIAS[name] || Object.keys(FONT_ALIAS).find(k => FONT_ALIAS[k].toLowerCase() === name.toLowerCase());
+    return [name, en].filter(Boolean).map(n => `"${n}"`).join(', ');
+  }
+  const fontLoaded = new Map();
+  async function fontFamily(spec, slot) {   // 「file:xxx.ttf」= 上传的字体；其它 = 系统字体名称
+    if (!spec) return '';
+    if (!spec.startsWith('file:')) return sysFont(spec);
+    const file = spec.slice(5), fam = 'AC_' + slot + '_' + file.replace(/[^\w]/g, '_');
+    if (!fontLoaded.has(fam)) fontLoaded.set(fam, new FontFace(fam, `url(/media/font?f=${encodeURIComponent(file)}&k=${encodeURIComponent(KEY)})`).load().then(f => { document.fonts.add(f); return true; }).catch(() => false));
+    return (await fontLoaded.get(fam)) ? `"${fam}"` : '';
+  }
+  let fontKey = '|';   // 默认（没设字体）就不用重排
+  async function applyFonts(ev) {
+    const key = (ev?.fontTitle || '') + '|' + (ev?.fontText || '');
+    if (key === fontKey) return;
+    fontKey = key;
+    // fontTitle = 中文字体，fontText = 英文 / 数字字体（像 PowerPoint 的「中文字体 + 西文字体」）。
+    // 英文字体排在前面：英文和数字用它；它没有的中文字，浏览器自动往后找到中文字体。所有文字都套用。
+    const [zh, en] = await Promise.all([fontFamily(ev?.fontTitle, 'zh'), fontFamily(ev?.fontText, 'en')]);
+    if (key !== fontKey) return;
+    const pre = [en, zh].filter(Boolean).join(', '), st = document.documentElement.style;
+    st.setProperty('--serif', pre ? `${pre}, ${DEF.serif}` : DEF.serif);
+    st.setProperty('--sans', pre ? `${pre}, ${DEF.sans}` : DEF.sans);
+    relayout();   // 字宽变了：重新排版、重新缩字
   }
 
   /* ---------- 渲染 ---------- */
   let cur = { mode: null, awardId: null, shown: 0, total: 0 };
+  /* ---------- 待机画面背景：金色粒子光河（canvas 原创绘制，离线可用；只在待机画面显示时运行） ----------
+   * 一层静态背景（黑金渐层 + 放射光线 + 地平线光晕），每次舞台尺寸改变才重画；
+   * 上面每帧用「叠加发光」画粒子：粒子沿弯曲的光带从近处（画面下方）流向远处的地平线，越远越小越暗。 */
+  const gc = $('goldfx'), gx = gc.getContext('2d');
+  const sprite = (() => {   // 预先画好的发光圆点，比每帧画渐层快很多
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, 'rgba(255,248,215,1)'); r.addColorStop(.18, 'rgba(255,222,120,.9)'); r.addColorStop(.45, 'rgba(255,184,40,.35)'); r.addColorStop(1, 'rgba(255,160,20,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c;
+  })();
+  let gBg = null, gW = 0, gH = 0, gParts = [], gSpark = [], gLanes = [], gOn = false, gLast = 0, gSlow = 0;
+  const HZ = .57;   // 地平线（光晕中心）在画面高度的位置
+  // 光丝的路径：u = 横向位置（-1 ~ 1），t = 0（画面下方，最近）→ 1（地平线）。近处宽、远处收拢，整体是一道 S 形的弯
+  function gPos(u, t) {
+    const d = 1 - t, ps = Math.pow(d, 1.7), cx = gW / 2, hy = gH * HZ;
+    const sweep = Math.sin(d * 2.6 + .5) * gW * .26 * Math.pow(d, 1.1);
+    return { x: cx + u * gW * (.05 + 1.1 * ps) + sweep, y: hy + gH * .64 * Math.pow(d, 2) * (1 + u * .22) - Math.sin(t * Math.PI) * gH * .05 * u, ps };
+  }
+  function gLaneU() {   // 光丝集中成几道光带（像参考图的金色气流），少量散在外面
+    const r = Math.random();
+    if (r < .82) { const c = [-.62, -.18, .22, .66][Math.floor(Math.random() * 4)]; return c + (Math.random() + Math.random() + Math.random() - 1.5) * .16; }
+    return Math.random() * 2.4 - 1.2;
+  }
+  function gBuild() {
+    gW = SW; gH = SH;
+    gBg = document.createElement('canvas'); gBg.width = gW; gBg.height = gH;
+    const g = gBg.getContext('2d'), cx = gW / 2, hy = gH * HZ, R = Math.max(gW, gH), k = gH / 1080;
+    const base = g.createLinearGradient(0, 0, 0, gH);
+    base.addColorStop(0, '#070503'); base.addColorStop(.45, '#140c03'); base.addColorStop(.62, '#2a1803'); base.addColorStop(1, '#060402');
+    g.fillStyle = base; g.fillRect(0, 0, gW, gH);
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 140; i++) {   // 从光晕中心向上放射的细光线
+      const a = Math.PI + Math.random() * Math.PI, len = R * (.5 + Math.random() * .7), w = Math.random() * 1.6 + .3;
+      const gr = g.createLinearGradient(cx, hy, cx + Math.cos(a) * len, hy + Math.sin(a) * len);
+      gr.addColorStop(0, `rgba(255,200,80,${.05 + Math.random() * .08})`); gr.addColorStop(1, 'rgba(255,200,80,0)');
+      g.strokeStyle = gr; g.lineWidth = w * k;
+      g.beginPath(); g.moveTo(cx, hy); g.lineTo(cx + Math.cos(a) * len, hy + Math.sin(a) * len); g.stroke();
+    }
+    // 金色光丝（静态）：每条按远近分段画，近处粗亮、远处细淡
+    gLanes = Array.from({ length: PREVIEW ? 70 : 150 }, gLaneU);
+    g.lineCap = 'round';
+    for (const u of gLanes) {
+      const seg = 28, tint = Math.random();
+      let prev = gPos(u, 0);
+      for (let i = 1; i <= seg; i++) {
+        const q = gPos(u, i / seg * .985);
+        const a = (.04 + .16 * q.ps) * (.6 + .4 * tint);
+        g.strokeStyle = `rgba(255,${190 + Math.round(40 * tint)},${70 + Math.round(60 * tint)},${a})`;
+        g.lineWidth = (.4 + 2.2 * q.ps) * k;
+        g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(q.x, q.y); g.stroke();
+        prev = q;
+      }
+    }
+    // 地平线光晕：大片暖光 + 中间一条扁平的亮带
+    const glow = (rx, ry, stops) => {
+      g.save(); g.translate(cx, hy); g.scale(rx / ry, 1);
+      const r = g.createRadialGradient(0, 0, 0, 0, 0, ry); stops.forEach(([o, c]) => r.addColorStop(o, c));
+      g.fillStyle = r; g.beginPath(); g.arc(0, 0, ry, 0, 6.283); g.fill(); g.restore();
+    };
+    glow(gW * .75, gH * .42, [[0, 'rgba(255,170,30,.5)'], [.35, 'rgba(200,110,10,.2)'], [1, 'rgba(120,60,0,0)']]);
+    glow(gW * .5, gH * .08, [[0, 'rgba(255,245,200,.95)'], [.3, 'rgba(255,215,90,.6)'], [1, 'rgba(255,170,30,0)']]);
+    glow(gW * .18, gH * .035, [[0, 'rgba(255,255,240,.9)'], [1, 'rgba(255,230,150,0)']]);
+    // 流动的光点：沿光丝前进，带拖尾
+    const n = Math.round((PREVIEW ? 500 : 1700) * Math.min(2, (gW * gH) / (1920 * 1080)));
+    gParts = Array.from({ length: n }, () => gSeed({}, true));
+    gSpark = Array.from({ length: PREVIEW ? 40 : Math.round(160 * gW / 1920) }, () => ({ x: Math.random() * gW, y: Math.random() * gH * .62, r: Math.random() * 1.6 + .4, t: Math.random() * 6.28, v: Math.random() * .04 + .01 }));
+  }
+  function gSeed(p, fresh) {
+    p.u = gLanes[(Math.random() * gLanes.length) | 0] + (Math.random() - .5) * .01;
+    p.t = fresh ? Math.random() : 0;
+    p.v = .05 + Math.random() * .08;   // 每秒前进多少
+    p.s = .5 + Math.random() * 1.2; p.tw = Math.random() * 6.28;
+    return p;
+  }
+  function gFrame(now) {
+    if (!gOn) return;
+    requestAnimationFrame(gFrame);
+    const dt = Math.min(.05, (now - (gLast || now)) / 1000); gLast = now;
+    if (gW !== SW || gH !== SH || !gBg) gBuild();
+    const t0 = performance.now(), k = gH / 1080, time = now / 1000;
+    gx.globalCompositeOperation = 'source-over'; gx.globalAlpha = 1; gx.drawImage(gBg, 0, 0);
+    gx.globalCompositeOperation = 'lighter';
+    for (const p of gParts) {
+      const sp = p.v * (.35 + p.t * .9);   // 越远走得越慢（透视）
+      p.t += sp * dt;
+      if (p.t >= .985) gSeed(p, false);
+      const fade = Math.min(1, p.t * 12) * Math.min(1, (.985 - p.t) * 6);
+      const tw = .75 + .25 * Math.sin(p.tw + time * 3);
+      for (let j = 0; j < 3; j++) {   // 光点 + 两段拖尾
+        const q = gPos(p.u, Math.max(0, p.t - j * sp * .09));
+        if (q.x < -40 || q.x > gW + 40 || q.y > gH + 40) break;
+        const sz = (2 + 13 * q.ps) * p.s * k * (1 - j * .22);
+        gx.globalAlpha = Math.min(1, fade * (.3 + .7 * q.ps) * tw * (1 - j * .38));
+        gx.drawImage(sprite, q.x - sz / 2, q.y - sz / 2, sz, sz);
+      }
+    }
+    for (const s of gSpark) {   // 上方闪烁的金粉
+      s.t += s.v; const a = Math.max(0, Math.sin(s.t)) * .8;
+      if (a < .02) continue;
+      const sz = s.r * 6 * k; gx.globalAlpha = a; gx.drawImage(sprite, s.x - sz / 2, s.y - sz / 2, sz, sz);
+    }
+    gx.globalAlpha = 1; gx.globalCompositeOperation = 'source-over';
+    // 太慢的电脑自动减少光点（连续多帧超过 22ms）
+    if (performance.now() - t0 > 22) { if (++gSlow > 30 && gParts.length > 300) { gParts.length = Math.round(gParts.length * .7); gSlow = 0; } } else gSlow = 0;
+  }
+  function goldFx(on) {
+    if (on === gOn) return;
+    gOn = on;
+    if (on) { gLast = 0; requestAnimationFrame(gFrame); }
+  }
+
+  let gStop = 0;
   function show(id) {
+    // 待机画面的金色光河：显示时运行，离开后等淡出完再停（省电）
+    clearTimeout(gStop);
+    if (id === 's-standby') goldFx(true); else gStop = setTimeout(() => goldFx(false), 1200);
     for (const s of document.querySelectorAll('.scene')) {
       const on = s.id === id;
       if (on && !s.classList.contains('active')) { s.classList.remove('enter'); void s.offsetWidth; s.classList.add('enter'); }
@@ -253,51 +515,52 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     if (photos) { name = Math.round(name * .85); }
     return { cols, rows, name, detail };
   }
-  /* 有照片时：按人数和可用空间算出照片能放多大，并在「照片在上」和「照片在左」之间选更合适的 */
-  const PHOTO_AR = 16 / 9;   // 照片框比例（宽 / 高）；原图比例不同会自动居中裁切
-  document.documentElement.style.setProperty('--ar', String(PHOTO_AR));
-  function planPhoto(n, W, H, minPh = 30, minName = 14) {
+  /* 有照片时：每人一张 3:2 照片卡（照片铺满，文字叠在左侧），按人数选出让卡片最大的行列数 */
+  const PHOTO_AR = 3 / 2;   // 照片比例（宽 / 高）；原图比例不同会居中裁切
+  const CAP_H = .27;        // 「名字在照片下面」版式里，文字区高度 = 卡片宽 × CAP_H
+  function planPhoto(n, W, H, AR = PHOTO_AR) {
     let best = null;
     for (let cols = 1; cols <= Math.min(n, 16); cols++) {
       const rows = Math.ceil(n / cols);
-      const gap = n > 40 ? 10 : n > 12 ? 14 : n > 6 ? 20 : 28;
-      const cw = Math.min((W - (cols - 1) * gap) / cols, n === 1 ? 1000 : n === 2 ? 760 : n === 3 ? 560 : 1e9);
-      const ch = (H - (rows - 1) * gap) / rows;
-      if (cw < 50 || ch < 36) continue;
-      const pad = Math.max(6, Math.min(22, Math.min(cw, ch) * .07));
-      for (const orient of ['v', 'h']) {
-        let ph, name;
-        if (orient === 'v') {
-          name = Math.min((cw - 2 * pad) / 4.6, ch * .16, 96);
-          ph = Math.min(ch - 2 * pad - name * 2.3 - 12, (cw - 2 * pad) / PHOTO_AR, 460);
-        } else {
-          ph = Math.min(ch - 2 * pad, 460);
-          name = Math.min((cw - 2 * pad - ph * PHOTO_AR - 14) / 4.6, ph * .32, 80);
-        }
-        if (ph < minPh || name < minName) continue;
-        const score = ph + name * 4;   // 照片尽量大，同时名字要读得清
-        if (!best || score > best.score) best = { cols, rows, gap, cw, ch, pad, orient, ph, name, score };
-      }
+      const gap = n > 24 ? 12 : n > 12 ? 16 : n > 6 ? 22 : 30;
+      const cw = Math.min((W - (cols - 1) * gap) / cols, (H - (rows - 1) * gap) / rows * AR);
+      if (!best || cw > best.cw + .5) best = { cols, rows, gap, cw, ch: cw / AR };
     }
-    return best;
+    return best && best.cw >= 150 ? best : null;   // 太小就退回纯文字
   }
   function fitText(el) {
     let size = parseFloat(getComputedStyle(el).fontSize);
     let guard = 40;
     while (el.scrollWidth > el.clientWidth + 1 && size > 12 && guard--) { size *= .92; el.style.fontSize = size + 'px'; }
   }
+  const div = (cls, text) => { const d = document.createElement('div'); d.className = cls; if (text != null) d.textContent = text; return d; };
   function fillCard(card, w, animate) {
-    card.className = 'card' + (animate ? ' pop' : '');
+    card.className = 'card' + (animate ? ' pop' : '') + (w.type === 'team' ? ' team' : '');
     card.textContent = '';
-    if (w.photo) {
-      const img = document.createElement('img');
-      img.className = 'ph'; img.alt = ''; img.src = w.photo + '&k=' + encodeURIComponent(KEY);
-      card.appendChild(img);
+    const tx = div('tx');
+    const nm = div('nm', w.name); tx.appendChild(nm);
+    const fits = [nm];
+    const grid = $('grid');
+    if (grid.classList.contains('photo')) {
+      const cap = grid.classList.contains('cap');         // cap：照片在上、名字在下；否则照片铺满、左侧叠字
+      const holder = cap ? card.appendChild(div('phbox')) : card;
+      if (w.photo) {
+        const img = document.createElement('img');
+        img.className = 'ph'; img.alt = ''; img.decoding = 'async';
+        img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => img.classList.add('ok'));
+        img.src = w.photo + '&k=' + encodeURIComponent(KEY);
+        holder.appendChild(img);
+      } else holder.classList.add('nopic');
+      if (!cap) card.appendChild(div('shade'));
+      if (w.cls || w.sid || w.detail) tx.appendChild(div('rule'));
+      const box = cap ? tx.appendChild(div('lns')) : tx;  // 名字在下：班级 / 学号 / 备注排成一行（可换行）
+      for (const [k, t] of [['cls', w.cls], ['sid', w.sid], ['note', w.detail]]) if (t) { const d = box.appendChild(div('ln ' + k, t)); if (!cap) fits.push(d); }
+    } else {                                              // 纯文字卡：班级 · 学号 · 备注 合成一行
+      const info = [w.cls, w.sid, w.detail].filter(Boolean).join(' · ');
+      if (info) tx.appendChild(div('dt', info));
     }
-    const tx = document.createElement('div'); tx.className = 'tx'; card.appendChild(tx);
-    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = w.name; tx.appendChild(nm);
-    if (w.detail) { const dt = document.createElement('div'); dt.className = 'dt'; dt.textContent = w.detail; tx.appendChild(dt); }
-    requestAnimationFrame(() => fitText(nm));
+    card.appendChild(tx);
+    requestAnimationFrame(() => fits.forEach(fitText));
   }
   function buildGrid(v) {
     const grid = $('grid');
@@ -307,8 +570,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     grid.removeAttribute('style');
     grid.classList.toggle('single', n === 1);
     $('s-reveal').classList.remove('dense');
-    if (v.award.hasPhotos && buildPhotoGrid(grid, n)) return;
-    const T = planText(n, grid.clientWidth || SW - 220, grid.clientHeight || SH - 300);
+    const shrink = v.award.nominee && n > 1 ? .74 : 1;   // 入围：卡片先小一点，得主揭晓时才有放大的空间
+    if (v.award.hasPhotos && buildPhotoGrid(grid, n, !!v.award.hasTeams, shrink)) return;
+    const T = planText(n, grid.clientWidth || SW - 220, (grid.clientHeight || SH - 300) * shrink);
     grid.style.setProperty('--name', Math.floor(T.name) + 'px');
     grid.style.setProperty('--detail', Math.max(12, Math.floor(T.name * .38)) + 'px');
     grid.style.setProperty('--gap', T.gap + 'px');
@@ -321,23 +585,22 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
       grid.appendChild(c);
     }
   }
-  function buildPhotoGrid(grid, n) {
+  function buildPhotoGrid(grid, n, cap, shrink = 1) {
     const scene = $('s-reveal');
     scene.classList.toggle('dense', n > 12);
-    const W = grid.clientWidth || SW - 220, H = grid.clientHeight || SH - 300;
-    const P = planPhoto(n, W, H) || planPhoto(n, W, H, 22, 12);
-    if (!P) { grid.classList.add('nophoto'); scene.classList.remove('dense'); return false; } // 人数实在太多：只显示名字
-    grid.classList.add('photo', P.orient);
+    const W = grid.clientWidth || SW - 220, H = (grid.clientHeight || SH - 300) * shrink;
+    const P = planPhoto(n, W, H, cap ? 1 / (1 / PHOTO_AR + CAP_H) : PHOTO_AR);
+    if (!P) { scene.classList.remove('dense'); return false; }   // 人数实在太多：只显示名字
+    grid.classList.add('photo');
+    if (cap) grid.classList.add('cap');                         // 奖项里有团体：全部改成「照片在上、名字在下」
     const s = grid.style;
-    s.setProperty('--ph', Math.floor(P.ph) + 'px');
-    s.setProperty('--name', Math.floor(P.name) + 'px');
-    s.setProperty('--detail', Math.max(11, Math.floor(P.name * .42)) + 'px');
-    s.setProperty('--pad', Math.floor(P.pad) + 'px');
-    s.setProperty('--phgap', Math.max(6, Math.floor(P.ph * .05)) + 'px');
+    const name = Math.max(16, Math.min(P.cw * (cap ? .07 : .078), 150));   // 字号跟着卡片宽度走
+    s.setProperty('--name', Math.floor(name) + 'px');
+    s.setProperty('--detail', Math.max(12, Math.floor(name * .52)) + 'px');
     s.setProperty('--gap', P.gap + 'px');
-    const rowH = P.orient === 'v' ? Math.min(P.ch, 2 * P.pad + P.ph + 12 + P.name * 2.3 + 4) : Math.min(P.ch, P.ph + 2 * P.pad);
-    s.gridTemplateColumns = `repeat(${P.cols}, ${Math.floor(P.cw)}px)`;
-    s.gridTemplateRows = `repeat(${P.rows}, ${Math.floor(rowH)}px)`;
+    s.setProperty('--cw', Math.floor(P.cw) + 'px');
+    s.setProperty('--ch', Math.floor(P.ch) + 'px');
+    s.maxWidth = (P.cols * Math.floor(P.cw) + (P.cols - 1) * P.gap + 1) + 'px';   // 每行刚好放 cols 张
     for (let i = 0; i < n; i++) {
       const c = document.createElement('div');
       c.className = 'card hidden';
@@ -346,14 +609,48 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     }
     return true;
   }
+  function applyPhase(v, animate, celebrate, wait = 0) {
+    const sc = $('s-reveal'), grid = $('grid'), nom = !!v.award.nominee, ph = nom ? v.award.phase || '' : '';
+    if (!animate) { grid.classList.add('noanim'); requestAnimationFrame(() => requestAnimationFrame(() => grid.classList.remove('noanim'))); }
+    sc.classList.toggle('suspense', ph === 'suspense');
+    $('rTag').textContent = nom && ph !== 'winner' ? '入 围 名 单' : '';
+    const cards = [...grid.children];
+    for (const c of cards) if (c.classList.contains('win') && (ph !== 'winner' || cards.indexOf(c) !== v.award.winnerIndex)) c.classList.remove('win');
+    if (ph !== 'winner') { sc.classList.remove('crowned'); return; }
+    // 卡片还在逐张弹出（例如直接「全部揭晓」）时，等它们出完再放大得主，免得被 fillCard 覆盖
+    if (wait) return setTimeout(() => { if (lastV?.award?.id === v.award.id && lastV.award.phase === 'winner') crown(v, cards, celebrate); }, wait);
+    crown(v, cards, celebrate);
+  }
+  function crown(v, cards, celebrate) {
+    const grid = $('grid');
+    $('s-reveal').classList.add('crowned');
+    const c = cards[v.award.winnerIndex];
+    if (!c) return;
+    c.classList.remove('pop');                       // pop 动画会锁住 transform，先拿掉
+    if (!c.querySelector('.badge')) { const b = div('badge', '🏆 得 主'); c.appendChild(b); }
+    // 把得主卡移到网格中央并放大（offsetLeft 等不受 transform 影响，和舞台缩放无关）
+    const gw = grid.clientWidth, gh = grid.clientHeight, cw = c.offsetWidth, chh = c.offsetHeight;
+    const ws = Math.max(1.08, Math.min(1.9, gw * .9 / cw, (gh * .94) / chh));
+    c.style.setProperty('--wx', (grid.offsetLeft + gw / 2 - (c.offsetLeft + cw / 2)) + 'px');
+    c.style.setProperty('--wy', (grid.offsetTop + gh / 2 - (c.offsetTop + chh / 2)) + 'px');
+    c.style.setProperty('--ws', ws.toFixed(3));
+    c.style.setProperty('--badge', Math.max(14, Math.round(cw * .045)) + 'px');
+    c.classList.add('win');
+    if (celebrate) setTimeout(() => burst(320), 650);
+  }
   function relayout() {           // 屏幕比例变了：静默重排当前画面（不放动画）
     if (!lastV) return;
+    $('evTitle').dataset.w = '';   // 字体或尺寸变了：标题重新缩放
     const b = booted; booted = false; cur = { mode: null }; render(lastV); booted = b;
   }
   function render(v) {
     lastV = v;
+    applyFonts(v.event);
     $('black').classList.toggle('on', !!v.blackout);
-    $('evTitle').textContent = v.event?.title || '';
+    if ($('evTitle').textContent !== (v.event?.title || '') || $('evTitle').dataset.w !== String(SW)) {   // 标题太长就缩小，保持一行
+      const h = $('evTitle'); h.textContent = v.event?.title || ''; h.style.fontSize = ''; h.dataset.w = SW;
+      requestAnimationFrame(() => fitText(h));
+    }
     $('evSub').textContent = v.event?.subtitle || '';
 
     if (v.mode === 'standby') { show('s-standby'); cur = { mode: 'standby' }; return; }
@@ -364,6 +661,24 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
       }
       show('s-message'); cur = { mode: 'message' }; return;
     }
+    if (v.mode === 'group' && v.group) {
+      const key = v.group.title + '|' + (v.group.noNum ? 1 : 0) + '|' + v.group.awards.map(x => x.title).join('|');
+      if (cur.mode === 'group' && cur.key !== key) $('s-group').classList.remove('active');   // 换了分类：重新进场
+      $('gTitle').textContent = v.group.title; $('gSub').textContent = v.group.sub || '';
+      const ol = $('gList'); ol.textContent = '';
+      v.group.awards.forEach((x, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = '<b></b><span></span><small></small>';
+        li.children[0].textContent = String(i + 1).padStart(2, '0'); li.children[1].textContent = x.title; li.children[2].textContent = x.subtitle || '';
+        if (v.group.noNum) li.children[0].remove();   // 这一类设定为不显示编号
+        ol.appendChild(li);
+      });
+      $('s-group').classList.toggle('many', v.group.awards.length > 5);
+      $('s-group').classList.toggle('nonum', !!v.group.noNum);
+      show('s-group'); cur = { mode: 'group', key }; return;
+    }
+    const gl = v.award?.group ? `${v.award.group}${v.award.groupTotal > 1 && !v.award.groupNoNum ? ' · 奖项 ' + String(v.award.groupIndex).padStart(2, '0') : ''}` : '';
+    $('tGroup').textContent = gl; $('rGroup').textContent = gl;
     if (v.mode === 'title') {
       $('tTitle').textContent = v.award.title; $('tSub').textContent = v.award.subtitle || '';
       $('tSoon').textContent = v.guestArmed ? '有 请 嘉 宾 揭 晓' : '即 将 揭 晓';
@@ -389,6 +704,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
       if (to > from && animate) setTimeout(() => burst(to - from > 1 ? 260 : 180), 250);
       cur.shown = to;
       show('s-reveal');
+      const ph = v.award.nominee ? v.award.phase || '' : '';
+      if (ph !== cur.phase || !sameAward || isUndo) {
+        const anim = animate && !isUndo;
+        applyPhase(v, anim, anim && ph === 'winner' && cur.phase !== 'winner', anim && to > from ? (to - from - 1) * 140 + 450 : 0);
+      }
+      cur.phase = ph;
     }
   }
 

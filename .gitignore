@@ -5,9 +5,23 @@ logs/
 Result/
 *.tmp
 
-# 打包输出（exe 约 82 MB，超过 GitHub 单文件限制）
+# 打包输出（exe 约 90 MB，超过 GitHub 单文件限制）
 dist/
-/AwardCeremony.exe
+/AwardCeremony*.exe
+# build.bat 在主目录生成的快捷脚本（指向当前版本的 exe，每次编译重写）
+/加密名单.bat
+/解密名单.bat
 
 # OBS 场景文件（含输出页密钥）
 obs/
+
+# 设计参考图（可能含真实照片、姓名）
+/Picture*.png
+/Picture*.jpg
+
+# 系统 / 编辑器杂项
+Thumbs.db
+desktop.ini
+.DS_Store
+node_modules/
+*.log

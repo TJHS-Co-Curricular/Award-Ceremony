@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 const readline = require('readline');
 
-const VERSION = '1.2';
+const VERSION = '1.11';
 // 打包成 .exe（Node 单文件程序）时，数据放在 exe 旁边，网页从 exe 内部读取
 let sea = null;
 try { sea = require('node:sea'); } catch { /* 普通 node 运行 */ }
@@ -26,7 +26,10 @@ const DATA_DIR = path.join(ROOT, 'data');
 const PLAIN = path.join(DATA_DIR, 'awards.json');
 const ENC = path.join(DATA_DIR, 'awards.enc');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
+const EXSTYLE_PATH = path.join(DATA_DIR, 'export-style.json');   // 图片导出的设计（字号、颜色、粗体等），不含名单
 const PHOTO_DIR = path.join(DATA_DIR, 'photos');
+const CACHE_DIR = path.join(PHOTO_DIR, '_cache');
+const FONT_DIR = path.join(DATA_DIR, 'fonts');   // 上传的自定义字体（大屏和图片导出用）   // 控制端压缩后的照片（JPEG），存在就优先发给大屏
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const LOG_DIR = path.join(ROOT, 'logs');
 
@@ -123,12 +126,14 @@ function loadConfig() {
 const SAMPLE = {
   event: { title: '2026 年度表扬大会', subtitle: 'AWARD CEREMONY' },
   awards: [
-    { id: 'a1', title: '学业优异奖', subtitle: 'Academic Excellence', revealMode: 'one',
-      winners: [{ name: '示例同学一', detail: '高一 甲班' }, { name: '示例同学二', detail: '高二 乙班' }, { name: '示例同学三', detail: '高三 丙班' }] },
+    { id: 'a1', group: '学术表现', groupSub: 'ACADEMIC', title: '学业优异奖', subtitle: 'Academic Excellence', revealMode: 'one',
+      winners: [{ name: '示例同学一', cls: '高一甲班', sid: '10001' }, { name: '示例同学二', cls: '高二乙班', sid: '10002' }, { name: '示例同学三', cls: '高三丙班', sid: '10003' }] },
     { id: 'a2', title: '最佳服务奖', subtitle: 'Outstanding Service', revealMode: 'one',
-      winners: [{ name: '示例同学四', detail: '学生会' }] },
+      winners: [{ name: '示例同学四', detail: '学生会' }, { name: '示例学会', detail: '团体奖', type: 'team' }] },
+    { id: 'a4', title: '年度风云人物', subtitle: 'Person of the Year', revealMode: 'nominee',
+      winners: [{ name: '入围者甲', cls: '高一甲班' }, { name: '入围者乙', cls: '高二乙班', win: true }, { name: '入围者丙', cls: '高三丙班' }] },
     { id: 'a3', title: '全勤奖', subtitle: 'Perfect Attendance', revealMode: 'all',
-      winners: Array.from({ length: 8 }, (_, i) => ({ name: `示例同学${'甲乙丙丁戊己庚辛'[i]}`, detail: `初${(i % 3) + 1}班` })) }
+      winners: Array.from({ length: 8 }, (_, i) => ({ name: `示例同学${'甲乙丙丁戊己庚辛'[i]}`, cls: `初${(i % 3) + 1}班`, sid: String(20001 + i) })) }
   ]
 };
 
@@ -149,17 +154,20 @@ function decryptText(blob, pass) {
 
 const str = (v, max) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 function normalizeData(d) {
-  const out = { event: { title: str(d?.event?.title, 120) || '表扬大会', subtitle: str(d?.event?.subtitle, 160) }, awards: [] };
+  const out = { event: { title: str(d?.event?.title, 120) || '表扬大会', subtitle: str(d?.event?.subtitle, 160), groupIntro: d?.event?.groupIntro !== false,
+    fontTitle: str(d?.event?.fontTitle, 120), fontText: str(d?.event?.fontText, 120) }, awards: [] };   // 字体：系统字体名，或「file:文件名」
   const seen = new Set();
   for (const a of (Array.isArray(d?.awards) ? d.awards : []).slice(0, 500)) {
     let id = str(a?.id, 40).replace(/[^\w-]/g, '');
     if (!id || seen.has(id)) id = 'a' + hex(4);
     seen.add(id);
     const winners = (Array.isArray(a?.winners) ? a.winners : []).slice(0, 500)
-      .map(w => ({ name: str(w?.name, 80), detail: str(w?.detail, 120), photo: path.basename(str(w?.photo, 120)) }))
+      .map(w => ({ name: str(w?.name, 80), cls: str(w?.cls, 40), sid: str(w?.sid, 40), detail: str(w?.detail, 120), photo: path.basename(str(w?.photo, 120)), type: w?.type === 'team' ? 'team' : '', win: w?.win === true }))
       .filter(w => w.name)
-      .map(w => (w.photo ? w : { name: w.name, detail: w.detail }));
-    out.awards.push({ id, title: str(a?.title, 120) || '未命名奖项', subtitle: str(a?.subtitle, 160), revealMode: a?.revealMode === 'all' ? 'all' : 'one', winners });
+      .map(w => Object.fromEntries(Object.entries(w).filter(([k, x]) => k === 'name' || x)));   // 去掉空字段
+    out.awards.push({ id, group: str(a?.group, 60), groupSub: str(a?.groupSub, 120), ...(a?.groupNoNum === true ? { groupNoNum: true } : {}), title: str(a?.title, 120) || '未命名奖项', subtitle: str(a?.subtitle, 160), revealMode: ['all', 'nominee'].includes(a?.revealMode) ? a.revealMode : 'one', winners });
+    let seenWin = false;   // 每个奖项只能有 1 位得主：多标了只保留第一个（换成别的揭晓方式时保留标记，不会发给大屏）
+    for (const w of winners) if (w.win) { if (seenWin) delete w.win; seenWin = true; }
   }
   return out;
 }
@@ -173,9 +181,25 @@ function saveData() {
 }
 
 /* ------------------------------------------------------------------ 现场状态 */
-let state = { mode: 'standby', awardId: null, revealed: 0, doneIds: [], blackout: false, message: '', seq: 0 };
+// phase：只用于「入围揭晓」奖项。'' = 介绍入围者中 / 'suspense' = 悬念「得主是……」 / 'winner' = 已揭晓得主
+let state = { mode: 'standby', awardId: null, revealed: 0, phase: '', doneIds: [], blackout: false, message: '', seq: 0 };
 const history = [];
 const findAward = id => DATA.awards.find(a => a.id === id);
+const winIndex = a => (a && a.revealMode === 'nominee' ? a.winners.findIndex(w => w.win) : -1);
+const isNominee = a => winIndex(a) >= 0;
+// 分类：相邻、分类名称相同的奖项算一组（同名但不相邻的算两组）
+function groupRun(a) {
+  if (!a || !a.group) return null;
+  const L = DATA.awards, i = L.indexOf(a);
+  let s = i, e = i;
+  while (s > 0 && L[s - 1].group === a.group) s--;
+  while (e < L.length - 1 && L[e + 1].group === a.group) e++;
+  const list = L.slice(s, e + 1);
+  // noNum：这一类不显示「01 / 02 / 03」编号（组里任一奖项勾了就算）
+  return { title: a.group, sub: (list.find(x => x.groupSub) || {}).groupSub || '', list, index: i - s + 1, start: L[s], noNum: list.some(x => x.groupNoNum) };
+}   // 「入围揭晓」且已指定得主；没指定得主时按「逐一揭晓」处理
+// 奖项是否已揭晓完：普通奖项 = 名单全部出现；入围奖项 = 得主已揭晓
+const isComplete = (a, st) => !!a && st.mode === 'reveal' && st.awardId === a.id && (isNominee(a) ? st.phase === 'winner' : st.revealed >= a.winners.length);
 
 function loadState() {
   try {
@@ -189,6 +213,7 @@ function sanitizeState() {
   if (state.awardId && !findAward(state.awardId)) Object.assign(state, { mode: 'standby', awardId: null, revealed: 0 });
   const a = state.awardId && findAward(state.awardId);
   if (a) state.revealed = Math.min(state.revealed, a.winners.length);
+  if (!['', 'suspense', 'winner'].includes(state.phase) || state.mode !== 'reveal' || !isNominee(a) || state.revealed < a.winners.length) state.phase = '';
 }
 function saveState() { try { atomicWrite(STATE_PATH, JSON.stringify(state)); } catch { /* ignore */ } }
 
@@ -203,33 +228,44 @@ function nextPending(afterId, doneIds) {
 }
 function markDoneIfComplete(st) {
   const a = findAward(st.awardId);
-  if (a && st.mode === 'reveal' && st.revealed >= a.winners.length && !st.doneIds.includes(a.id)) st.doneIds.push(a.id);
+  if (isComplete(a, st) && !st.doneIds.includes(a.id)) st.doneIds.push(a.id);
 }
 /** 计算「下一步」会做什么 */
 function planNext(s) {
   const st = { ...s, doneIds: [...s.doneIds], blackout: false };
   const a = s.awardId && findAward(s.awardId);
+  const nom = isNominee(a), n = a ? a.winners.length : 0;
   if (s.mode === 'title' && a) {
-    st.mode = 'reveal';
-    st.revealed = a.revealMode === 'all' ? a.winners.length : Math.min(1, a.winners.length);
+    st.mode = 'reveal'; st.phase = '';
+    st.revealed = a.revealMode === 'all' ? n : Math.min(1, n);
     markDoneIfComplete(st);
-    return { st, desc: a.revealMode === 'all' ? `一次揭晓「${a.title}」全部 ${a.winners.length} 位` : `揭晓「${a.title}」第 1 位` };
+    return { st, desc: nom ? `介绍「${a.title}」入围者 1 / ${n}` : a.revealMode === 'all' ? `一次揭晓「${a.title}」全部 ${n} 位` : `揭晓「${a.title}」第 1 位` };
   }
-  if (s.mode === 'reveal' && a && s.revealed < a.winners.length) {
-    st.revealed = a.revealMode === 'all' ? a.winners.length : s.revealed + 1;
+  if (s.mode === 'reveal' && a && s.revealed < n) {
+    st.revealed = a.revealMode === 'all' ? n : s.revealed + 1;
     markDoneIfComplete(st);
-    return { st, desc: `揭晓「${a.title}」第 ${st.revealed} / ${a.winners.length} 位` };
+    return { st, desc: nom ? `介绍「${a.title}」入围者 ${st.revealed} / ${n}` : `揭晓「${a.title}」第 ${st.revealed} / ${n} 位` };
+  }
+  if (nom && s.mode === 'reveal' && s.phase !== 'winner') {   // 入围者都介绍完：先悬念，再揭晓得主
+    if (s.phase !== 'suspense') { st.phase = 'suspense'; return { st, desc: `悬念：「${a.title}」得主是……` }; }
+    st.phase = 'winner'; markDoneIfComplete(st);
+    return { st, desc: `🏆 揭晓「${a.title}」得主` };
   }
   const resume = s.mode !== 'reveal' && a && !st.doneIds.includes(a.id) ? a : null;
-  const n = resume || nextPending(s.awardId, st.doneIds);
-  if (!n) return { st: { ...st, mode: 'standby', awardId: null, revealed: 0 }, desc: '所有奖项已公布 → 返回待机画面' };
-  return { st: { ...st, mode: 'title', awardId: n.id, revealed: 0 }, desc: `公布奖项「${n.title}」（不揭晓名单）` };
+  const nx = resume || nextPending(s.awardId, st.doneIds);
+  if (!nx) return { st: { ...st, mode: 'standby', awardId: null, revealed: 0, phase: '' }, desc: '所有奖项已公布 → 返回待机画面' };
+  // 进入新的分类：先显示分类标题画面（可在奖项编辑里关掉）
+  const g = groupRun(nx), prevG = groupRun(a);
+  if (DATA.event.groupIntro !== false && g && s.mode !== 'group' && !resume && (!prevG || prevG.start !== g.start))
+    return { st: { ...st, mode: 'group', awardId: nx.id, revealed: 0, phase: '' }, desc: `分类标题「${g.title}」（${g.list.length} 个奖项）` };
+  return { st: { ...st, mode: 'title', awardId: nx.id, revealed: 0, phase: '' }, desc: `公布奖项「${nx.title}」（不揭晓名单）` };
 }
 
 function commit(next, who, desc) {
   history.push(JSON.parse(JSON.stringify(state)));
   if (history.length > 200) history.shift();
   state = { ...next, seq: state.seq + 1 };
+  if (state.mode !== 'reveal') state.phase = '';
   saveState();
   audit('ACTION', who, desc);
   afterChange();
@@ -245,7 +281,7 @@ function stopAuto(reason) {
   audit('AUTO-STOP', reason || '');
 }
 const currentAward = () => ((state.mode === 'title' || state.mode === 'reveal') && state.awardId ? findAward(state.awardId) : null);
-const awardComplete = a => !!a && state.mode === 'reveal' && state.revealed >= a.winners.length;
+const awardComplete = a => isComplete(a, state);
 function scheduleAuto() {
   clearTimeout(autoTimer); auto.nextAt = 0;
   if (!auto.on) return;
@@ -320,13 +356,18 @@ function doAction(body, who) {
       if (!text) throw new Error('消息不能为空');
       return commit({ ...base, mode: 'message', message: text, blackout: false }, who, '显示消息：' + text);
     }
+    case 'group': {
+      const g = groupRun(a);
+      if (!g) throw new Error('这个奖项没有分类');
+      return commit({ ...base, mode: 'group', awardId: a.id, revealed: 0, blackout: false }, who, `分类标题「${g.title}」`);
+    }
     case 'title':
       if (!a) throw new Error('找不到奖项');
       return commit({ ...base, mode: 'title', awardId: a.id, revealed: 0, blackout: false }, who, `公布奖项「${a.title}」`);
     case 'revealAll': {
       const t = a || findAward(state.awardId);
       if (!t) throw new Error('当前没有奖项');
-      const st = { ...base, mode: 'reveal', awardId: t.id, revealed: t.winners.length, blackout: false };
+      const st = { ...base, mode: 'reveal', awardId: t.id, revealed: t.winners.length, phase: isNominee(t) ? 'winner' : '', blackout: false };
       markDoneIfComplete(st);
       return commit(st, who, `全部揭晓「${t.title}」`);
     }
@@ -351,13 +392,24 @@ function doAction(body, who) {
 function publicView() {
   const v = { mode: state.mode, blackout: state.blackout, seq: state.seq, event: DATA.event, guestArmed: guestActive() };
   const a = state.awardId && findAward(state.awardId);
+  const g = a && groupRun(a);
+  if (state.mode === 'group' && g) {
+    v.group = { title: g.title, sub: g.sub, noNum: g.noNum, awards: g.list.map(x => ({ title: x.title, subtitle: x.subtitle })) };   // 只有奖项名称，没有名单
+  } else if (state.mode === 'group') v.mode = 'standby';
   if ((state.mode === 'title' || state.mode === 'reveal') && a) {
     v.award = { id: a.id, title: a.title, subtitle: a.subtitle };
+    if (g) Object.assign(v.award, { group: g.title, groupSub: g.sub, groupIndex: g.index, groupTotal: g.list.length, groupNoNum: g.noNum });
     if (state.mode === 'reveal') {
       v.award.total = a.winners.length;
       v.award.hasPhotos = a.winners.some(w => w.photo);
+      v.award.hasTeams = a.winners.some(w => w.type === 'team');   // 只决定版式，不含名字
+      if (isNominee(a)) {
+        v.award.nominee = true;
+        v.award.phase = state.revealed >= a.winners.length ? state.phase || '' : '';
+        if (v.award.phase === 'winner') v.award.winnerIndex = winIndex(a);   // ⚠ 得主是谁，只在这一步之后才发出去
+      }
       v.winners = a.winners.slice(0, state.revealed).map((w, i) => ({
-        name: w.name, detail: w.detail, photo: w.photo ? `/media/photo?a=${encodeURIComponent(a.id)}&i=${i}` : null
+        name: w.name, cls: w.cls, sid: w.sid, detail: w.detail, type: w.type, photo: w.photo ? `/media/photo?a=${encodeURIComponent(a.id)}&i=${i}` : null
       }));
     }
   } else if (state.mode === 'title' || state.mode === 'reveal') {
@@ -417,16 +469,21 @@ function sseOpen(req, res, kind, ip, token, label) {
   send(c);
   if (kind === 'display' || kind === 'guest') broadcastControl();
 }
-function send(c) {
+// memo：同一次广播里，同一类客户端只生成一次 JSON（控制端视图含全部名单，可能很大）
+function send(c, memo = {}) {
   if (c.kind === 'control' && (!sessions.has(c.token) || sessions.get(c.token).exp < Date.now())) {
     clients.delete(c); c.res.end(); return;
   }
-  const payload = c.kind === 'control' ? controlView() : publicView();
-  if (c.kind === 'guest') payload.canPress = guestActive();
-  c.res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  const key = c.kind === 'control' ? 'control' : c.kind === 'guest' ? 'guest' : 'public';
+  if (!memo[key]) {
+    const payload = key === 'control' ? controlView() : publicView();
+    if (key === 'guest') payload.canPress = guestActive();
+    memo[key] = `data: ${JSON.stringify(payload)}\n\n`;
+  }
+  c.res.write(memo[key]);
 }
-function broadcast() { for (const c of [...clients]) send(c); }
-function broadcastControl() { for (const c of [...clients]) if (c.kind === 'control') send(c); }
+function broadcast() { const memo = {}; for (const c of [...clients]) send(c, memo); }
+function broadcastControl() { const memo = {}; for (const c of [...clients]) if (c.kind === 'control') send(c, memo); }
 setInterval(() => { for (const c of clients) c.res.write(': ping\n\n'); }, 15000);
 
 /* ------------------------------------------------------------------ HTTP */
@@ -464,6 +521,41 @@ function sendFile(res, file, type) {
     res.end(buf);
   });
 }
+/* ---- 照片：优先发送压缩版；带 ETag，大屏重绘 / 撤销时不必重新下载（每次仍会向服务端确认权限） */
+const OPT_MAX_BYTES = 20 * 1024 * 1024;
+const safePhotoName = n => { const b = path.basename(String(n || '')); return b && b === String(n) && !b.startsWith('.') && PHOTO_TYPES[path.extname(b).toLowerCase()] ? b : ''; };
+// 压缩版文件名带上原图的大小和修改时间：原图被替换后旧的压缩版自动失效
+const cacheName = (name, st) => `${name}__${st.size}_${Math.floor(st.mtimeMs)}.jpg`;
+function photoSource(name) {
+  name = safePhotoName(name); if (!name) return null;
+  let st; try { st = fs.statSync(path.join(PHOTO_DIR, name)); } catch { return null; }
+  const c = path.join(CACHE_DIR, cacheName(name, st));
+  try { return { file: c, type: 'image/jpeg', st: fs.statSync(c), orig: st, optimized: true }; } catch { /* 没有压缩版 */ }
+  return { file: path.join(PHOTO_DIR, name), type: PHOTO_TYPES[path.extname(name).toLowerCase()], st, orig: st, optimized: false };
+}
+function sendPhoto(req, res, src) {
+  const etag = `"${src.st.size.toString(36)}-${Math.floor(src.st.mtimeMs).toString(36)}"`;
+  const h = { ...SEC_HEADERS, 'Cache-Control': 'private, no-cache', ETag: etag };
+  delete h.Pragma;
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
+  res.writeHead(200, { ...h, 'Content-Type': src.type, 'Content-Length': src.st.size });
+  fs.createReadStream(src.file).on('error', () => res.destroy()).pipe(res);
+}
+function readRaw(req, limit) {
+  return new Promise((resolve, reject) => {
+    let size = 0; const chunks = [];
+    req.on('data', ch => { size += ch.length; if (size > limit) { reject(new Error('文件过大')); req.destroy(); } else chunks.push(ch); });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+function photoList() {   // 名单里用到的照片（控制端「照片优化」用）
+  const names = [...new Set(DATA.awards.flatMap(a => a.winners.map(w => w.photo).filter(Boolean)))];
+  return names.map(name => {
+    const s = photoSource(name);
+    return s ? { name, size: s.orig.size, optimized: s.optimized, sendSize: s.st.size } : { name, missing: true };
+  });
+}
 function readBody(req, limit = 3 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
@@ -479,6 +571,9 @@ function csrfOk(req) {
   if (!o) return true;
   try { return new URL(o).host === req.headers.host; } catch { return false; }
 }
+const FONT_TYPES = { '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff': 'font/woff', '.woff2': 'font/woff2' };
+const safeFontName = n => { const b = path.basename(String(n || '')); return b && b === String(n) && !b.startsWith('.') && FONT_TYPES[path.extname(b).toLowerCase()] ? b : ''; };
+const FONT_MAGIC = [[0x00, 0x01, 0x00, 0x00], [0x4f, 0x54, 0x54, 0x4f], [0x77, 0x4f, 0x46, 0x46], [0x77, 0x4f, 0x46, 0x32], [0x74, 0x72, 0x75, 0x65], [0x74, 0x74, 0x63, 0x66]];   // TTF / OTF / WOFF / WOFF2 / true / TTC
 const PHOTO_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 
 /* ------------------------------------------------------------------ OBS 场景集合（浏览器来源 + DistroAV 单独 NDI 输出） */
@@ -555,6 +650,14 @@ async function handle(req, res) {
     const preview = url.searchParams.get('preview') === '1' && getSession(req, ip);
     return sseOpen(req, res, preview ? 'preview' : 'display', ip, null, str(url.searchParams.get('name'), 30));
   }
+  if (req.method === 'GET' && p === '/media/font') {   // 字体不是机密，但仍要求输出页 / 嘉宾密钥或已登录
+    const k = url.searchParams.get('k');
+    if (!getSession(req, ip) && !safeEqual(k, CFG.displayKey) && !safeEqual(k, CFG.guestKey)) return sendText(res, 403, 'Forbidden');
+    const name = safeFontName(url.searchParams.get('f'));
+    let st; try { st = name && fs.statSync(path.join(FONT_DIR, name)); } catch { /* 不存在 */ }
+    if (!st) return sendText(res, 404, 'Not found');
+    return sendPhoto(req, res, { file: path.join(FONT_DIR, name), type: FONT_TYPES[path.extname(name).toLowerCase()], st });
+  }
   if (req.method === 'GET' && p === '/media/photo') {
     const a = findAward(url.searchParams.get('a'));
     const i = Number(url.searchParams.get('i'));
@@ -565,9 +668,9 @@ async function handle(req, res) {
     const revealedNow = state.mode === 'reveal' && state.awardId === a.id && i < state.revealed;
     const keyOk = safeEqual(url.searchParams.get('k'), CFG.displayKey) || safeEqual(url.searchParams.get('k'), CFG.guestKey);
     if (!authed && !(keyOk && revealedNow)) return sendText(res, 403, 'Forbidden');
-    const type = PHOTO_TYPES[path.extname(w.photo).toLowerCase()];
-    if (!type) return sendText(res, 404, 'Not found');
-    return sendFile(res, path.join(PHOTO_DIR, path.basename(w.photo)), type);
+    const src = photoSource(w.photo);
+    if (!src) return sendText(res, 404, 'Not found');
+    return sendPhoto(req, res, src);
   }
 
   // ---- 嘉宾揭晓页
@@ -633,6 +736,47 @@ async function handle(req, res) {
       return res.end(body);
     }
     if (req.method === 'GET' && p === '/api/control/stream') return sseOpen(req, res, 'control', ip, s.token);
+    // 照片优化：列表 → 控制端读原图 → 浏览器里缩小成 JPEG → 上传到 data/photos/_cache/
+    if (req.method === 'GET' && p === '/api/control/photos') return sendJson(res, 200, { photos: photoList() });
+    // 图片导出的设计：整份 JSON 存取（只有排版设定，没有名字）；控制端负责补默认值和检查数值
+    if (req.method === 'GET' && p === '/api/control/export-style') {
+      let style = {}; try { style = JSON.parse(fs.readFileSync(EXSTYLE_PATH, 'utf8')); } catch { /* 还没存过 */ }
+      return sendJson(res, 200, { style });
+    }
+    if (req.method === 'PUT' && p === '/api/control/export-style') {
+      const body = await readBody(req, 64 * 1024);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return sendJson(res, 400, { error: '格式错误' });
+      atomicWrite(EXSTYLE_PATH, JSON.stringify(body, null, 2));
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === 'GET' && p === '/api/control/fonts')
+      return sendJson(res, 200, { fonts: fs.readdirSync(FONT_DIR).filter(safeFontName).map(f => ({ name: f, size: fs.statSync(path.join(FONT_DIR, f)).size })) });
+    if (req.method === 'POST' && p === '/api/control/font') {
+      const name = safeFontName(url.searchParams.get('name'));
+      if (!name) return sendJson(res, 400, { error: '只支持 .ttf / .otf / .woff / .woff2' });
+      const buf = await readRaw(req, 40 * 1024 * 1024);
+      if (!FONT_MAGIC.some(m => m.every((x, i) => buf[i] === x))) return sendJson(res, 400, { error: '不是有效的字体文件' });
+      atomicWrite(path.join(FONT_DIR, name), buf);
+      audit('FONT-UPLOAD', who, `${name} ${(buf.length / 1048576).toFixed(1)}MB`);
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === 'GET' && p === '/api/control/photo') {
+      const name = safePhotoName(url.searchParams.get('name'));
+      if (!name || !fs.existsSync(path.join(PHOTO_DIR, name))) return sendText(res, 404, 'Not found');
+      const st = fs.statSync(path.join(PHOTO_DIR, name));
+      return sendPhoto(req, res, { file: path.join(PHOTO_DIR, name), type: PHOTO_TYPES[path.extname(name).toLowerCase()], st });
+    }
+    if (req.method === 'POST' && p === '/api/control/photo-opt') {
+      const name = safePhotoName(url.searchParams.get('name'));
+      let st; try { st = name && fs.statSync(path.join(PHOTO_DIR, name)); } catch { /* 不存在 */ }
+      if (!st) return sendJson(res, 404, { error: '找不到原图' });
+      const buf = await readRaw(req, OPT_MAX_BYTES);
+      if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) return sendJson(res, 400, { error: '不是 JPEG' });
+      for (const f of fs.readdirSync(CACHE_DIR)) if (f.startsWith(name + '__')) fs.rmSync(path.join(CACHE_DIR, f), { force: true });   // 清掉旧版本
+      atomicWrite(path.join(CACHE_DIR, cacheName(name, st)), buf);
+      audit('PHOTO-OPT', who, `${name} ${(st.size / 1048576).toFixed(1)}MB → ${(buf.length / 1048576).toFixed(1)}MB`);
+      return sendJson(res, 200, { ok: true, size: buf.length });
+    }
     if (req.method === 'POST' && p === '/api/control/action') {
       const body = await readBody(req, 16 * 1024);
       try { doAction(body, who); } catch (e) { return sendJson(res, 400, { error: e.message }); }
@@ -674,7 +818,7 @@ async function askPassphraseLoop(check) {
 }
 
 async function main() {
-  for (const d of [DATA_DIR, PHOTO_DIR, LOG_DIR]) fs.mkdirSync(d, { recursive: true });
+  for (const d of [DATA_DIR, PHOTO_DIR, CACHE_DIR, FONT_DIR, LOG_DIR]) fs.mkdirSync(d, { recursive: true });
   if (process.platform === 'win32') process.title = '表扬大会 · 颁奖公布系统';
   const cmd = process.argv[2]; // exe 时 argv[1] 也是 exe 本身，参数同样从 argv[2] 开始
 

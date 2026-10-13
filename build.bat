@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title 编译便携版 AwardCeremony.exe
+title 编译便携版 AwardCeremony
 cd /d "%~dp0"
 echo ============================================
-echo   表扬大会 · 编译便携版 AwardCeremony.exe
+echo   表扬大会 · 编译便携版 AwardCeremony
 echo ============================================
 echo.
 where node >nul 2>nul
@@ -13,16 +13,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+rem Note: after a long command, cmd (chcp 65001) may mis-read non-ASCII lines that follow,
+rem so every message after the build is printed by build-exe.js. Keep the lines below ASCII only.
 node build\build-exe.js
 if errorlevel 1 (
-  echo.
-  echo 编译失败，请查看上面的错误信息。
   pause
   exit /b 1
 )
-rem 刷新 Windows 图标缓存，否则同一路径的 exe 可能继续显示旧图标
 ie4uinit.exe -show >nul 2>nul
-echo.
-echo 已放在项目主目录：%~dp0AwardCeremony.exe
-echo 双击 AwardCeremony.exe 即可启动（与 start.bat 共用 config.json 和 data 文件夹）。
 pause

@@ -7,6 +7,7 @@
  *         node build/build-exe.js path\to\node.exe  指定底座（版本须与运行本脚本的 node 完全一致）
  *
  * 输出到项目主目录（和 config.json、data\ 放一起，源码版和 exe 共用同一份设置与名单）。
+ * 文件名带版本号：AwardCeremony-V1.11.exe（版本取自 CHANGELOG.md 最新一个「## [x.y]」）。
  * 想输出到别的文件夹（例如做 U 盘便携版）：设置环境变量 OUT_DIR=dist
  */
 'use strict';
@@ -17,7 +18,13 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const DIST = path.resolve(ROOT, (process.env.OUT_DIR || '.').trim());
 const IN_ROOT = DIST === ROOT;
-const EXE_NAME = process.env.EXE_NAME || 'AwardCeremony.exe';
+// 版本号：CHANGELOG.md 里第一个「## [x.y]」（跳过「[未发布]」）；顺便检查 server.js / control.html 的版本是否一致
+const readText = f => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { return ''; } };
+const VER_LOG = (readText('CHANGELOG.md').match(/^##\s*\[(\d+(?:\.\d+)+)\]/m) || [])[1] || '';
+const VER_SRV = (readText('server.js').match(/const VERSION = '([\d.]+)'/) || [])[1] || '';
+const VER_CLI = (readText('public/control.html').match(/const CLIENT_VERSION = '([\d.]+)'/) || [])[1] || '';
+const VER = VER_LOG || VER_SRV || '1.0';
+const EXE_NAME = process.env.EXE_NAME || `AwardCeremony-V${VER}.exe`;
 const FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
 
 function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
@@ -35,6 +42,9 @@ function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
   const exe = path.join(DIST, EXE_NAME);
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'award-build-'));
 
+  console.log(`      版本：V${VER}${VER_LOG ? '（取自 CHANGELOG.md）' : '（CHANGELOG.md 没找到版本号，改用 server.js）'} → ${EXE_NAME}`);
+  if (VER_SRV && VER_SRV !== VER) console.log(`      ⚠ server.js 的 VERSION 是 ${VER_SRV}，和 CHANGELOG 的 ${VER} 不一致，请检查`);
+  if (VER_CLI && VER_CLI !== VER) console.log(`      ⚠ control.html 的 CLIENT_VERSION 是 ${VER_CLI}，和 CHANGELOG 的 ${VER} 不一致，请检查`);
   console.log(`[1/4] 底座：${base}（Node ${process.version}）`);
 
   // 1. 生成 SEA blob，网页作为资源打包进去
@@ -76,12 +86,14 @@ function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
   const bat = cmd => ['@echo off', 'chcp 65001 >nul', 'cd /d "%~dp0"', `"${EXE_NAME}" ${cmd}`, 'pause', ''].join('\r\n');
   fs.writeFileSync(path.join(DIST, '加密名单.bat'), bat('encrypt'));
   fs.writeFileSync(path.join(DIST, '解密名单.bat'), bat('decrypt'));
-  if (!IN_ROOT) fs.copyFileSync(path.join(__dirname, '使用说明.txt'), path.join(DIST, '使用说明.txt'));
+  if (!IN_ROOT) fs.writeFileSync(path.join(DIST, '使用说明.txt'), fs.readFileSync(path.join(__dirname, '使用说明.txt'), 'utf8').replaceAll('AwardCeremony.exe', EXE_NAME));   // 说明里的文件名换成带版本号的
   // 清理旧的分卷文件
   for (const f of fs.readdirSync(DIST)) if (/\.part\d$/.test(f) || f === '合并成exe.bat') fs.rmSync(path.join(DIST, f), { force: true });
   fs.rmSync(tmp, { recursive: true, force: true });
 
   console.log(`\n✓ 编译完成：${exe}（${(fs.statSync(exe).size / 1048576).toFixed(1)} MB）`);
+  console.log(`\n双击 ${EXE_NAME} 即可启动${IN_ROOT ? '（与 start.bat 共用 config.json 和 data 文件夹）' : ''}。`);
+  if (process.platform === 'win32') console.log('（已刷新 Windows 图标缓存；如果图标还是旧的，重新整理一下文件夹）');
 })().catch(e => fail(e.stack || e.message));
 
 // 换上 build/icon/icon.ico，并写入文件属性（产品名、版本号）。用随附的 resedit（纯 JS，MIT），不需要 Windows 工具。
@@ -98,7 +110,7 @@ function setIconAndVersion(file) {
   const gid = groups.length ? groups[0].id : 1, glang = groups.length ? groups[0].lang : 1033;
   RE.Resource.IconGroupEntry.replaceIconsForResource(res.entries, gid, glang, icons);
 
-  const ver = (fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8').match(/const VERSION = '([\d.]+)'/) || [, '1.0'])[1];
+  const ver = VER;
   const [a = 1, b = 0, c = 0] = ver.split('.').map(Number);
   const vi = RE.Resource.VersionInfo.fromEntries(res.entries)[0] || RE.Resource.VersionInfo.createEmpty();
   const langs = vi.getAllLanguagesForStringValues();

@@ -89,18 +89,23 @@ header{text-align:center;width:100%}
     V = v;
     $('ev').textContent = v.event?.title || '';
     const onAward = (v.mode === 'title' || v.mode === 'reveal') && v.award;
-    $('k').textContent = onAward ? '当前奖项' : v.mode === 'message' ? '大屏消息' : '待机中';
-    $('title').textContent = onAward ? v.award.title : v.mode === 'message' ? (v.message || '') : (v.event?.subtitle || '');
-    $('sub').textContent = onAward ? (v.award.subtitle || '') : '';
+    const grp = v.mode === 'group' && v.group;
+    $('k').textContent = onAward ? (v.award.group ? `${v.award.group} · 当前奖项` : '当前奖项') : grp ? '奖项类别' : v.mode === 'message' ? '大屏消息' : '待机中';
+    $('title').textContent = onAward ? v.award.title : grp ? v.group.title : v.mode === 'message' ? (v.message || '') : (v.event?.subtitle || '');
+    $('sub').textContent = onAward ? (v.award.subtitle || '') : grp ? (v.group.sub || '') : '';
 
     const total = v.award?.total, shown = v.winners?.length || 0;
     const can = !!v.canPress && !busy;
     $('btn').disabled = !can;
     $('wrap').classList.toggle('ready', can);
     $('btn').querySelector('small').textContent = can ? '按住 1 秒' : '';
+    const nom = !!v.award?.nominee, ph = v.award?.phase || '';
+    const done = onAward && v.mode === 'reveal' && (nom ? ph === 'winner' : shown === total);
     $('hint').textContent = v.blackout ? '大屏已暂停' : can
-      ? (v.mode === 'title' ? '主持人已授权，请按住按钮揭晓' : `已揭晓 ${shown}/${total}，按住揭晓下一位`)
-      : (onAward && v.mode === 'reveal' && shown === total ? '本奖项已全部揭晓 🎉' : '等待主持人授权');
+      ? (v.mode === 'title' ? '主持人已授权，请按住按钮揭晓'
+        : nom ? (shown < total ? `已介绍入围者 ${shown}/${total}，按住介绍下一位` : ph === 'suspense' ? '按住按钮，揭晓得主 🏆' : '按住按钮，进入「得主是……」')
+        : `已揭晓 ${shown}/${total}，按住揭晓下一位`)
+      : (done ? (nom ? '得主已揭晓 🎉' : '本奖项已全部揭晓 🎉') : '等待主持人授权');
 
     const ol = $('list');
     if (v.mode === 'reveal' && shown) {
@@ -110,9 +115,11 @@ header{text-align:center;width:100%}
       for (let i = ol.children.length; i < shown; i++) {
         const w = v.winners[i], li = document.createElement('li');
         li.innerHTML = '<span class="i"></span><span class="n"></span><span class="d"></span>';
-        li.children[0].textContent = i + 1; li.children[1].textContent = w.name; li.children[2].textContent = w.detail || '';
+        li.children[0].textContent = i + 1; li.children[1].textContent = w.name;
+        li.dataset.i = i; li.children[2].textContent = [w.cls, w.sid, w.detail].filter(Boolean).join(' · ');
         ol.appendChild(li);
       }
+      for (const li of ol.children) li.children[1].textContent = (v.award.winnerIndex === +li.dataset.i ? '🏆 ' : '') + v.winners[+li.dataset.i].name;
     } else { $('listSec').hidden = true; ol.textContent = ''; ol.dataset.award = ''; }
   }
 
