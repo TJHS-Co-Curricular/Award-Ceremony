@@ -60,13 +60,13 @@ function render() {
         gLive ? el('span', { class: 'tag live' }, '分类标题中') : el('span', { class: 'tag' }, `${run.filter(x => s.doneIds.includes(x.id)).length}/${run.length}`),
         el('button', { onclick: () => act('group', { awardId: first.id }), title: '在大屏显示这个分类的标题画面' }, '分类标题')));
     }
-    const live = (s.mode === 'title' || s.mode === 'reveal') && s.awardId === a.id;
+    const live = (s.mode === 'title' || s.mode === 'reveal' || s.mode === 'photo') && s.awardId === a.id;
     const done = s.doneIds.includes(a.id);
     const item = el('div', { class: 'aitem' + (a.group ? ' ing' : '') + (sel === a.id ? ' sel' : '') + (live ? ' live' : ''), onclick: () => { sel = a.id; render(); } },
       el('div', { class: 't' }, el('span', {}, `${i + 1}. ${a.title}`),
         live && V.guest.armed ? el('span', { class: 'tag guest' }, '🎤 嘉宾') : null,
         live && V.auto.on ? el('span', { class: 'tag auto' }, '自动') : null,
-        live ? el('span', { class: 'tag live' }, s.mode === 'title' ? '标题中' : `揭晓 ${s.revealed}/${a.winners.length}`)
+        live ? el('span', { class: 'tag live' }, s.mode === 'title' ? '标题中' : s.mode === 'photo' ? '合影中' : `揭晓 ${s.revealed}/${a.winners.length}`)
              : done ? el('span', { class: 'tag done' }, '已公布') : el('span', { class: 'tag' }, '待公布')),
       el('div', { class: 'm' }, `${a.winners.length} 位 · ${a.revealMode === 'nominee' ? '入围揭晓' : a.revealMode === 'firstall' ? '先一后全' : MODE_NAME[a.revealMode] || '逐一揭晓'}`)
     );
@@ -74,6 +74,7 @@ function render() {
       item.append(el('div', { class: 'acts' },
         el('button', { onclick: ev => { ev.stopPropagation(); act('title', { awardId: a.id }); } }, '公布此奖项'),
         el('button', { onclick: ev => { ev.stopPropagation(); act('revealAll', { awardId: a.id }); } }, '直接全部揭晓'),
+        el('button', { onclick: ev => { ev.stopPropagation(); act('photo', { awardId: a.id }); }, title: '大屏显示「分类 - 奖项名称」，给大合照用' }, '合影画面'),
         done ? el('button', { onclick: ev => { ev.stopPropagation(); act('markPending', { awardId: a.id }); } }, '标为未公布') : null
       ));
     }
@@ -94,6 +95,8 @@ function render() {
       shown ? el('span', { class: 'tag done' }, '已显示') : null));
   });
   $('bRevealAll').disabled = !(s.mode === 'title' || s.mode === 'reveal');
+  $('bPhoto').disabled = !(sel || s.awardId);
+  $('bPhoto').classList.toggle('on', s.mode === 'photo');
 
   // 地址
   const ub = $('urls'); ub.textContent = '';

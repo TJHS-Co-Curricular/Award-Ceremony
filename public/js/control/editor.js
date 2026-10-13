@@ -36,6 +36,8 @@ function renderEditor() {
   if (!draft) return;
   $('evTitle').value = draft.event.title; $('evSub').value = draft.event.subtitle || '';
   $('evGroupIntro').checked = draft.event.groupIntro !== false;
+  $('evPhotoKicker').checked = draft.event.photoKicker !== false;
+  $('evStandbyFx').value = draft.event.standbyFx === 'goldriver' ? 'goldriver' : 'galaxy';
   exFillSel();
   renderFontUI();
   const groups = [...new Set(draft.awards.map(a => a.group).filter(Boolean))];
@@ -102,6 +104,8 @@ function renderEditor() {
 $('evTitle').addEventListener('input', e => { draft.event.title = e.target.value; setDirty(true); });
 $('evSub').addEventListener('input', e => { draft.event.subtitle = e.target.value; setDirty(true); });
 $('evGroupIntro').addEventListener('change', e => { draft.event.groupIntro = e.target.checked; setDirty(true); });
+$('evPhotoKicker').addEventListener('change', e => { draft.event.photoKicker = e.target.checked; setDirty(true); });
+$('evStandbyFx').addEventListener('change', e => { draft.event.standbyFx = e.target.value; setDirty(true); });
 $('bAdd').onclick = () => { const last = draft.awards[draft.awards.length - 1] || {}; draft.awards.push({ group: last.group || '', groupSub: last.groupSub || '', title: '新奖项', subtitle: '', revealMode: 'one', winners: [] }); setDirty(true); renderEditor(); $('elist').lastChild?.scrollIntoView({ behavior: 'smooth' }); };
 $('bRevert').onclick = () => { if (!dirty || confirm('放弃所有未保存的修改？')) loadDraft(); };
 $('bSave').onclick = async () => {

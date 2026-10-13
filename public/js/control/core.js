@@ -7,7 +7,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const CLIENT_VERSION = '1.13';
+const CLIENT_VERSION = '1.17';
 let V = null;          // 最新控制端视图
 let sel = null;        // 选中的奖项 id
 let draft = null;      // 编辑草稿
@@ -34,7 +34,7 @@ function el(tag, attrs = {}, ...kids) {
   for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : String(k));
   return e;
 }
-const MODE_NAME = { one: '逐一揭晓', firstall: '先一后全（先揭晓 1 位，再连续出完）', all: '一次全部揭晓', nominee: '入围揭晓（1 位得主）' };
+const MODE_NAME = { one: '逐一揭晓', firstall: '先一后全（逐一单独显示，最后全部出现）', all: '一次全部揭晓', nominee: '入围揭晓（1 位得主）' };
 // 「中文English」→ ['中文', 'English']；英文部分太短（如「最佳 MVP」）就不拆
 function splitZhEn(t) {
   const m = String(t || '').match(/^(.*[\u3000-\u9fff\uff00-\uffef])\s*([A-Za-z][\x20-\x7e\u2018-\u201d]*)$/);

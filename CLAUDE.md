@@ -64,7 +64,7 @@ public/                   网页（只有程序和样式，没有数据）
   css/display.css / control.css / guest.css
   img/icon.svg            网页图标（= build/icon/icon-small.svg）
   js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）
-  js/fx/                  大屏特效：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、goldriver.js（待机金色光河 goldFx）
+  js/fx/                  大屏特效：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）、goldriver.js（待机金色光河，原本）、standby.js（切换）
   js/display/             大屏：stage.js（参数、舞台自适应）→ fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
                           → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ main.js（启动）
@@ -95,15 +95,16 @@ README.md                 用户文档（中文）
 - **名单字段**：每位获奖者 `{ name, cls（班级）, sid（学号）, detail（备注）, photo, type }`（`type` 只有 `'team'` 一种取值，表示团体；个人不写），`normalizeData()` 会去掉空字段。`publicView()` 只带出已揭晓者的这些字段。
 - **共享状态**：都在 `lib/runtime.js` 的 `rt` 上（`rt.cfg`、`rt.data`、`rt.state`…）。整体替换时写 `rt.state = …`，不要把 `rt.state` 存进模块级变量。
 - **状态**：`rt.state = { mode, awardId, revealed, phase, doneIds, blackout, message, seq }`
-  - `revealMode`：`one` 逐一 / `firstall` 先一后全（第 2 下 `revealed` 直接到全部，大屏按公开视图的 `award.cascade` 间隔逐张出现）/ `all` 一次全部 / `nominee` 入围揭晓。
+  - `revealMode`：`one` 逐一 / `firstall` 先一后全 / `all` 一次全部 / `nominee` 入围揭晓。
+  - 先一后全：每下 `revealed + 1`，大屏只显示第 `revealed` 位（`award.view.mode = 'solo'`）；`revealed` 到最后一位后，下一下 `phase = 'all'`、`page = 0`（全部出现，每页最多 `GALLERY_MAX = 20` 张，按 `award.cascade` 间隔逐张出现），再按就 `page + 1`。完成 = `phase === 'all'` 且到最后一页（`isComplete()`）。`commit()` 在 `phase !== 'all'` 时把 `page` 归零。
   - `phase` 只用于入围揭晓奖项（`revealMode: 'nominee'` 且有 `win` 标记，见 `isNominee()`）：`''` 介绍入围者 → `suspense` → `winner`。奖项是否完成统一用 `isComplete(a, st)` 判断。`commit()` 在非 reveal 模式下会清空 `phase`。
   - ⚠ `publicView()` 绝不能带出 `win`；`winnerIndex` 只在 `phase === 'winner'` 时给。
-  - `mode` 取值：`standby` / `group`（分类标题）/ `title` / `reveal` / `message`。`group` 模式下 `awardId` 指向该分类里下一个要公布的奖项；分类 = 相邻同名的 `award.group`（`groupRun()`）。整组设定（如 `groupNoNum` 不显示编号）存在组里每个奖项上，读取时「任一奖项设了就算」，控制端修改时整组一起写。
+  - `mode` 取值：`standby` / `group`（分类标题）/ `title` / `reveal` / `photo`（合影画面：分类 + 奖项名称，没有名单）/ `message`。`group` 模式下 `awardId` 指向该分类里下一个要公布的奖项；分类 = 相邻同名的 `award.group`（`groupRun()`）。整组设定（如 `groupNoNum` 不显示编号）存在组里每个奖项上，读取时「任一奖项设了就算」，控制端修改时整组一起写。
   - 每次改动都走 `show.commit()`：推入 `rt.history`（供撤销）→ 存 `state.json` → `rt.hooks.afterChange()`（= `actions.js` 的 `afterChange()`，这样 `show.js` 不用反过来 require 推送模块）。
   - `afterChange()` 依次做：必要时收回嘉宾授权 → `scheduleAuto()` → `broadcast()`。
 - **「下一步」逻辑**：`planNext(state)` 返回 `{ st, desc }`。控制端的下一步提示、自动播放、嘉宾揭晓都用它，修改时三处会一起受影响。
 - **动作**：`POST /api/control/action`，参数 `{ action, ... }`。动作列表：
-  `next`、`standby`、`blackout`、`message`、`group`、`title`、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
+  `next`、`standby`、`blackout`、`message`、`group`、`title`、`photo`、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
   - 新增动作时：在 `lib/actions.js` 的 `doAction()` switch 里加 case；如果它**不该**打断自动播放，加进 `KEEP_AUTO`；在控制端 `js/control/live.js` 的 `labelOf()` 里加中文名；递增版本号。
 - **新增接口**：在 `lib/routes/control.js` 的 `API` 表加一行 `'方法 路径': handler`（已自动做登录和 CSRF 检查）；不需要登录的页面接口放到对应的 routes 文件里。
 - **自动播放**：在服务端计时（`auto`、`scheduleAuto()`），控制端关掉也继续跑。除 `next` 和自动播放、嘉宾相关动作外，任何手动操作都会 `stopAuto()`。
@@ -135,7 +136,7 @@ README.md                 用户文档（中文）
   - 人数超过 12 时，奖项标题区缩小（`.dense`）。
   - 入围揭晓：排版时高度 × 0.74 预留放大空间；`applyPhase()` 切换 `.suspense` / `.crowned`，`crown()` 用 offsetLeft/Top 算出把得主卡移到网格中央的 `--wx/--wy/--ws`。
 - **动画**：首次载入、刷新、撤销时，已揭晓的卡片直接显示，不放闪光（`booted` / `isUndo`）。
-- **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（亮度 `FLASH_PEAK`）；`goldFx(on)` 待机金色光河，只在待机画面显示时运行（`render.js` 的 `show()` 控制）；背景浮尘一直运行（隔帧画）。
+- **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（亮度 `FLASH_PEAK`）；待机背景由 `standbyFx(on, event.standbyFx)` 切换——`galaxyFx(on)` 旋涡星系（默认，设定在 `GY`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
 - **不要用 `seq` 去重渲染**：存数据时不会递增 `seq`，但活动名称等内容会变。
 
 ## 测试方法（云端环境验证过的流程）

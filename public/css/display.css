@@ -72,6 +72,22 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .scene.enter h2,.scene.enter h1{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s linear infinite}
 @keyframes rise{from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
 
+/* ===== 合影画面：分类 - 奖项名称（大合照背景，没有名单） ===== */
+/* 文字整体往上移 25% 画面高度（下方留给上台合照的人），但不超出上方边框；位移由 render.js 的 renderPhoto() 计算 */
+#s-photo .pbox{display:flex;flex-direction:column;align-items:center;width:100%}
+#s-photo .kicker{margin-bottom:40px}
+#s-photo.nokick .kicker,#s-photo.nokick .ornament{display:none}   /* 「奖项编辑」可关掉「合 影 留 念」小字 */
+#s-photo h1{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:.35em;row-gap:0;max-width:calc(100% - 200px);margin:46px 0 30px;
+  font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.06em;line-height:1.25;text-align:center}
+#s-photo h1 span{white-space:nowrap;max-width:100%}
+#s-photo h1 i{display:inline-block;align-self:center;width:.7em;height:.07em;border-radius:.04em;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo))}
+#s-photo h1 i.hide{display:none}
+#s-photo.enter h1 span{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s linear infinite}
+#s-photo.wrap h1 i{display:none}          /* 放不下一行：分类和奖项名各一行，不要横线 */
+#s-photo.wrap h1 #pGroup{font-size:.62em}
+#s-photo.wrap h1 span{flex-basis:100%}
+#s-photo .sub{font-size:40px;color:var(--muted);letter-spacing:.24em;text-transform:uppercase;text-align:center;max-width:calc(100% - 220px);line-height:1.5}
+
 /* ===== 揭晓画面：名字卡 ===== */
 #s-reveal{justify-content:flex-start;padding:84px 110px 90px}
 #s-reveal header{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:34px;flex:none}

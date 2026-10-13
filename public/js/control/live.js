@@ -12,13 +12,14 @@ async function act(action, extra = {}) {
 }
 function labelOf(a, x) {
   const t = x.awardId && V.awards.find(w => w.id === x.awardId)?.title;
-  return ({ next: '下一步', undo: '撤销', standby: '待机', blackout: '黑屏切换', message: '消息：' + (x.text || ''), title: '公布奖项 ' + (t || ''), group: '分类标题 ' + (x.awardId && V.awards.find(w => w.id === x.awardId)?.group || ''), revealAll: '全部揭晓 ' + (t || ''), markPending: '标为未公布 ' + (t || ''), resetProgress: '重置进度', autoStart: `自动播放（每 ${x.interval}s）`, autoStop: '暂停自动播放', guestArm: '交给嘉宾', guestDisarm: '收回嘉宾授权', rotateGuestKey: '更换嘉宾链接' })[a] || a;
+  return ({ next: '下一步', undo: '撤销', standby: '待机', blackout: '黑屏切换', message: '消息：' + (x.text || ''), title: '公布奖项 ' + (t || ''), group: '分类标题 ' + (x.awardId && V.awards.find(w => w.id === x.awardId)?.group || ''), photo: '合影画面 ' + (t || ''), revealAll: '全部揭晓 ' + (t || ''), markPending: '标为未公布 ' + (t || ''), resetProgress: '重置进度', autoStart: `自动播放（每 ${x.interval}s）`, autoStop: '暂停自动播放', guestArm: '交给嘉宾', guestDisarm: '收回嘉宾授权', rotateGuestKey: '更换嘉宾链接' })[a] || a;
 }
 $('bNext').onclick = () => act('next');
 $('bUndo').onclick = () => act('undo');
 $('bStandby').onclick = () => act('standby');
 $('bBlack').onclick = () => act('blackout');
 $('bRevealAll').onclick = () => V.state.awardId && act('revealAll', { awardId: V.state.awardId });
+$('bPhoto').onclick = () => { const id = sel || V.state.awardId; if (id) act('photo', { awardId: id }); };
 $('bMsg').onclick = () => { const t = $('msgIn').value.trim(); if (t) act('message', { text: t }); };
 $('msgIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('bMsg').click(); });
 $('bReset').onclick = () => { if (confirm('确定把所有奖项重置为「未公布」并返回待机？')) act('resetProgress'); };
@@ -60,4 +61,5 @@ addEventListener('keydown', e => {
   else if (k === 'h' || k === 'H') { e.preventDefault(); act('standby'); }
   else if (k === 'a' || k === 'A') { e.preventDefault(); toggleAuto(); }
   else if (k === 'g' || k === 'G') { e.preventDefault(); toggleGuest(); }
+  else if (k === 'p' || k === 'P') { e.preventDefault(); $('bPhoto').click(); }
 });

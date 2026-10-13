@@ -82,10 +82,10 @@
       "font": ""
     }
   },
-  "shade": 50,
-  "shadow": 60,
-  "textX": 25,
-  "nameY": 36.7,
+  "shade": 28,
+  "shadow": 22,
+  "textX": 23,
+  "nameY": 24,
   "teamBg": "#07060c",
   "teamFrame": "#d9b25f",
   "teamGlow": true,

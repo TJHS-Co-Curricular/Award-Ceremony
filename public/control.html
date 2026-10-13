@@ -90,6 +90,7 @@
           <ul class="wlist" id="wlist"><li class="muted">—</li></ul>
           <div style="margin-top:8px;display:flex;gap:6px">
             <button id="bRevealAll" style="flex:1">全部揭晓当前奖项</button>
+            <button id="bPhoto" title="大屏显示「分类 - 奖项名称」，给得奖者上台大合照用（不显示名单）">📷 合影画面<kbd>P</kbd></button>
           </div>
         </div>
         <div class="sec">
@@ -190,6 +191,8 @@
             <label class="f"><span>副标题</span><input id="evSub" maxlength="160"></label>
           </div>
           <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evGroupIntro" style="width:auto"> 进入新的分类时，先显示「分类标题」画面（列出该分类的奖项），再公布第一个奖项</label>
+          <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evPhotoKicker" style="width:auto"> 合影画面显示上方的「合 影 留 念」小字</label>
+          <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)">待机画面背景 <select id="evStandbyFx" style="width:auto"><option value="galaxy">旋涡星系（金色，会公转）</option><option value="goldriver">金色光河（原本的设计）</option></select></label>
           <div class="grid2" style="margin-top:12px">
             <label class="f"><span>中文字体（所有中文字，例如 华文楷体）</span><div style="display:flex;gap:6px"><select id="fTitleSel" style="width:auto;max-width:55%"></select><input id="fTitleName" placeholder="系统字体名称，例如 华文楷体 / KaiTi"></div></label>
             <label class="f"><span>英文 / 数字字体（所有英文字母和数字，例如 Aptos Display）</span><div style="display:flex;gap:6px"><select id="fTextSel" style="width:auto;max-width:55%"></select><input id="fTextName" placeholder="系统字体名称，例如 Aptos Display / Times New Roman"></div></label>

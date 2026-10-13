@@ -1,7 +1,7 @@
 /*
  * 大屏 · 渲染：按服务端推来的画面数据切换场景（待机 / 消息 / 分类标题 / 奖项标题 / 揭晓）。
- * 提供：render(view)、relayout()、show(sceneId)
- * 需要：stage.js、cards.js、nominee.js、fonts.js、fx/flash.js、fx/goldriver.js
+ * 提供：render(view)、relayout()、show(sceneId)、renderPhoto(view)
+ * 需要：stage.js、cards.js、nominee.js、firstall.js、fonts.js、fx/flash.js、fx/goldriver.js
  */
 'use strict';
 
@@ -11,7 +11,8 @@ let gStop = 0;
 function show(id) {
   // 待机画面的金色光河：显示时运行，离开后等淡出完再停（省电）
   clearTimeout(gStop);
-  if (id === 's-standby') goldFx(true); else gStop = setTimeout(() => goldFx(false), 1200);
+  const kind = lastV?.event?.standbyFx;   // 待机背景：旋涡星系（默认）或金色光河（fx/standby.js）
+  if (id === 's-standby') standbyFx(true, kind); else gStop = setTimeout(() => standbyFx(false, kind), 1200);
   for (const s of document.querySelectorAll('.scene')) {
     const on = s.id === id;
     if (on && !s.classList.contains('active')) { s.classList.remove('enter'); void s.offsetWidth; s.classList.add('enter'); }
@@ -57,6 +58,7 @@ function render(v) {
     $('s-group').classList.toggle('nonum', !!v.group.noNum);
     show('s-group'); cur = { mode: 'group', key }; return;
   }
+  if (v.mode === 'photo' && v.photo) return renderPhoto(v);
   const gl = v.award?.group ? `${v.award.group}${v.award.groupTotal > 1 && !v.award.groupNoNum ? ' · 奖项 ' + String(v.award.groupIndex).padStart(2, '0') : ''}` : '';
   $('tGroup').textContent = gl; $('rGroup').textContent = gl;
   if (v.mode === 'title') {
@@ -65,6 +67,7 @@ function render(v) {
     if (cur.mode === 'title' && cur.awardId !== v.award.id) $('s-title').classList.remove('active');
     show('s-title'); cur = { mode: 'title', awardId: v.award.id }; return;
   }
+  if (v.mode === 'reveal' && v.award.view) return renderFirstAll(v);   // 先一后全（firstall.js）
   if (v.mode === 'reveal') {
     const sameAward = cur.mode === 'reveal' && cur.awardId === v.award.id && cur.total === v.award.total;
     const isUndo = sameAward && v.winners.length < cur.shown;   // 撤销：静默回退
@@ -76,14 +79,11 @@ function render(v) {
     const cards = $('grid').children;
     const from = cur.shown, to = v.winners.length;
     const animate = booted && !isUndo;                            // 首次打开 / 刷新页面时不放动画
-    // 先一后全（award.cascade）：剩下的一张接一张出现，每张各带一点闪光；其他方式多张时只错开 0.14 秒
-    const step = to - from > 1 ? v.award.cascade || 140 : 0, cascade = !!v.award.cascade && to - from > 1;
-    for (let i = from; i < to; i++) {
-      const delay = (i - from) * step;
-      if (animate) setTimeout(() => { fillCard(cards[i], v.winners[i], true); if (cascade) burst(100); }, delay);
+    for (let i = from; i < to; i++) {   // 一次出现多张时错开 0.14 秒
+      if (animate) setTimeout(() => fillCard(cards[i], v.winners[i], true), (i - from) * 140);
       else fillCard(cards[i], v.winners[i], false);
     }
-    if (to > from && animate && !cascade) setTimeout(() => burst(to - from > 1 ? 260 : 180), 250);
+    if (to > from && animate) setTimeout(() => burst(to - from > 1 ? 260 : 180), 250);
     cur.shown = to;
     show('s-reveal');
     const ph = v.award.nominee ? v.award.phase || '' : '';
@@ -94,3 +94,25 @@ function render(v) {
     cur.phase = ph;
   }
 }
+
+/* 合影画面：「分类 — 奖项名称」，一行放不下就分两行（分类小一点在上） */
+const PHOTO_UP = .25, PHOTO_TOP = 110;   // 往上移多少（画面高度的比例）、顶端最少离上缘多少（舞台像素）
+function renderPhoto(v) {
+  const p = v.photo, kick = v.event?.photoKicker !== false, key = 'photo|' + p.group + '|' + p.title + '|' + kick + '|' + SW;
+  if (cur.mode === 'photo' && cur.key === key) { show('s-photo'); return; }
+  if (cur.mode === 'photo') $('s-photo').classList.remove('active');   // 换了奖项：重新进场
+  const sc = $('s-photo'), h = $('pTitle');
+  $('pGroup').textContent = p.group; $('pAward').textContent = p.title;
+  $('pGroup').style.display = p.group ? '' : 'none'; $('pSep').classList.toggle('hide', !p.group);
+  $('pSub').textContent = [p.groupSub, p.subtitle].filter(Boolean).join('  ·  ');
+  sc.classList.remove('wrap'); sc.classList.toggle('nokick', !kick); h.style.fontSize = '';
+  show('s-photo'); cur = { mode: 'photo', key };
+  requestAnimationFrame(() => {   // 量一下：一行放不下 → 两行；还放不下 → 缩字
+    if (h.scrollHeight > parseFloat(getComputedStyle(h).lineHeight) * 1.5) sc.classList.add('wrap');
+    for (const s of [$('pGroup'), $('pAward')]) { s.style.fontSize = ''; let k = 1, guard = 30; while (s.scrollWidth > h.clientWidth + 1 && guard--) { k *= .93; s.style.fontSize = k + 'em'; } }
+    // 往上移 25% 画面高度，但顶端至少离画面上缘 PHOTO_TOP（不压到边框）
+    const box = sc.querySelector('.pbox'), shift = Math.max(0, Math.min(SH * PHOTO_UP, box.offsetTop - PHOTO_TOP));
+    box.style.transform = `translateY(${-shift}px)`;
+  });
+}
+
