@@ -1,0 +1,413 @@
+{
+  "event": {
+    "title": "2026年度联课团体表扬大会",
+    "subtitle": "2026 CO-CURRICULAR ACTIVITIES AWARDS CEREMONY",
+    "groupIntro": true,
+    "fontTitle": "",
+    "fontText": ""
+  },
+  "awards": [
+    {
+      "id": "x01",
+      "group": "成果汇报竞赛",
+      "groupSub": "ANNUAL REPORT COMPETITIONS",
+      "title": "团体网站比赛",
+      "subtitle": "Societies’ Website Competition",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "华乐团",
+          "detail": "冠军 Champion",
+          "type": "team",
+          "photo": "T01.jpg"
+        },
+        {
+          "name": "科学学会",
+          "detail": "亚军 1st Runner-up",
+          "type": "team",
+          "photo": "T02.jpg"
+        },
+        {
+          "name": "童军团",
+          "detail": "季军 2nd Runner-up",
+          "type": "team",
+          "photo": "T03.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x02",
+      "group": "成果汇报竞赛",
+      "groupSub": "ANNUAL REPORT COMPETITIONS",
+      "title": "电子书面总结报告比赛",
+      "subtitle": "E-Annual Report Competition",
+      "revealMode": "all",
+      "winners": [
+        {
+          "name": "学长团",
+          "detail": "学长团Prefectorial Board",
+          "type": "team",
+          "photo": "T04.jpg"
+        },
+        {
+          "name": "图书馆协会",
+          "detail": "图书馆协会Library Society",
+          "type": "team",
+          "photo": "T05.jpg"
+        },
+        {
+          "name": "辩论社",
+          "detail": "（团体无照片测试）",
+          "type": "team"
+        }
+      ]
+    },
+    {
+      "id": "x03",
+      "group": "联课活动个人表现最高成就奖项",
+      "groupSub": "INDIVIDUAL PERFORMANCE AWARDS HIGH ACHIEVERS IN CO-CURRICULAR ACTIVITIES",
+      "title": "铜奖",
+      "subtitle": "Bronze Award",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "陈小明",
+          "cls": "初一甲班",
+          "sid": "24001",
+          "detail": "学长团Prefectorial Board",
+          "photo": "P01.jpg"
+        },
+        {
+          "name": "林小华",
+          "cls": "初一乙班",
+          "sid": "24008",
+          "detail": "童军团Scouts",
+          "photo": "P02.jpg"
+        },
+        {
+          "name": "王美玲",
+          "cls": "初二甲班",
+          "sid": "24015",
+          "detail": "华乐团Chinese Orchestra",
+          "photo": "P03.jpg"
+        },
+        {
+          "name": "欧阳志远",
+          "cls": "初二丙班",
+          "sid": "24022",
+          "detail": "图书馆协会Library Society",
+          "photo": "P04.jpg"
+        }
+      ],
+      "groupNoNum": true
+    },
+    {
+      "id": "x04",
+      "group": "联课活动个人表现最高成就奖项",
+      "groupSub": "INDIVIDUAL PERFORMANCE AWARDS HIGH ACHIEVERS IN CO-CURRICULAR ACTIVITIES",
+      "title": "银奖",
+      "subtitle": "Silver Award",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "张伟",
+          "cls": "初三乙班",
+          "sid": "24029",
+          "detail": "红新月会Red Crescent Society",
+          "photo": "P05.jpg"
+        },
+        {
+          "name": "李娜",
+          "cls": "高一甲班",
+          "sid": "24036",
+          "detail": "篮球队Basketball Team",
+          "photo": "P06.jpg"
+        },
+        {
+          "name": "黄嘉欣",
+          "cls": "高一丙班",
+          "sid": "24043",
+          "detail": "辩论社Debate Club",
+          "photo": "P07.jpg"
+        }
+      ],
+      "groupNoNum": true
+    },
+    {
+      "id": "x05",
+      "group": "联课活动个人表现最高成就奖项",
+      "groupSub": "INDIVIDUAL PERFORMANCE AWARDS HIGH ACHIEVERS IN CO-CURRICULAR ACTIVITIES",
+      "title": "金奖",
+      "subtitle": "Gold Award",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "吴俊杰",
+          "cls": "高二乙班",
+          "sid": "24050",
+          "detail": "科学学会Science Society",
+          "photo": "P08.jpg"
+        },
+        {
+          "name": "郑雅婷",
+          "cls": "高二丁班",
+          "sid": "24057",
+          "detail": "（个人无照片测试）"
+        }
+      ],
+      "groupNoNum": true
+    },
+    {
+      "id": "x06",
+      "group": "学生服务表现优异奖",
+      "groupSub": "EXCELLENT SERVICE AWARDS",
+      "title": "优秀服务奖",
+      "subtitle": "Excellent Service Award",
+      "revealMode": "all",
+      "winners": [
+        {
+          "name": "刘子轩",
+          "cls": "高三甲班",
+          "sid": "24064",
+          "detail": "英文学会English Language Society",
+          "photo": "P09.jpg"
+        },
+        {
+          "name": "蔡欣怡",
+          "cls": "初一甲班",
+          "sid": "24071",
+          "detail": "学长团Prefectorial Board",
+          "photo": "P10.jpg"
+        },
+        {
+          "name": "司马长风",
+          "cls": "初一乙班",
+          "sid": "24078",
+          "detail": "童军团Scouts",
+          "photo": "P11.jpg"
+        },
+        {
+          "name": "何文杰",
+          "cls": "初二甲班",
+          "sid": "24085",
+          "detail": "华乐团Chinese Orchestra",
+          "photo": "P12.jpg"
+        },
+        {
+          "name": "许佳琪",
+          "cls": "初二丙班",
+          "sid": "24092",
+          "detail": "图书馆协会Library Society",
+          "photo": "P13.jpg"
+        },
+        {
+          "name": "谢志明",
+          "cls": "初三乙班",
+          "sid": "24099",
+          "detail": "红新月会Red Crescent Society",
+          "photo": "P14.jpg"
+        },
+        {
+          "name": "周慧敏",
+          "cls": "高一甲班",
+          "sid": "24106",
+          "detail": "篮球队Basketball Team",
+          "photo": "P15.jpg"
+        },
+        {
+          "name": "叶国豪",
+          "cls": "高一丙班",
+          "sid": "24113",
+          "detail": "辩论社Debate Club",
+          "photo": "P16.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x07",
+      "group": "学生服务表现优异奖",
+      "groupSub": "EXCELLENT SERVICE AWARDS",
+      "title": "杰出服务奖",
+      "subtitle": "Outstanding Service Award",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "梁思颖",
+          "cls": "高二乙班",
+          "sid": "24120",
+          "detail": "科学学会Science Society",
+          "photo": "P17.jpg"
+        },
+        {
+          "name": "曾伟强",
+          "cls": "高二丁班",
+          "sid": "24127",
+          "detail": "华文学会Chinese Language Society",
+          "photo": "P18.jpg"
+        },
+        {
+          "name": "罗晓彤",
+          "cls": "高三甲班",
+          "sid": "24134",
+          "detail": "",
+          "photo": "P19.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x08",
+      "group": "最佳执委奖",
+      "groupSub": "THE BEST COMMITTEE",
+      "title": "最佳主席",
+      "subtitle": "Best President",
+      "revealMode": "nominee",
+      "winners": [
+        {
+          "name": "杨子乐",
+          "cls": "初一甲班",
+          "sid": "24141",
+          "detail": "学长团Prefectorial Board",
+          "photo": "P20.jpg"
+        },
+        {
+          "name": "邱嘉慧",
+          "cls": "初一乙班",
+          "sid": "24148",
+          "detail": "童军团Scouts",
+          "photo": "P21.jpg",
+          "win": true
+        },
+        {
+          "name": "方俊宏",
+          "cls": "初二甲班",
+          "sid": "24155",
+          "detail": "华乐团Chinese Orchestra",
+          "photo": "P22.jpg"
+        },
+        {
+          "name": "郭芷晴",
+          "cls": "初二丙班",
+          "sid": "24162",
+          "detail": "图书馆协会Library Society",
+          "photo": "P23.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x09",
+      "group": "最佳执委奖",
+      "groupSub": "THE BEST COMMITTEE",
+      "title": "最佳秘书",
+      "subtitle": "Best Secretary",
+      "revealMode": "nominee",
+      "winners": [
+        {
+          "name": "苏建业",
+          "cls": "初三乙班",
+          "sid": "24169",
+          "detail": "红新月会Red Crescent Society",
+          "photo": "P24.jpg"
+        },
+        {
+          "name": "江雨萱",
+          "cls": "高一甲班",
+          "sid": "24176",
+          "detail": "篮球队Basketball Team",
+          "photo": "P25.jpg"
+        },
+        {
+          "name": "潘浩然",
+          "cls": "高一丙班",
+          "sid": "24183",
+          "detail": "辩论社Debate Club",
+          "photo": "P26.jpg",
+          "win": true
+        }
+      ]
+    },
+    {
+      "id": "x10",
+      "group": "最佳执委奖",
+      "groupSub": "THE BEST COMMITTEE",
+      "title": "最佳财政",
+      "subtitle": "Best Treasurer",
+      "revealMode": "nominee",
+      "winners": [
+        {
+          "name": "孙佩琪",
+          "cls": "高二乙班",
+          "sid": "24190",
+          "detail": "科学学会Science Society",
+          "photo": "P27.jpg",
+          "win": true
+        },
+        {
+          "name": "马振宇",
+          "cls": "高二丁班",
+          "sid": "24197",
+          "detail": "华文学会Chinese Language Society",
+          "photo": "P28.jpg"
+        },
+        {
+          "name": "冯安琪",
+          "cls": "高三甲班",
+          "sid": "24204",
+          "detail": "英文学会English Language Society",
+          "photo": "P29.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x11",
+      "group": "",
+      "groupSub": "",
+      "title": "最佳学会奖",
+      "subtitle": "Best Society Award",
+      "revealMode": "nominee",
+      "winners": [
+        {
+          "name": "红新月会",
+          "detail": "红新月会Red Crescent Society",
+          "type": "team",
+          "photo": "T06.jpg"
+        },
+        {
+          "name": "篮球队",
+          "detail": "篮球队Basketball Team",
+          "type": "team",
+          "photo": "T07.jpg",
+          "win": true
+        },
+        {
+          "name": "华文学会",
+          "detail": "华文学会Chinese Language Society",
+          "type": "team",
+          "photo": "T08.jpg"
+        }
+      ]
+    },
+    {
+      "id": "x12",
+      "group": "",
+      "groupSub": "",
+      "title": "校长特别奖",
+      "subtitle": "Principal’s Special Award",
+      "revealMode": "one",
+      "winners": [
+        {
+          "name": "学生会",
+          "detail": "第 38 届 Student Council",
+          "type": "team",
+          "photo": "T09.jpg"
+        },
+        {
+          "name": "陈小明",
+          "cls": "初一甲班",
+          "sid": "24001",
+          "detail": "学生会主席Student Council President",
+          "photo": "P30.jpg"
+        }
+      ]
+    }
+  ]
+}
