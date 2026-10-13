@@ -22,14 +22,14 @@
 
 ## 便携版（.exe）
 
-`dist\AwardCeremony-V1.11.exe`（文件名带版本号）是单文件便携版：不用装 Node.js，网页已经打包在里面，双击就能运行，启动后会自动打开控制端。
+`dist\AwardCeremony-V1.13.exe`（文件名带版本号）是单文件便携版：不用装 Node.js，网页已经打包在里面，双击就能运行，启动后会自动打开控制端。
 
 - 把 `dist` 整个文件夹复制到 U 盘或任何 Windows 电脑（64 位 Windows 10/11）即可。`config.json`、`data\`、`logs\` 会生成在 exe 旁边。
 - 加密名单：关掉 exe 后双击 `加密名单.bat`。
 - 程序没有数字签名，第一次运行如出现「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」。
-- 想改网页：在 exe 旁边建 `public\` 放入修改后的 html，会优先使用。
+- 想改网页：在 exe 旁边建 `public\`，按原来的文件夹结构放入修改后的文件（例如 `public\css\display.css`、`public\js\fx\flash.js`），会优先使用；没放的文件照样用 exe 内置的版本。
 - **自己编译**：双击项目根目录的 `build.bat`（需要电脑装有 Node.js 22 LTS 或更新版本，不需要联网）。
-  - 编译好的 exe 直接放在**项目主目录**，文件名带版本号，例如 `AwardCeremony-V1.11.exe`；版本号取自 `CHANGELOG.md` 最新的 `## [x.y]`（和 `server.js`、`control.html` 的版本不一致时会提示）。旁边同时生成 `加密名单.bat`、`解密名单.bat`（自动指向这个版本的 exe）。
+  - 编译好的 exe 直接放在**项目主目录**，文件名带版本号，例如 `AwardCeremony-V1.13.exe`；版本号取自 `CHANGELOG.md` 最新的 `## [x.y]`（和 `lib/env.js`、`public/js/control/core.js` 的版本不一致时会提示）。旁边同时生成 `加密名单.bat`、`解密名单.bat`（自动指向这个版本的 exe）。
   - 旧版本的 exe 不会被删掉，不要的可以自己删。
   - exe 和 `start.bat`（源码版）共用同一份 `config.json`、`data\`、`logs\`，两者**不要同时运行**（会占用同一个端口）。
   - 主目录有 `public\` 文件夹，所以 exe 会优先用里面的网页；把 exe 单独拿走时则用内置网页。
@@ -37,7 +37,7 @@
   - 想做 U 盘便携版（单独文件夹）：在命令行运行 `set "OUT_DIR=dist" && node build\build-exe.js`，输出到 `dist\`，会附带使用说明。
   - 打包工具 postject 和 resedit 已随附在 `build\vendor\`（MIT 许可）。
   - 编译时会自动换上应用图标（`build\icon\icon.ico`）并写入产品名和版本号。想换图标：替换 `icon.ico` 后重新编译。
-- `AwardCeremony*.exe` 和 `dist/` 已加入 `.gitignore`（exe 约 82 MB，不适合放进仓库），请用 GitHub Releases 或 U 盘分发。
+- `AwardCeremony*.exe`、`dist/` 和主目录生成的 `加密名单.bat` / `解密名单.bat` 已加入 `.gitignore`（exe 约 90 MB，不适合放进仓库），请用 GitHub Releases 或 U 盘分发。
 
 ## 现场操作
 
@@ -52,7 +52,11 @@
 
 - 翻页笔（PPT 遥控器）直接可用：它发送的就是 PgDn / PgUp。
 - 「下一步」会显示接下来要做什么，按之前先看一眼。连按 0.5 秒内会被忽略，避免手抖跳过名单。
-- 每个奖项可选 **逐一揭晓**（每按一次出一位）或 **一次全部揭晓**（人多的奖项，如全勤奖）。
+- 每个奖项可选揭晓方式：
+  - **逐一揭晓**：每按一次出一位。
+  - **先一后全**：第 1 下先揭晓 1 位（个人或团体都可以）；第 2 下把剩下的全部**一张接一张连续出完**（每张约 0.6 秒，各带一点闪光）。适合「先请代表上台，再一口气公布其余得奖者」。自动播放会等连续动画放完再计算停留时间。
+  - **一次全部揭晓**：一下全部出现（人多的奖项，如全勤奖）。
+  - **入围揭晓**：见下面「入围揭晓」。
 - 左侧点选任意奖项可以跳着公布；「自定义消息」可以临时打大字（如「请获奖同学上台」）。
 - 输出页断线会保持当前画面并在右下角显示小红点，自动重连。服务器重启后会恢复到原来的进度。
 
@@ -111,7 +115,7 @@
 
 ## 揭晓效果
 
-每揭晓一位，大屏会出现「摄影闪光灯」效果：约 2 秒内画面各处陆续闪光（白色光晕 + 十字星芒，像台下记者拍照），偶尔有一下大闪让整个画面微微一亮。一次揭晓多位、入围奖项揭晓得主时闪光更多。首次打开、刷新页面、撤销时不会闪。
+每揭晓一位，大屏会出现轻微的「摄影闪光」效果：约 2 秒内画面几处陆续亮起柔和的微光（淡淡的光晕 + 短星芒，像台下有人拍照），不会抢走画面焦点。一次揭晓多位、入围奖项揭晓得主时会多几下。亮度可在 `public/js/fx/flash.js` 的 `FLASH_PEAK` 调整。首次打开、刷新页面、撤销时不会闪。
 
 ## 待机画面
 
@@ -216,7 +220,7 @@
 | 外网访问 | 只放行 `allowedNetworks` 里的内网网段，其它 IP 直接 403。 |
 | 控制端屏幕被旁人或摄像机看到 | 控制端名单默认 **模糊**，鼠标悬停才显示（右上角可关）。 |
 | 电脑被借用 / 文件被复制 | `node server.js encrypt` 用 AES-256-GCM 加密名单，口令只在启动时输入、只存在内存。 |
-| 名单误传到 GitHub | `.gitignore` 已排除 `config.json`、`data/`、`logs/`、`Result/`、`dist/`。 |
+| 名单误传到 GitHub | `.gitignore` 已排除 `config.json`、`data/`、`logs/`、`Result/`、`dist/`、`obs/`，以及主目录的 `Picture*.png` 参考图。 |
 | 浏览器缓存 / 历史 | 所有响应 `Cache-Control: no-store`、`Referrer-Policy: no-referrer`。 |
 
 ### 加密名单
@@ -286,18 +290,37 @@ node server.js decrypt   # 需要用别的工具改名单时，解密回明文
 
 ## 文件结构
 
+代码按「功能」和「特效」分开放，想改哪一部分直接找对应的文件：
+
 ```
-server.js            服务端（唯一的程序文件）
-public/control.html  控制端
-public/display.html  输出页
-public/guest.html    嘉宾揭晓页（手机）
-start.bat            Windows 一键启动（源码版，需要 Node.js）
-build.bat            双击编译便携版 exe
-build/build-exe.js   打包脚本（build/vendor/ 为随附的 postject）
-dist/                便携版输出（不进 Git）
-config.json          首次运行生成（密码、密钥）
-data/awards.json     名单（明文） / data/awards.enc（加密）
-data/state.json      现场进度（不含名字）
-data/photos/         获奖者照片
-logs/audit.log       登录、操作、可疑访问记录
+server.js                服务端入口（启动、encrypt / decrypt）
+lib/                     服务端各功能
+  show.js                  现场流程（下一步、撤销、分类、入围揭晓）
+  actions.js               控制端的各种操作
+  views.js                 ⚠ 防泄露：决定大屏 / 嘉宾能看到什么
+  autoplay.js / guest.js   自动播放 / 嘉宾揭晓
+  data.js / config.js      名单（含加密）/ config.json
+  media.js / obs.js        照片和字体 / OBS 场景集合
+  sse.js / sessions.js / http.js / net.js / util.js / env.js / runtime.js / cli.js   推送、登录、HTTP、网络、工具、路径和版本号…
+  routes/                  各网址由哪段代码处理（大屏、嘉宾、控制端、静态资源）
+public/                  网页
+  control.html / display.html / guest.html   页面结构
+  css/                     样式（fonts.css = 大屏和图片导出共用的默认字体）
+  img/icon.svg             网页图标
+  js/fx/                   ★ 大屏特效：dust.js 背景浮尘、flash.js 揭晓闪光、goldriver.js 待机金色光河
+  js/display/              大屏画面：舞台自适应、名字卡排版、入围揭晓、渲染
+  js/control/              控制端：现场控制、奖项编辑、照片优化、字体、图片导出…
+  js/guest/                嘉宾揭晓页（手机）
+  js/shared/               共用：字体、二维码、ZIP
+start.bat                Windows 一键启动（源码版，需要 Node.js）
+build.bat                双击编译便携版 exe
+build/build-exe.js       打包脚本（会把 server.js + lib/ 合并成一个文件，再连同 public/ 打包进 exe；build/vendor/ 为随附的 postject）
+dist/                    便携版输出（不进 Git）
+config.json              首次运行生成（密码、密钥）
+data/awards.json         名单（明文） / data/awards.enc（加密）
+data/state.json          现场进度（不含名字）
+data/photos/             获奖者照片
+data/fonts/              上传的字体
+data/export-style.json   图片导出的设计
+logs/audit.log           登录、操作、可疑访问记录
 ```

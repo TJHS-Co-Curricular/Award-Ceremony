@@ -2,7 +2,26 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.13] — 2026-10-13
+
+### 变更
+- **代码按功能 / 特效分文件**（功能和画面不变）：
+  - 服务端：`server.js` 只剩入口，其余按功能放进 `lib/`（现场流程 `show.js`、操作 `actions.js`、防泄露视图 `views.js`、自动播放、嘉宾、名单、照片字体、推送、登录、OBS…），路由按页面放进 `lib/routes/`。共享状态集中在 `lib/runtime.js`。版本号移到 `lib/env.js`。
+  - 网页：CSS、JS 从三个 html 里拆出来放到 `public/css/`、`public/js/`。特效单独一个文件夹 `js/fx/`（背景浮尘、揭晓闪光、待机金色光河）；大屏 `js/display/`、控制端 `js/control/`、嘉宾 `js/guest/`；共用的字体、二维码、ZIP 放 `js/shared/`。
+  - 原本大屏和控制端各一份的字体代码（`sysFont` 等）合并成一份；默认字体只在 `css/fonts.css` 定义一次，控制端图片导出直接读它，不用再手动同步。网页图标改为 `public/img/icon.svg`。
+  - 新增 `/assets/…` 静态资源路由（只限 `css/`、`js/`、`img/`，防目录穿越；不需要密钥，里面没有任何名单）。
+  - `build-exe.js`：先把 `server.js` + `lib/` 合并成一个文件（SEA 只能执行单个脚本），`public/` 下所有文件作为资源打包；版本检查改读 `lib/env.js` 和 `public/js/control/core.js`。
+- 回归测试：新旧版本跑同一套完整流程（每一步状态、公开视图、照片权限、所有动作和接口）结果完全一致；画面截图逐像素对比一致（只有随机粒子不同）；Linux 版 SEA 实测通过（网页从 exe 内部读取、加密 / 解密名单）。
+
+## [1.12] — 2026-10-13
+
+### 新增
+- **新揭晓方式「先一后全」**（`revealMode: 'firstall'`）：第 1 下揭晓第 1 位，第 2 下把剩下的全部连续揭晓。大屏按 `award.cascade`（毫秒，服务端 `CASCADE_STEP = 600`）一张接一张出现，每张带少量闪光；撤销可回到只显示第 1 位。自动播放的停留时间会加上连续动画的长度。版本号升到 1.12。
+
 ## [1.11] — 2026-10-13
+
+### 变更
+- **揭晓闪光改成微光**：数量减到约四分之一（揭晓一位约 6 下、得主约 11 下），亮度降到约 4 成（`FLASH_PEAK`），光晕和星芒变小，取消「大闪」整个画面变亮。
 
 ### 新增
 - **编译文件带版本号**：`build.bat` 输出 `AwardCeremony-V<版本>.exe`（例如 `AwardCeremony-V1.11.exe`），版本取自 CHANGELOG.md 最新的 `## [x.y]`；与 `server.js` / `control.html` 版本不一致时提示。`加密名单.bat` / `解密名单.bat`、便携版使用说明自动用新文件名；`.gitignore` 改为 `/AwardCeremony*.exe`。

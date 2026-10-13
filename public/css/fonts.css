@@ -1,0 +1,9 @@
+/*
+ * 默认字体（大屏和图片导出共用，唯一的一份）。
+ * display.css 的 --serif / --sans 用它；控制端的图片导出用 getComputedStyle 读它（js/control/export.js 的 HTML_FONT）。
+ * 「奖项编辑」里设了中文 / 英文字体时，会排在这些字体前面。
+ */
+:root{
+  --font-serif:"Noto Serif SC","Source Han Serif SC","Source Han Serif CN","Songti SC","STSong","Microsoft YaHei",serif;
+  --font-sans:"Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Microsoft JhengHei",sans-serif;
+}
