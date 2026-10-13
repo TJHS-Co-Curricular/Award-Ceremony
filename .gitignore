@@ -1,6 +1,8 @@
 # ⚠ 防泄露：名单、密码、照片、日志、结果一律不进 Git
+data/*
+!data/fonts/
+!data/export-style.json
 config.json
-data/
 logs/
 Result/
 *.tmp

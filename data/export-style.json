@@ -1,0 +1,94 @@
+{
+  "elems": {
+    "top": {
+      "show": true,
+      "size": 48,
+      "color": "#eaea0c",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "topEn": {
+      "show": true,
+      "size": 24,
+      "color": "#eaea0c",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "name": {
+      "show": true,
+      "size": 40,
+      "color": "#fafa98",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "cls": {
+      "show": true,
+      "size": 40,
+      "color": "#fafa98",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "sid": {
+      "show": true,
+      "size": 40,
+      "color": "#fafa98",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "soc": {
+      "show": true,
+      "size": 40,
+      "color": "#fafa98",
+      "bold": true,
+      "italic": false,
+      "spacing": 0.14,
+      "font": ""
+    },
+    "socEn": {
+      "show": true,
+      "size": 25.6,
+      "color": "#fafa98",
+      "bold": true,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    },
+    "award": {
+      "show": true,
+      "size": 36,
+      "color": "#ffffff",
+      "bold": false,
+      "italic": false,
+      "spacing": 0.1,
+      "font": ""
+    },
+    "awardEn": {
+      "show": true,
+      "size": 21.6,
+      "color": "#ffffff",
+      "bold": false,
+      "italic": false,
+      "spacing": 0,
+      "font": ""
+    }
+  },
+  "shade": 50,
+  "shadow": 60,
+  "textX": 25,
+  "nameY": 36.7,
+  "teamBg": "#07060c",
+  "teamFrame": "#d9b25f",
+  "teamGlow": true,
+  "size": "1920x1080",
+  "fmt": "jpg"
+}
