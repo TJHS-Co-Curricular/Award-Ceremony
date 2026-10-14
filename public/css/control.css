@@ -179,3 +179,12 @@ code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius
   .bigrow{grid-template-columns:1fr 1fr}
   .ecard .row3,.grid2{grid-template-columns:1fr}
 }
+/* 效果控制 */
+.fxr{display:grid;grid-template-columns:150px 1fr 64px 26px;gap:10px;align-items:center;font-size:13px;color:var(--muted);margin:7px 0}
+.fxr input[type=range]{padding:0;width:100%}
+.fxr select{width:100%}
+.fxr .fxv{text-align:right;color:var(--text,#eee);font-variant-numeric:tabular-nums}
+.fxr .fxu{padding:0;width:26px;height:24px;font-size:13px;visibility:hidden}
+.fxr.over .fxu{visibility:visible}
+.fxr.over>span:first-child{color:var(--gold)}
+.fxr.lock{opacity:.45}

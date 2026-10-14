@@ -14,7 +14,7 @@
 2. **零依赖。** 服务端只能用 Node 内建模块（`http`、`fs`、`crypto` 等），不要加 npm 依赖。代码按功能分在 `lib/` 里（见下面「代码结构」）；SEA 里 `require` 只能加载内建模块，所以 `build-exe.js` 会先把 `server.js` + `lib/**/*.js` 合并成一个文件（`bundle()`）。模块之间只用**相对路径** `require('./xxx')`，不要用动态 require 或 `__dirname` 拼路径找代码。
 3. **离线可用。** 网页的 CSS / JS 都在 `public/` 里，经 `/assets/…` 由服务端提供（exe 里打包了一份）。不能引用 CDN、Google Fonts 或任何外网资源，现场可能没有外网。
 4. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它决定 exe 文件名，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
-5. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/` 和 `data/export-style.json`，这两项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。新增会产生敏感内容的路径时，同步加进 `.gitignore`。
+5. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/`、`data/export-style.json`、`data/fx.json`，这几项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。新增会产生敏感内容的路径时，同步加进 `.gitignore`。
 
 ## 运行
 
@@ -36,7 +36,8 @@ set "OUT_DIR=dist" && node build\build-exe.js   :: 输出到 dist\（U 盘便携
 ```
 server.js                 服务端入口：读设置和名单、启动 HTTP、encrypt / decrypt 命令
 lib/                      服务端，按功能分（只用 Node 内建模块）
-  env.js                  版本号 VERSION、所有文件路径、是否 exe（IS_EXE / sea）、CASCADE_STEP
+  env.js                  版本号 VERSION、所有文件路径、是否 exe（IS_EXE / sea）、GALLERY_MAX
+  fx.js                   效果设定（data/fx.json）：SCHEMA（也给控制端生成表单）、loadFx / saveFx / getFx
   runtime.js              运行中的共享状态 rt：cfg、data（名单）、passphrase、state、history、clients、sessions、hooks
   util.js                 hex / str / safeEqual / atomicWrite / shred / audit / askHidden
   net.js                  IP 白名单（inAny）、本机内网地址（lanUrls）
@@ -65,9 +66,9 @@ public/                   网页（只有程序和样式，没有数据）
   img/icon.svg            网页图标（= build/icon/icon-small.svg）
   js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）
   js/fx/                  大屏特效：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）、goldriver.js（待机金色光河，原本）、standby.js（切换）
-  js/display/             大屏：stage.js（参数、舞台自适应）→ fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
+  js/display/             大屏（record.js + mp4.js = 导出影片）：stage.js（参数、舞台自适应）→ clock.js（导出影片的虚拟时钟）→ fxconf.js（效果设定 FXC）→ [js/fx/*] → fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
-                          → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ main.js（启动）
+                          → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ fx.js（效果控制）→ main.js（启动）
   js/guest/main.js        嘉宾揭晓页
 build.bat                 双击编译 exe
 build/build-exe.js        SEA 打包脚本（离线）：bundle() 合并服务端代码，public/ 全部作为资源
@@ -78,7 +79,7 @@ start.bat                 启动源码版
 README.md                 用户文档（中文）
 ```
 
-运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`logs/audit.log`。
+运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/fx.json`（效果设定）、`logs/audit.log`。
 
 ### 网页脚本的规则
 
@@ -136,7 +137,9 @@ README.md                 用户文档（中文）
   - 人数超过 12 时，奖项标题区缩小（`.dense`）。
   - 入围揭晓：排版时高度 × 0.74 预留放大空间；`applyPhase()` 切换 `.suspense` / `.crowned`，`crown()` 用 offsetLeft/Top 算出把得主卡移到网格中央的 `--wx/--wy/--ws`。
 - **动画**：首次载入、刷新、撤销时，已揭晓的卡片直接显示，不放闪光（`booted` / `isUndo`）。
-- **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（亮度 `FLASH_PEAK`）；待机背景由 `standbyFx(on, event.standbyFx)` 切换——`galaxyFx(on)` 旋涡星系（默认，设定在 `GY`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
+- **效果设定**：`lib/fx.js` 的 `SCHEMA` 是唯一的设定清单（key、类型 num / bool / enum / auto、范围、默认值、`global` = 只能所有屏幕一起设）。数据 `{ all: {...}, screens: { 屏幕名: {只写改过的} } }`，经 `publicView().fx` 推给大屏（不含名单）。大屏 `js/display/fxconf.js`：`FXC` = 默认 ← all ← 本屏幕（`name=` 去掉 `·OBS`）← 控制端预览的 `fxPreviewSet()`；值改了由 `fxUpdate()` 让星系 / 光河下一帧重建（`gyW = 0` / `gW = 0`）、重建浮尘、切背景、重算合影位置。`cascadeMs` 服务端读（`views.js` 的 `award.cascade`、`autoplay.js`）。新增一项效果：`SCHEMA` 加一行 + `fxconf.js` 的 `FX_DEF` 加默认值 + 特效代码读 `FXC.xxx`（需要重建的在 `fxUpdate()` 处理），控制端表单自动生成。控制端 `js/control/fx.js`；预览 iframe 的函数（`show`、`burst`、`relayout`、`fxPreviewSet`）用 `contentWindow` 调用（`FXC` 是 `let`，不在 `window` 上）。
+- **导出影片**：控制端 `js/control/fx.js` 开隐藏 iframe `/display?…&preview=1&record=1&res=宽x高`，调用 `recStart(opt, fx, onProgress)`（`js/display/record.js`）。`RECORD` 时：`clock.js` 把 `requestAnimationFrame` / `performance.now` 换成 `recTick(ms)` 推进的虚拟时间（每格 1/60 秒，30 fps 就每 2 格取一帧）；`fit()` 让 canvas 用真正的屏幕像素并 `setTransform(REC_K)`，特效照样用舞台坐标画（⚠ 特效代码不要 `setTransform` / `resetTransform`，静态背景按 `REC_K` 建、用 `drawImage(bg, 0, 0, SW, SH)` 画）；`main.js` 只收第一份数据，固定成待机画面后关掉连线。文字不是截图：`recDrawChars()` 用 Range 量每个字的位置，按网页的字体、渐层、阴影画到画布上（改了待机画面 CSS 要同步改 `record.js`）。WebCodecs 编码（H.264 → VP9 后备），`mp4Mux()`（`js/display/mp4.js`）封装。循环：多渲染 fade 秒，开头那几帧背景先存成 WebP，最后几帧交叉淡化；流光周期 `SHIMMER_P` 调成影片长度的整数分之一。
+- **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（`FXC.flashOn / flashPeak / flashAmount`）；待机背景由 `standbyFx(on, FXC.standby)` 切换——`galaxyFx(on)` 旋涡星系（默认，`FXC.gy*`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
 - **不要用 `seq` 去重渲染**：存数据时不会递增 `seq`，但活动名称等内容会变。
 
 ## 测试方法（云端环境验证过的流程）

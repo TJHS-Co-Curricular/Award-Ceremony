@@ -1,5 +1,5 @@
 /*
- * 特效 · 待机画面背景切换：「奖项编辑」里选（event.standbyFx）。
+ * 特效 · 待机画面背景切换：控制端「效果控制」里选（FXC.standby）。
  *   galaxy    = 旋涡星系（js/fx/galaxy.js，默认）
  *   goldriver = 金色光河（js/fx/goldriver.js，原本的设计，保留作备份）
  * 两种都画在同一个 canvas #goldfx 上，同一时间只运行一种。

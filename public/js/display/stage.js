@@ -1,12 +1,13 @@
 /*
  * 大屏 · 舞台：网址参数、按屏幕比例自适应、全屏 / 隐藏鼠标。
- * 提供：qs、KEY、PREVIEW、$、stage、SW / SH（舞台尺寸）、lastV（最新画面数据）、fit()
+ * 提供：qs、KEY、PREVIEW、RECORD、REC_K、$、stage、SW / SH（舞台尺寸）、lastV（最新画面数据）、fit()
  */
 'use strict';
 
 const qs = new URLSearchParams(location.search);
 const KEY = qs.get('k') || '';
-const PREVIEW = qs.get('preview') === '1';
+const RECORD = qs.get('record') === '1';                 // 控制端「导出影片」用的隐藏页面（display/record.js）
+const PREVIEW = qs.get('preview') === '1' && !RECORD;   // 预览：粒子少一点（导出影片时不减）
 const $ = id => document.getElementById(id);
 
 /* ---------- 舞台：按屏幕比例自适应 ----------
@@ -15,6 +16,8 @@ const $ = id => document.getElementById(id);
  * 网址加 &res=宽x高 可强制比例（例如经过视频处理器、窗口大小不准时）。 */
 const stage = $('stage');
 let SW = 1920, SH = 1080, lastV = null, resizeT = 0;
+// 导出影片时 canvas 用真正的屏幕像素（例如 4096×1280），画图时整体放大 REC_K 倍；平常 = 1
+let REC_K = 1;
 const RES = (qs.get('res') || '').match(/^(\d{2,5})x(\d{2,5})$/);
 function fit() {
   const tw = RES ? +RES[1] : innerWidth, th = RES ? +RES[2] : innerHeight;
@@ -24,7 +27,12 @@ function fit() {
   SW = nw; SH = nh;
   stage.style.width = SW + 'px'; stage.style.height = SH + 'px';
   stage.style.setProperty('--sw', SW + 'px'); stage.style.setProperty('--sh', SH + 'px');
-  for (const c of document.querySelectorAll('canvas')) if (c.width !== SW || c.height !== SH) { c.width = SW; c.height = SH; }
+  if (RECORD) REC_K = (RES ? +RES[1] : tw) / SW;
+  const cw = RECORD ? Math.round(SW * REC_K / 2) * 2 : SW, ch = RECORD ? Math.round(SH * REC_K / 2) * 2 : SH;   // 影片宽高要双数
+  for (const c of document.querySelectorAll('canvas')) if (c.width !== cw || c.height !== ch) {
+    c.width = cw; c.height = ch;
+    if (RECORD) c.getContext('2d').setTransform(cw / SW, 0, 0, ch / SH, 0, 0);   // 特效照样用舞台坐标画
+  }
   const s = Math.min(innerWidth / SW, innerHeight / SH);
   stage.style.transform = `translate(-50%,-50%) scale(${s})`;
   if (changed && lastV) { clearTimeout(resizeT); resizeT = setTimeout(relayout, 250); }

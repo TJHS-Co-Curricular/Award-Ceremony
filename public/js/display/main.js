@@ -10,7 +10,11 @@ function connect() {
   es.onopen = () => $('conn').classList.remove('show');
   es.onmessage = e => {
     const v = JSON.parse(e.data);
+    if (RECORD) {   // 导出影片：只要第一份数据（活动名称、字体、效果），固定在待机画面，之后不再跟现场变
+      fxSet(v.fx); render({ ...v, mode: 'standby', blackout: false }); booted = true; es.close(); return;
+    }
     diagSet(v.diag);
+    fxSet(v.fx);
     render(v);
     booted = true;
   };

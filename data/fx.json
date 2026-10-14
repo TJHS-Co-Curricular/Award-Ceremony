@@ -1,0 +1,22 @@
+{
+  "all": {
+    "standby": "galaxy",
+    "gyBright": 0.75,
+    "gySpeed": 0.12,
+    "gyDensity": 1,
+    "gySize": 1,
+    "gyX": null,
+    "gyY": null,
+    "gyTilt": 0.36,
+    "grBright": 2,
+    "grDensity": 1,
+    "dustOn": true,
+    "dustAmount": 1,
+    "flashOn": true,
+    "flashPeak": 0.42,
+    "flashAmount": 1,
+    "cascadeMs": 600,
+    "photoUp": 0.25
+  },
+  "screens": {}
+}

@@ -38,7 +38,7 @@
     <span><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
     <span class="tag" id="dispCount">输出页 0</span>
     <span class="tag" id="encTag"></span>
-    <div class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button></div>
+    <div class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="fx">效果控制</button></div>
     <button id="bPrivacy" title="名单模糊，鼠标悬停才显示">🙈 名单模糊：开</button>
     <button id="bLogout">退出</button>
   </header>
@@ -175,6 +175,62 @@
       </div>
     </div>
 
+    <!-- 效果控制：表单由 js/control/fx.js 按服务端的设定格式生成 -->
+    <div id="fx" class="hidden">
+      <div class="xwrap">
+        <div class="ebar">
+          <b style="font-size:15px">效果控制</b>
+          <label class="xl">设定给 <select id="fxScope" style="width:auto"></select></label>
+          <span class="grow"></span>
+          <label class="xl" style="cursor:pointer" title="关掉：只在右边预览里看，按「套用到大屏」才推送"><input type="checkbox" id="fxLive" style="width:auto"> 即时套用到大屏</label>
+          <span id="fxState" class="muted">—</span>
+          <button id="bFxApply" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700">套用到大屏</button>
+          <button id="bFxDiscard">放弃修改</button>
+        </div>
+        <div class="xgrid">
+          <div class="xside">
+            <div id="fxForm"></div>
+            <div style="display:flex;gap:8px"><button id="bFxReset" style="flex:1">这一页恢复默认值</button></div>
+            <p class="help">不用重新编译、不用刷新大屏：改了马上生效（存在 <code>data/fx.json</code>，下次开机照用）。「设定给」选某个屏幕时，只改那个屏幕；改过的项目旁边有 ↺，按一下回到跟随「所有屏幕」。粒子数量调太多，电脑慢时画面会卡（可在「现场控制」开 FPS 诊断看看）。</p>
+          </div>
+          <div class="xmain">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <span class="muted" style="font-size:13px">预览</span>
+              <select id="fxPvScreen" style="width:auto"></select>
+              <span class="grow" style="flex:1"></span>
+              <button id="bFxStandby" title="只有预览切到待机画面，大屏不受影响">看待机画面</button>
+              <button id="bFxFlash" title="只在预览里闪，大屏不受影响">测试闪光</button>
+              <button id="bFxBack">回到现场画面</button>
+            </div>
+            <iframe id="fxPv" style="width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;display:block"></iframe>
+            <p class="help">预览窗口的粒子数量比真正大屏少（省电），亮度、位置、大小跟大屏一样。</p>
+            <div class="ecard" style="margin-top:14px">
+              <div class="head"><b style="flex:1">导出影片（MP4）</b><span class="muted" style="font-size:12px" id="recRes"></span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px;color:var(--muted)">
+                <label class="xl">内容 <select id="recContent" style="width:auto">
+                  <option value="standby">待机画面（背景 + 活动名称）</option>
+                  <option value="standbybg">待机背景（没有文字）</option>
+                  <option value="base">底层背景（渐层 + 浮尘 + 边框）</option>
+                  <option value="flash">揭晓闪光（黑底，用「滤色 / Screen」叠加）</option>
+                </select></label>
+                <label class="xl">长度 <input id="recSec" type="number" min="3" max="600" value="60" style="width:70px"> 秒</label>
+                <label class="xl">循环接缝淡化 <input id="recFade" type="number" min="0" max="10" step="0.5" value="2" style="width:60px"> 秒</label>
+                <label class="xl">帧率 <select id="recFps" style="width:auto"><option value="30">30 fps</option><option value="60">60 fps</option></select></label>
+                <label class="xl">画质 <select id="recQ" style="width:auto"><option value=".08">标准</option><option value=".15" selected>高</option><option value=".3">极高（文件大）</option></select></label>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+                <button id="bRec" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700">开始导出</button>
+                <button id="bRecStop" class="hidden">取消</button>
+                <span id="recState" class="muted" style="font-size:12px;flex:1"></span>
+              </div>
+              <div class="autobar" style="margin-top:8px"><i id="recBar"></i></div>
+              <p class="help">分辨率 = 上面「预览」选的屏幕；用的是这一页目前的效果设定（包括还没套用到大屏的）。逐帧离线渲染，电脑慢只是导出久一点，影片不会掉帧；导出时请留在这一页。影片首尾会交叉淡化，播放器设「循环播放」就看不出接缝（淡化设 0 = 不循环）。闪光影片每 4 秒闪一次。需要新版 Chrome / Edge。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 编辑 -->
     <div id="edit" class="hidden">
       <div class="ewrap">
@@ -193,7 +249,6 @@
           </div>
           <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evGroupIntro" style="width:auto"> 进入新的分类时，先显示「分类标题」画面（列出该分类的奖项），再公布第一个奖项</label>
           <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evPhotoKicker" style="width:auto"> 合影画面显示上方的「合 影 留 念」小字</label>
-          <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)">待机画面背景 <select id="evStandbyFx" style="width:auto"><option value="galaxy">旋涡星系（金色，会公转）</option><option value="goldriver">金色光河（原本的设计）</option></select></label>
           <div class="grid2" style="margin-top:12px">
             <label class="f"><span>中文字体（所有中文字，例如 华文楷体）</span><div style="display:flex;gap:6px"><select id="fTitleSel" style="width:auto;max-width:55%"></select><input id="fTitleName" placeholder="系统字体名称，例如 华文楷体 / KaiTi"></div></label>
             <label class="f"><span>英文 / 数字字体（所有英文字母和数字，例如 Aptos Display）</span><div style="display:flex;gap:6px"><select id="fTextSel" style="width:auto;max-width:55%"></select><input id="fTextName" placeholder="系统字体名称，例如 Aptos Display / Times New Roman"></div></label>
@@ -247,6 +302,7 @@
 <script src="/assets/js/control/photos.js"></script>
 <script src="/assets/js/control/fonts.js"></script>
 <script src="/assets/js/control/export.js"></script>
+<script src="/assets/js/control/fx.js"></script>
 <script src="/assets/js/control/main.js"></script>
 </body>
 </html>

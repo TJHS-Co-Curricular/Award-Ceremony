@@ -21,8 +21,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   opacity:0;visibility:hidden;transition:opacity .9s ease, visibility 0s linear .9s;z-index:10}
 .scene.active{opacity:1;visibility:visible;transition:opacity .9s ease}
 .goldtext{background:linear-gradient(100deg,var(--gold-lo) 0%,var(--gold) 25%,var(--gold-hi) 45%,var(--gold) 60%,var(--gold-lo) 100%);
-  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s linear infinite}
-@keyframes shimmer{from{background-position:120% 0}to{background-position:-130% 0}}
+  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s ease-in-out infinite alternate}
+/* 金色流光：亮带从字的左边扫到右边，再慢慢扫回来（alternate 来回，不会突然跳回起点）。改了要同步改 js/display/record.js 的 recTitle() */
+@keyframes shimmer{from{background-position:95% 0}to{background-position:-12% 0}}
 .ornament{display:flex;align-items:center;gap:22px;color:var(--gold)}
 .ornament i{display:block;height:1px;width:260px;background:linear-gradient(90deg,transparent,var(--gold))}
 .ornament i:last-child{background:linear-gradient(270deg,transparent,var(--gold))}
@@ -69,7 +70,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .spot{position:absolute;top:-10%;left:0;width:900px;height:120%;background:radial-gradient(closest-side,rgba(247,226,166,.10),transparent);animation:sweep 9s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
 @keyframes sweep{from{transform:translateX(calc(var(--sw,1920px) * -.2))}to{transform:translateX(calc(var(--sw,1920px) * .7))}}
 .scene:not(.active) *{animation-play-state:paused!important}   /* 看不见的画面不跑动画 */
-.scene.enter h2,.scene.enter h1{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s linear infinite}
+.scene.enter h2,.scene.enter h1{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s ease-in-out infinite alternate}
 @keyframes rise{from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
 
 /* ===== 合影画面：分类 - 奖项名称（大合照背景，没有名单） ===== */
@@ -82,7 +83,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #s-photo h1 span{white-space:nowrap;max-width:100%}
 #s-photo h1 i{display:inline-block;align-self:center;width:.7em;height:.07em;border-radius:.04em;background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi),var(--gold-lo))}
 #s-photo h1 i.hide{display:none}
-#s-photo.enter h1 span{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s linear infinite}
+#s-photo.enter h1 span{animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both, shimmer 7s ease-in-out infinite alternate}
 #s-photo.wrap h1 i{display:none}          /* 放不下一行：分类和奖项名各一行，不要横线 */
 #s-photo.wrap h1 #pGroup{font-size:.62em}
 #s-photo.wrap h1 span{flex-basis:100%}

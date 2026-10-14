@@ -15,6 +15,7 @@ const rt = require('./lib/runtime');
 const { loadConfig } = require('./lib/config');
 const { SAMPLE, normalizeData, decryptText, readPlain } = require('./lib/data');
 const { loadState } = require('./lib/show');
+const { loadFx } = require('./lib/fx');
 const { lanUrls } = require('./lib/net');
 const { quit, askPassphraseLoop, encryptCmd, decryptCmd } = require('./lib/cli');
 require('./lib/actions');   // 注册「状态改变后」要做的事（推送、自动播放、嘉宾授权）
@@ -64,6 +65,7 @@ async function main() {
   rt.cfg = cfg;
   await loadData();
   loadState();
+  loadFx(rt.data?.event?.standbyFx);
 
   const server = http.createServer(handler);
   server.listen(cfg.port, cfg.host, () => {
