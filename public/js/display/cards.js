@@ -49,6 +49,26 @@ function fitText(el) {
   while (el.scrollWidth > el.clientWidth + 1 && size > 12 && guard--) { size *= .92; el.style.fontSize = size + 'px'; }
 }
 const div = (cls, text) => { const d = document.createElement('div'); d.className = cls; if (text != null) d.textContent = text; return d; };
+/* 照片画进刚好卡片大小的 canvas（不用 <img>）：
+ * <img> 会把原图整张解码并放进显卡（4000×3000 一张约 48 MB），OBS 内置浏览器 + 内置显卡时会越揭晓越多、把内存吃光。
+ * 这里解码后马上缩成卡片的实际像素再丢掉原图，显卡里每张只剩几 MB，换画面时随卡片一起释放。 */
+async function drawPhoto(cv, box, url) {
+  try {
+    const blob = await (await fetch(url)).blob();
+    if (!cv.isConnected) return;
+    const bm = await createImageBitmap(blob);
+    // 舞台缩放到屏幕的倍数 × 1.25（入围得主会放大一点，留余量），但不超过原图
+    let s = Math.min(2, Math.max(1, stage.getBoundingClientRect().width / SW || 1)) * 1.25;   // 至少按舞台像素（窗口之后放大也清楚）
+    s = Math.min(s, bm.width / Math.max(1, box.offsetWidth), bm.height / Math.max(1, box.offsetHeight));
+    const W = Math.max(1, Math.round(box.offsetWidth * s)), H = Math.max(1, Math.round(box.offsetHeight * s));
+    cv.width = W; cv.height = H;
+    const k = Math.max(W / bm.width, H / bm.height), sw = W / k, sh = H / k;   // object-fit: cover，置中
+    const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
+    g.drawImage(bm, (bm.width - sw) / 2, (bm.height - sh) / 2, sw, sh, 0, 0, W, H);
+    bm.close();
+    cv.classList.add('ok');
+  } catch { box.classList.add('nopic'); }
+}
 function fillCard(card, w, animate) {
   card.className = 'card' + (animate ? ' pop' : '') + (w.type === 'team' ? ' team' : '');
   card.textContent = '';
@@ -60,11 +80,10 @@ function fillCard(card, w, animate) {
     const cap = grid.classList.contains('cap');         // cap：照片在上、名字在下；否则照片铺满、左侧叠字
     const holder = cap ? card.appendChild(div('phbox')) : card;
     if (w.photo) {
-      const img = document.createElement('img');
-      img.className = 'ph'; img.alt = ''; img.decoding = 'async';
-      img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => img.classList.add('ok'));
-      img.src = w.photo + '&k=' + encodeURIComponent(KEY);
-      holder.appendChild(img);
+      const cv = document.createElement('canvas');
+      cv.className = 'ph';
+      holder.appendChild(cv);
+      drawPhoto(cv, holder, w.photo + '&k=' + encodeURIComponent(KEY));
     } else holder.classList.add('nopic');
     if (!cap) card.appendChild(div('shade'));
     if (w.cls || w.sid || w.detail) tx.appendChild(div('rule'));

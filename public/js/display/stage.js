@@ -29,7 +29,8 @@ function fit() {
   stage.style.setProperty('--sw', SW + 'px'); stage.style.setProperty('--sh', SH + 'px');
   if (RECORD) REC_K = (RES ? +RES[1] : tw) / SW;
   const cw = RECORD ? Math.round(SW * REC_K / 2) * 2 : SW, ch = RECORD ? Math.round(SH * REC_K / 2) * 2 : SH;   // 影片宽高要双数
-  for (const c of document.querySelectorAll('canvas')) if (c.width !== cw || c.height !== ch) {
+  // 只调整全屏的特效画布；卡片里的照片画布（cards.js）自己定尺寸
+  for (const c of [$('bg'), $('goldfx'), $('fx')]) if (c.width !== cw || c.height !== ch) {
     c.width = cw; c.height = ch;
     if (RECORD) c.getContext('2d').setTransform(cw / SW, 0, 0, ch / SH, 0, 0);   // 特效照样用舞台坐标画
   }
@@ -41,8 +42,10 @@ addEventListener('resize', fit); fit();
 
 /* ---------- 全屏 / 隐藏鼠标 ---------- */
 function toggleFs() {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen?.().catch(() => {});
+  let doc = document;
+  try { if (window.parent !== window) doc = window.parent.document; } catch {}   // 在外壳（shell.js）里：让整个外壳全屏
+  if (doc.fullscreenElement) doc.exitFullscreen();
+  else doc.documentElement.requestFullscreen?.().catch(() => {});
 }
 addEventListener('dblclick', toggleFs);
 addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') toggleFs(); });

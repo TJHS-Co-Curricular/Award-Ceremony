@@ -5,6 +5,18 @@
 'use strict';
 
 let booted = false;
+// 给外壳（shell.js）用：画面停在可以无缝换新的状态多久了
+let renewSince = 0, renewState = '';
+// ⚠ 要用 function 宣告（会挂在 window 上，外壳才叫得到；const / let 不会）
+function renewKey() { return renewState; }
+function renewMinutes() { return FXC.renewMin; }
+function renewOk() {
+  return booted && /^(standby|title|black)/.test(renewState) && performance.now() - renewSince > 3000;
+}
+function renewMark(v) {
+  const k = v.blackout ? 'black' : v.mode === 'title' ? 'title|' + v.award?.id : v.mode === 'standby' ? 'standby' : v.mode + '|' + (v.award?.id || '') + '|' + (v.winners?.length || 0);
+  if (k !== renewState) { renewState = k; renewSince = performance.now(); }
+}
 function connect() {
   const es = new EventSource('/api/display/stream?k=' + encodeURIComponent(KEY) + (PREVIEW ? '&preview=1' : '') + (qs.get('name') ? '&name=' + encodeURIComponent(qs.get('name')) : ''));
   es.onopen = () => $('conn').classList.remove('show');
@@ -16,6 +28,7 @@ function connect() {
     diagSet(v.diag);
     fxSet(v.fx);
     render(v);
+    renewMark(v);
     booted = true;
   };
   es.onerror = () => { if (!$('conn').classList.contains('show')) diagDrop(); $('conn').classList.add('show'); }; // EventSource 会自动重连，画面保持不变

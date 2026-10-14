@@ -5,59 +5,40 @@
  * 提供：FXC（目前生效的设定）、fxSet(v.fx)、fxPreviewSet(obj)（控制端预览窗口专用）
  * 需要：stage.js（qs、$）；调用时才用到 galaxy.js / goldriver.js / dust.js / standby.js / render.js
  */
-"use strict";
+'use strict';
 
 const FX_DEF = {
-  standby: "galaxy",
-  gyBright: 0.75,
-  gySpeed: 0.12,
-  gyDensity: 1,
-  gySize: 1,
-  gyX: null,
-  gyY: null,
-  gyTilt: 0.36, // gyX / gyY：null = 自动
-  grBright: 1,
-  grDensity: 1,
-  dustOn: true,
-  dustAmount: 1,
-  flashOn: true,
-  flashPeak: 0.42,
-  flashAmount: 1,
-  cascadeMs: 600,
-  photoUp: 0.25,
+  standby: 'galaxy',
+  gyBright: .75, gySpeed: .12, gyDensity: 1, gySize: 1, gyX: null, gyY: null, gyTilt: .36,   // gyX / gyY：null = 自动
+  grBright: 1, grDensity: 1,
+  dustOn: true, dustAmount: 1,
+  flashOn: true, flashPeak: .42, flashAmount: 1,
+  cascadeMs: 600, photoUp: .25,
+  renewMin: 3   // 外壳（shell.js）多久在后台换新一次画面，释放显卡内存
 };
-const FX_SCREEN = (qs.get("name") || "").replace(/·OBS$/, "");
-let FXC = { ...FX_DEF },
-  fxSrv = null,
-  fxLocal = null;
+const FX_SCREEN = (qs.get('name') || '').replace(/·OBS$/, '');
+let FXC = { ...FX_DEF }, fxSrv = null, fxLocal = null;
+const fxRebuild = { t: 0, gy: false, gr: false, dust: false };
 
-function fxSet(fx) {
-  if (JSON.stringify(fx) === JSON.stringify(fxSrv)) return;
-  fxSrv = fx;
-  fxUpdate();
-}
-function fxPreviewSet(obj) {
-  fxLocal = obj && typeof obj === "object" ? obj : null;
-  fxUpdate();
-}
+function fxSet(fx) { if (JSON.stringify(fx) === JSON.stringify(fxSrv)) return; fxSrv = fx; fxUpdate(); }
+function fxPreviewSet(obj) { fxLocal = obj && typeof obj === 'object' ? obj : null; fxUpdate(); }
 function fxUpdate() {
-  const old = FXC,
-    next = {
-      ...FX_DEF,
-      ...(fxSrv?.all || {}),
-      ...(fxSrv?.screens?.[FX_SCREEN] || {}),
-      ...(fxLocal || {}),
-    };
+  const old = FXC, next = { ...FX_DEF, ...(fxSrv?.all || {}), ...(fxSrv?.screens?.[FX_SCREEN] || {}), ...(fxLocal || {}) };
   FXC = next;
-  const ch = (...ks) => ks.some((k) => old[k] !== next[k]);
-  if (ch("gyBright", "gyDensity", "gySize", "gyX", "gyY", "gyTilt")) gyW = 0; // 星系下一帧重建
-  if (ch("grDensity")) gW = 0; // 光河下一帧重建
-  if (ch("dustOn", "dustAmount")) dustBuild();
-  $("goldfx").style.filter =
-    next.standby === "goldriver" && next.grBright !== 1
-      ? `brightness(${next.grBright})`
-      : "";
-  if (ch("standby") && $("s-standby").classList.contains("active"))
-    standbyFx(true, next.standby);
-  if (ch("photoUp") && cur.mode === "photo") photoShift();
+  const ch = (...ks) => ks.some(k => old[k] !== next[k]);
+  // 需要重建的：等滑杆停下来 0.4 秒再重建一次（拖动时不会连续重建几十次）
+  if (ch('gyBright', 'gyDensity', 'gySize', 'gyX', 'gyY', 'gyTilt')) fxRebuild.gy = true;
+  if (ch('grDensity')) fxRebuild.gr = true;
+  if (ch('dustOn', 'dustAmount')) fxRebuild.dust = true;
+  const go = () => {
+    if (fxRebuild.gy) gyW = 0;      // 星系下一帧重建
+    if (fxRebuild.gr) gW = 0;       // 光河下一帧重建
+    if (fxRebuild.dust) dustBuild();
+    fxRebuild.gy = fxRebuild.gr = fxRebuild.dust = false;
+  };
+  clearTimeout(fxRebuild.t);
+  if (RECORD) go(); else fxRebuild.t = setTimeout(go, 400);   // 导出影片：马上重建（之后时间由导出程序控制）
+  $('goldfx').style.filter = next.standby === 'goldriver' && next.grBright !== 1 ? `brightness(${next.grBright})` : '';
+  if (ch('standby') && $('s-standby').classList.contains('active')) standbyFx(true, next.standby);
+  if (ch('photoUp') && cur.mode === 'photo') photoShift();
 }

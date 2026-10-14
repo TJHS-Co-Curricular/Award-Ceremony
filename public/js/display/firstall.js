@@ -25,7 +25,8 @@ function renderFirstAll(v) {
   const cards = $('grid').children, step = list.length > 1 ? v.award.cascade || 600 : 0;
   list.forEach((w, i) => {
     if (!animate) return fillCard(cards[i], w, false);
-    setTimeout(() => { fillCard(cards[i], w, true); burst(list.length > 1 ? 100 : 180); }, i * step);
+    const card = cards[i];   // 延迟期间换了画面（网格重建）就不再填，免得旧名字跑到新奖项的卡上
+    setTimeout(() => { if (!card?.isConnected) return; fillCard(card, w, true); burst(list.length > 1 ? 100 : 180); }, i * step);
   });
   cur = { mode: 'reveal', awardId: v.award.id, key, order };
   show('s-reveal');
