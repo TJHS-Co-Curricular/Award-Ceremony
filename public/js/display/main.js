@@ -10,9 +10,10 @@ function connect() {
   es.onopen = () => $('conn').classList.remove('show');
   es.onmessage = e => {
     const v = JSON.parse(e.data);
+    diagSet(v.diag);
     render(v);
     booted = true;
   };
-  es.onerror = () => { $('conn').classList.add('show'); }; // EventSource 会自动重连，画面保持不变
+  es.onerror = () => { if (!$('conn').classList.contains('show')) diagDrop(); $('conn').classList.add('show'); }; // EventSource 会自动重连，画面保持不变
 }
 connect();

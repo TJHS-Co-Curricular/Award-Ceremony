@@ -104,7 +104,7 @@ README.md                 用户文档（中文）
   - `afterChange()` 依次做：必要时收回嘉宾授权 → `scheduleAuto()` → `broadcast()`。
 - **「下一步」逻辑**：`planNext(state)` 返回 `{ st, desc }`。控制端的下一步提示、自动播放、嘉宾揭晓都用它，修改时三处会一起受影响。
 - **动作**：`POST /api/control/action`，参数 `{ action, ... }`。动作列表：
-  `next`、`standby`、`blackout`、`message`、`group`、`title`、`photo`、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
+  `next`、`standby`、`blackout`、`message`、`group`、`title`、`photo`、`diag`（输出页诊断框开关，`rt.diag`，不进历史）、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
   - 新增动作时：在 `lib/actions.js` 的 `doAction()` switch 里加 case；如果它**不该**打断自动播放，加进 `KEEP_AUTO`；在控制端 `js/control/live.js` 的 `labelOf()` 里加中文名；递增版本号。
 - **新增接口**：在 `lib/routes/control.js` 的 `API` 表加一行 `'方法 路径': handler`（已自动做登录和 CSRF 检查）；不需要登录的页面接口放到对应的 routes 文件里。
 - **自动播放**：在服务端计时（`auto`、`scheduleAuto()`），控制端关掉也继续跑。除 `next` 和自动播放、嘉宾相关动作外，任何手动操作都会 `stopAuto()`。

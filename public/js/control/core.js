@@ -7,7 +7,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const CLIENT_VERSION = '1.17';
+const CLIENT_VERSION = '1.18';
 let V = null;          // 最新控制端视图
 let sel = null;        // 选中的奖项 id
 let draft = null;      // 编辑草稿

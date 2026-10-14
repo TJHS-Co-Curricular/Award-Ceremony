@@ -12,13 +12,14 @@ async function act(action, extra = {}) {
 }
 function labelOf(a, x) {
   const t = x.awardId && V.awards.find(w => w.id === x.awardId)?.title;
-  return ({ next: '下一步', undo: '撤销', standby: '待机', blackout: '黑屏切换', message: '消息：' + (x.text || ''), title: '公布奖项 ' + (t || ''), group: '分类标题 ' + (x.awardId && V.awards.find(w => w.id === x.awardId)?.group || ''), photo: '合影画面 ' + (t || ''), revealAll: '全部揭晓 ' + (t || ''), markPending: '标为未公布 ' + (t || ''), resetProgress: '重置进度', autoStart: `自动播放（每 ${x.interval}s）`, autoStop: '暂停自动播放', guestArm: '交给嘉宾', guestDisarm: '收回嘉宾授权', rotateGuestKey: '更换嘉宾链接' })[a] || a;
+  return ({ next: '下一步', undo: '撤销', standby: '待机', blackout: '黑屏切换', message: '消息：' + (x.text || ''), title: '公布奖项 ' + (t || ''), group: '分类标题 ' + (x.awardId && V.awards.find(w => w.id === x.awardId)?.group || ''), photo: '合影画面 ' + (t || ''), diag: x.on ? '输出页显示帧数' : '输出页隐藏帧数', revealAll: '全部揭晓 ' + (t || ''), markPending: '标为未公布 ' + (t || ''), resetProgress: '重置进度', autoStart: `自动播放（每 ${x.interval}s）`, autoStop: '暂停自动播放', guestArm: '交给嘉宾', guestDisarm: '收回嘉宾授权', rotateGuestKey: '更换嘉宾链接' })[a] || a;
 }
 $('bNext').onclick = () => act('next');
 $('bUndo').onclick = () => act('undo');
 $('bStandby').onclick = () => act('standby');
 $('bBlack').onclick = () => act('blackout');
 $('bRevealAll').onclick = () => V.state.awardId && act('revealAll', { awardId: V.state.awardId });
+$('bDiag').onclick = () => act('diag', { on: !V.diag });
 $('bPhoto').onclick = () => { const id = sel || V.state.awardId; if (id) act('photo', { awardId: id }); };
 $('bMsg').onclick = () => { const t = $('msgIn').value.trim(); if (t) act('message', { text: t }); };
 $('msgIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('bMsg').click(); });

@@ -96,6 +96,8 @@ function render() {
   });
   $('bRevealAll').disabled = !(s.mode === 'title' || s.mode === 'reveal');
   $('bPhoto').disabled = !(sel || s.awardId);
+  $('bDiag').textContent = V.diag ? '📊 输出页显示帧数：开' : '📊 输出页显示帧数：关';
+  $('bDiag').classList.toggle('on', !!V.diag);
   $('bPhoto').classList.toggle('on', s.mode === 'photo');
 
   // 地址
