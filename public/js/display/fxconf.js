@@ -14,7 +14,7 @@ const FX_DEF = {
   dustOn: true, dustAmount: 1,
   flashOn: true, flashPeak: .42, flashAmount: 1,
   cascadeMs: 600, photoUp: .25,
-  renewMin: 3   // 外壳（shell.js）多久在后台换新一次画面，释放显卡内存
+  renewMin: 3, renewReveals: 5   // 外壳（shell.js）每隔几分钟 / 每揭晓几次，在后台换新一次画面，释放显卡内存
 };
 const FX_SCREEN = (qs.get('name') || '').replace(/·OBS$/, '');
 let FXC = { ...FX_DEF }, fxSrv = null, fxLocal = null;

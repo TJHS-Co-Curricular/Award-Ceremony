@@ -5,18 +5,25 @@
 'use strict';
 
 let booted = false;
-// 给外壳（shell.js）用：画面停在可以无缝换新的状态多久了
-let renewSince = 0, renewState = '';
+// 给外壳（shell.js）用：画面是否已经「停好」（动画、闪光、照片都画完），可以无缝换新
 // ⚠ 要用 function 宣告（会挂在 window 上，外壳才叫得到；const / let 不会）
+let renewState = '', renewSince = 0, renewSettle = 0, renewReveals = 0;
+function renewMark(raw, v) {
+  if (raw === renewState) return;
+  const first = !renewState;
+  renewState = raw; renewSince = performance.now();
+  // 停好要多久：第一份数据不放动画，很快；之后要等进场 / 揭晓动画和闪光放完；先一后全全部出现时再加上逐张出现的时间
+  const view = v.award?.view, cascade = view?.mode === 'all' ? (view.to - view.from) * (v.award.cascade || 600) : 0;
+  renewSettle = first ? 800 : 2200 + cascade;
+  if (!first && v.mode === 'reveal') renewReveals++;
+}
+const renewPhotosDone = () => [...document.querySelectorAll('canvas.ph')].every(c => c.classList.contains('ok') || c.parentElement.classList.contains('nopic'));
+function renewOk() { return booted && performance.now() - renewSince > renewSettle && document.fonts.status === 'loaded' && renewPhotosDone(); }
 function renewKey() { return renewState; }
+function renewCount() { return renewReveals; }
 function renewMinutes() { return FXC.renewMin; }
-function renewOk() {
-  return booted && /^(standby|title|black)/.test(renewState) && performance.now() - renewSince > 3000;
-}
-function renewMark(v) {
-  const k = v.blackout ? 'black' : v.mode === 'title' ? 'title|' + v.award?.id : v.mode === 'standby' ? 'standby' : v.mode + '|' + (v.award?.id || '') + '|' + (v.winners?.length || 0);
-  if (k !== renewState) { renewState = k; renewSince = performance.now(); }
-}
+function renewEvery() { return FXC.renewReveals; }
+
 function connect() {
   const es = new EventSource('/api/display/stream?k=' + encodeURIComponent(KEY) + (PREVIEW ? '&preview=1' : '') + (qs.get('name') ? '&name=' + encodeURIComponent(qs.get('name')) : ''));
   es.onopen = () => $('conn').classList.remove('show');
@@ -28,7 +35,7 @@ function connect() {
     diagSet(v.diag);
     fxSet(v.fx);
     render(v);
-    renewMark(v);
+    renewMark(e.data, v);
     booted = true;
   };
   es.onerror = () => { if (!$('conn').classList.contains('show')) diagDrop(); $('conn').classList.add('show'); }; // EventSource 会自动重连，画面保持不变
