@@ -151,10 +151,24 @@ let recBusy = false, recFrame = null;
 function recInfo() {
   const sc = fxPvScreen();
   $('recRes').textContent = `${sc.width}×${sc.height}${sc.name ? '（' + sc.name + '）' : ''}`;
+  // 用 http://IP 打开控制端时浏览器不给影片编码（WebCodecs 只在 https / 127.0.0.1 才有）：提示改用服务器渲染
+  if (!isSecureContext && !recBusy && !srvAutoDl.size) $('recState').textContent = '用 http://IP 打开时这台浏览器不能编码，「开始导出」会自动交给服务器渲染，完成后自动下载';
 }
 $('fxPvScreen').addEventListener('change', recInfo);
 $('bRec').onclick = async () => {
   if (recBusy) return;
+  // 用 http://IP 打开（浏览器不给影片编码）：自动改成交给服务器渲染这个屏幕，完成后自动下载到这台电脑
+  if (!isSecureContext) {
+    const sc = fxPvScreen();
+    const job = { screen: sc.name || '*', content: $('recContent').value, seconds: +$('recSec').value || 60, fade: +$('recFade').value || 0, fps: +$('recFps').value, quality: +$('recQ').value };
+    try {
+      const r = await api('POST', '/api/control/render', { jobs: [job], parallel: +$('srvPar').value || undefined });
+      r.ids.forEach(id => srvAutoDl.add(id));
+      $('recState').textContent = '已交给服务器渲染（这台浏览器不能编码），完成后会自动下载；进度在下面';
+      srvRefresh();
+    } catch (e) { $('recState').textContent = '没有导出：' + e.message; }
+    return;
+  }
   const sc = fxPvScreen(), opt = {
     content: $('recContent').value, seconds: Math.min(600, Math.max(3, +$('recSec').value || 60)),
     fade: Math.min(10, Math.max(0, +$('recFade').value || 0)), fps: +$('recFps').value, bpp: +$('recQ').value
@@ -185,6 +199,7 @@ $('bRecStop').onclick = () => { try { recFrame?.contentWindow?.recCancel(); } ca
 
 /* ---------- 服务器渲染：交给服务端（lib/render.js）在那台电脑上渲染，这里只看进度、下载 ---------- */
 let srvPoll = 0, srvSig = '';
+const srvAutoDl = new Set();   // 由「开始导出」交给服务器的任务：完成后自动下载
 const SRV_NAME = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
 const srvMB = b => (b / 1048576).toFixed(1) + ' MB';
 function srvStart() { srvFill(); srvRefresh(); clearInterval(srvPoll); srvPoll = setInterval(srvRefresh, 1500); }
@@ -202,6 +217,14 @@ async function srvRefresh() {
   $('bSrvRender').disabled = !st.available;
   if (!$('srvPar').dataset.set) { $('srvPar').value = st.parallel; $('srvPar').dataset.set = '1'; }
   const sig = JSON.stringify([st.jobs, st.files]); if (sig === srvSig) return; srvSig = sig;   // 没变就不重画
+  for (const j of st.jobs) if (srvAutoDl.has(j.id) && ['done', 'error', 'canceled'].includes(j.state)) {
+    srvAutoDl.delete(j.id);
+    if (j.state === 'done') {
+      const a = el('a', { href: '/api/control/render/file?name=' + encodeURIComponent(j.file), download: j.file });
+      document.body.append(a); a.click(); a.remove();
+      $('recState').textContent = `完成（服务器渲染）：${srvMB(j.size)} · ${j.encoder || ''}，已下载`;
+    } else $('recState').textContent = '服务器渲染' + (j.state === 'error' ? '失败：' + j.error : '已取消');
+  }
   const jobs = [...st.jobs].reverse();
   $('srvJobs').replaceChildren(...jobs.map(j => {
     const active = j.state === 'queued' || j.state === 'running';
