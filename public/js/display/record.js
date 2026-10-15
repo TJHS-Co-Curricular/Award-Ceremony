@@ -245,7 +245,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
   // 循环用：开头 C 帧的背景，最后几秒拿来交叉淡化。总量不大（≤ 800 MB）时直接留在显卡里（ImageBitmap，最快），
   // 太大就压成 JPEG 暂存（比 WebP 快很多；只用在淡化那几秒，看不出差别）
   const head = [], headRaw = W * H * 4 * C <= 800 * 1048576;
-  let tHead = 0;
+  let tHead = 0, recJpg = null, recJpgCtx = null;
   const flashAt = []; if (content === 'flash') for (let t = .3; t === .3 || t + 2.6 <= opt.seconds; t += 4) flashAt.push(t);
   let ft = 0;
   // 分段（opt.seg = { from, to }：只输出影片第 from ~ to-1 帧；lib/render.js 把一支影片分给几个分页同时算，最后接起来）。
@@ -271,7 +271,11 @@ async function recRun(opt, fx, onProgress, allowHw) {
       if (i < C) {
         if (!needHead) continue;
         const t = Date.now();
-        head.push(headRaw ? await createImageBitmap(out) : await new Promise(r => out.toBlob(r, 'image/jpeg', .92)));
+        // 不用 canvas.toBlob：Chrome 把它排在「空闲时间」才压，CPU 全忙时（服务器 8 个分页同时算）一张要等好几秒。
+        // 改成复制到 OffscreenCanvas 再 convertToBlob，马上压
+        if (!headRaw && !recJpg) { recJpg = new OffscreenCanvas(W, H); recJpgCtx = recJpg.getContext('2d'); }
+        if (!headRaw) recJpgCtx.drawImage(out, 0, 0);
+        head.push(headRaw ? await createImageBitmap(out) : await recJpg.convertToBlob({ type: 'image/jpeg', quality: .92 }));
         tHead += Date.now() - t;
         onProgress(++done / total, '准备循环接缝'); continue;
       }
