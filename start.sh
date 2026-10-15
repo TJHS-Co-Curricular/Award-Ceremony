@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # 表扬大会 · 颁奖公布系统 —— Linux / macOS 启动脚本（Windows 用 start.bat）
-#   ./start.sh                         启动服务端（和 start.bat 一样）
+#   ./start.sh                         启动服务端（和 start.bat 一样；sh start.sh / bash start.sh 也可以）
 #   ./start.sh render [任务.json] [--parallel N] [--out 目录]
 #                                      批量导出影片（远端服务器用）：服务端没在跑就自动在后台开、导完自动关
 #   任务文件格式见 tools/render-jobs.example.json；不给就每个屏幕各导出一支 60 秒的待机画面，存到 Result/影片/
 #   名单是加密的：先 export AWARD_PASS=口令，或执行时会问你
 #   Chrome 路径：export CHROME=/usr/bin/google-chrome；额外参数：export CHROME_FLAGS="..."
+# 用 sh start.sh 执行时（Ubuntu / Debian 的 sh 是 dash，不认 bash 语法）：自动改用 bash 重新执行
+if [ -z "${BASH_VERSION:-}" ]; then
+  command -v bash >/dev/null 2>&1 || { echo "需要 bash：请先安装 bash，或执行 bash start.sh"; exit 1; }
+  exec bash "$0" "$@"
+fi
 set -euo pipefail
 cd "$(dirname "$0")"
 
