@@ -87,6 +87,11 @@ function gFrame(now) {
   if (typeof fxDrawn !== 'undefined') fxDrawn++;   // 后台线程：数实际画了几帧（诊断框）
   const dt = Math.min(.05, (now - (gLast || now)) / 1000); gLast = now;
   if (gW !== SW || gH !== SH || !gBg) gBuild();
+  if (REC_SKIP) {   // 导出影片快转：只推进光点和金粉，不画
+    for (const p of gParts) { p.t += p.v * (.35 + p.t * .9) * dt; if (p.t >= .985) gSeed(p, false); }
+    for (const s of gSpark) s.t += s.v;
+    return;
+  }
   const t0 = performance.now(), k = gH / 1080, time = now / 1000;
   gx.globalCompositeOperation = 'source-over'; gx.globalAlpha = 1; gx.drawImage(gBg, 0, 0, gW, gH);
   gx.globalCompositeOperation = 'lighter';

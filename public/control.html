@@ -227,7 +227,7 @@
               <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)">
                 <b style="color:var(--text,#eee)">在服务器渲染</b>
                 <label class="xl">屏幕 <select id="srvScreen" style="width:auto"></select></label>
-                <label class="xl">同时 <input id="srvPar" type="number" min="1" max="8" value="1" style="width:56px"> 支</label>
+                <label class="xl" title="服务端同时开几个分页渲染（每个约用一个 CPU 核心）。有 ffmpeg 时，6 秒以上的影片会自动切成几段同时算，最后无缝接起来">同时 <input id="srvPar" type="number" min="1" max="16" value="1" style="width:56px"> 个分页</label>
                 <button id="bSrvRender">交给服务器渲染</button>
                 <span id="srvAvail" class="muted" style="font-size:12px;flex:1"></span>
               </div>

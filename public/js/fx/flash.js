@@ -34,6 +34,11 @@ function burst(n = 160) {
   if (!running) { running = true; requestAnimationFrame(stepFx); }
 }
 function stepFx(now) {
+  if (REC_SKIP) {   // 导出影片快转：只丢掉过期的闪光，不画
+    flashes = flashes.filter(f => now < f.t0 + f.dur);
+    if (flashes.length) requestAnimationFrame(stepFx); else running = false;
+    return;
+  }
   fx.clearRect(0, 0, SW, SH);
   flashes = flashes.filter(f => now < f.t0 + f.dur);
   fx.globalCompositeOperation = 'lighter';

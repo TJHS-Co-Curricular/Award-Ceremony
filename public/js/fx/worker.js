@@ -8,7 +8,7 @@
  */
 'use strict';
 
-var SW = 1920, SH = 1080, PREVIEW = false, RECORD = false, REC_K = 1, FXC = {};
+var SW = 1920, SH = 1080, PREVIEW = false, RECORD = false, REC_SKIP = false, REC_K = 1, FXC = {};
 const FX_CANVAS = {};
 const $ = id => FX_CANVAS[id];
 const mkCanvas = (w = 1, h = 1) => new OffscreenCanvas(w, h);

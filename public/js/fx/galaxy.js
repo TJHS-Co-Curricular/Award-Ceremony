@@ -76,6 +76,7 @@ function gyFrame(now) {
   if (typeof fxDrawn !== 'undefined') fxDrawn++;   // 后台线程：数实际画了几帧（诊断框）
   const dt = Math.min(.05, (now - (gyLast || now)) / 1000); gyLast = now; gyT += dt * FXC.gySpeed;
   if (gyW !== SW || gyH !== SH || !gyBg) gyBuild();
+  if (REC_SKIP) return;   // 导出影片快转：星系只靠时间 gyT，不用画
   const g = gyCtx, B = FXC.gyBright, t0 = performance.now();
   g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.drawImage(gyBg, 0, 0, SW, SH);
   g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';

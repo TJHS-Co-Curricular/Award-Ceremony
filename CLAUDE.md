@@ -53,7 +53,7 @@ lib/                      服务端，按功能分（只用 Node 内建模块）
   http.js                 安全标头、sendJson / sendText / sendStatic、readBody、csrfOk、safeAsset
   media.js                照片（压缩版优先、ETag）和字体文件
   obs.js                  OBS 场景集合
-  render.js               服务器渲染影片：零依赖 CDP（Node 22 fetch / WebSocket）开无头 Chrome（自动试 Vulkan / EGL 显卡参数）跑 display.html?record=1 的 recStart()；有 ffmpeg 时 opt.sink 让每帧 RGBA POST 到 /api/display/render-frame（只限本机 + 一次性密钥）由 ffmpeg h264_nvenc → libx264 编码，否则浏览器编码分块取回；存 Result/影片/。排队 enqueue / cancel / state（控制端 /api/control/render*）；命令行 tools/render-video.js 是这个队列的客户端（用 config.json 密码登录）
+  render.js               服务器渲染影片：零依赖 CDP（Node 22 fetch / WebSocket）开无头 Chrome（自动试 Vulkan / EGL 显卡参数）跑 display.html?record=1 的 recStart()；有 ffmpeg 时 opt.sink 让每帧 RGBA POST 到 /api/display/render-frame（只限本机 + 一次性密钥）由 ffmpeg h264_nvenc → libx264 编码，否则浏览器编码分块取回；存 Result/影片/。排队 enqueue / cancel / state（控制端 /api/control/render*；有 ffmpeg 时一支影片按 planSegs() 切段，每段 opt.seg = { from, to } 一个分页，concatSegs() 用 ffmpeg concat 接起来——⚠ 靠导出时固定种子的 Math.random 和 REC_SKIP 快转，特效脚本新增随机或有状态的东西时，要在 REC_SKIP 时照样推进状态）；命令行 tools/render-video.js 是这个队列的客户端（用 config.json 密码登录）
   cli.js                  quit()、口令输入、encrypt / decrypt 命令
   routes/index.js         路由总入口：IP 检查后依次交给 assets → display → guest → control
   routes/assets.js        /assets/css|js|img/…（静态资源，不需要密钥）

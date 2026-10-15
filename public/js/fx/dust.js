@@ -20,6 +20,10 @@ let bgOdd = false;
 (function drawBg() {
   requestAnimationFrame(drawBg);
   if ((bgOdd = !bgOdd) || !dust.length) return;   // 隔帧画一次（≈30 fps）；关掉时不画
+  if (REC_SKIP) {   // 导出影片快转：只移动，不画
+    for (const d of dust) { d.x += d.vx * 2; d.y += d.vy * 2; d.t += .04; if (d.y < -10 || d.x > SW + 10) { d.y = SH + 10; d.x = Math.random() * SW; } }
+    return;
+  }
   bg.clearRect(0, 0, SW, SH);
   for (const d of dust) {
     d.x += d.vx * 2; d.y += d.vy * 2; d.t += .04;   // 隔帧画，步长加倍保持原速度

@@ -246,35 +246,46 @@ async function recRun(opt, fx, onProgress, allowHw) {
   let tHead = 0;
   const flashAt = []; if (content === 'flash') for (let t = .3; t === .3 || t + 2.6 <= opt.seconds; t += 4) flashAt.push(t);
   let ft = 0;
+  // 分段（opt.seg = { from, to }：只输出影片第 from ~ to-1 帧；lib/render.js 把一支影片分给几个分页同时算，最后接起来）。
+  // 前面的帧快转（REC_SKIP：特效只推进状态、不画），这一段开始前 2 帧先画一次（不输出），每张画布都是最新的。
+  const seg = opt.seg, from = seg ? Math.max(0, seg.from | 0) : 0, to = seg ? Math.min(N, seg.to | 0) : N;
+  const needHead = C > 0 && to > N - C;   // 这一段包含最后的循环淡化：要先画开头那几帧
+  const total = (needHead ? C : 0) + (to - from);
+  let done = 0;
   try {
-    for (let i = 0; i < N + C; i++) {
+    for (let i = 0; i < C + to; i++) {
       if (recStop) throw new Error('已取消');
       if (E.failed()) throw Object.assign(new Error('编码失败：' + E.failed().message), { recHw: E.hw });
+      const k = i - C, use = i < C ? needHead : k >= from;   // 影片里的第 k 帧；use = 这一帧要输出（或存起来淡化用）
+      REC_SKIP = !(use || (k >= from - 2 && k < from));
       if (content === 'flash') { const t = i / fps; while (ft < flashAt.length && flashAt[ft] <= t) { burst(260); ft++; } }
       for (let s = 0; s < sub; s++) recTick(1000 / 60);
+      if (REC_SKIP) { if (i % 300 === 0) { onProgress(done / total, '快转到这一段'); await recYield(); } continue; }
       // 背景
       o.setTransform(1, 0, 0, 1, 0, 0); o.globalAlpha = 1; o.globalCompositeOperation = 'source-over'; o.filter = 'none';
       if (content === 'standby' || content === 'standbybg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
       else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
       else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
       if (i < C) {
+        if (!needHead) continue;
         const t = Date.now();
         head.push(headRaw ? await createImageBitmap(out) : await new Promise(r => out.toBlob(r, 'image/jpeg', .92)));
         tHead += Date.now() - t;
-        onProgress((i + 1) / (N + C), '准备循环接缝'); continue;
+        onProgress(++done / total, '准备循环接缝'); continue;
       }
+      if (!use) continue;   // 这一段开头前的暖身帧
       if (i >= N) {   // 最后 C 帧：慢慢换成开头的画面
         const bm = headRaw ? head[i - N] : await createImageBitmap(head[i - N]); head[i - N] = null;
         o.globalAlpha = (i - N + .5) / C; o.drawImage(bm, 0, 0); o.globalAlpha = 1; bm.close();
       }
-      const k = i - C;   // 影片里的第 k 帧
       if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, ((k / fps) / P) % 1); }
       await E.push(out, k, o);
-      onProgress((i + 1) / (N + C), '渲染中');
+      onProgress(++done / total, '渲染中');
       if (i % 2 === 0) await recYield();
     }
+    REC_SKIP = false;
     var res = await E.finish();
-  } finally { E.close(); }
+  } finally { REC_SKIP = false; E.close(); }
   const secs = (Date.now() - recT0) / 1000;   // 注意：录影时 performance.now 是虚拟时钟，这里用真实时间
-  return { ...res, codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs), headSecs: tHead / 1000, renderSecs: secs - tHead / 1000 };
+  return { ...res, codec: E.codec, hw: E.hw, width: W, height: H, speed: total / Math.max(.001, secs), frames: total, headSecs: tHead / 1000, renderSecs: secs - tHead / 1000 };
 }
