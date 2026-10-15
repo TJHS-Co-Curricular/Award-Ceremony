@@ -2,6 +2,20 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.28] — 2026-10-15
+
+### 新增
+- **服务器渲染**（「效果控制 → 导出影片 → 在服务器渲染」）：从任何一台电脑的控制端，把影片交给**服务端那台电脑**渲染（不占你的电脑）。选屏幕（可全部屏幕）、同时几支，用上面的内容 / 长度 / 帧率 / 画质；每 1.5 秒更新进度，可取消；渲染好的影片列在下面，可下载、删除（存在服务端 `Result/影片/`）。
+  - 服务端新文件 `lib/render.js`（排队、无头 Chrome、DevTools 协议，命令行 `tools/render-video.js` 也改用它）；接口 `GET/POST /api/control/render`、`POST /api/control/render/cancel`、`POST /api/control/render/delete`、`GET /api/control/render/file`（只限已登录；文件名只认 `Result/影片/` 里的 .mp4）。
+  - 闲置 20 秒自动关掉 Chrome。需要服务端是 Node.js 22+（exe 已内建）并装有 Chrome / Edge。版本号升到 1.28。
+
+## [1.27] — 2026-10-15
+
+### 新增
+- **`start.sh`（Linux / macOS）**：`./start.sh` 启动服务端（同 start.bat）；`./start.sh render [任务.json] [--parallel N] [--out 目录]` 在远端服务器**批量导出影片**——服务端没在跑就自动在后台开（加密名单会问口令，或用 `AWARD_PASS`），导完自动关。
+- **`tools/render-video.js`**：零依赖（Node 22+ 内建 fetch / WebSocket 直接走 Chrome DevTools 协议），开无头 Chrome 跑和控制端「导出影片」同一套 `recStart()`，分块取回 MP4 存到 `Result/影片/`。多支同时导出（默认 CPU 核心数 ÷ 4），每支各自一个 Chrome 进程，吃满多核。效果设定用服务端 `data/fx.json`（含每个屏幕单独的设定）。不给任务文件就每个屏幕各导出一支 60 秒待机画面。任务格式见 `tools/render-jobs.example.json`。
+- `.gitattributes`：`*.sh` 固定 LF。版本号升到 1.27。
+
 ## [1.26] — 2026-10-15
 
 ### 性能

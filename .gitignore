@@ -6,6 +6,7 @@ data/*
 !data/export-style.json
 !data/fx.json
 logs/
+.render-server.pid
 Result/
 *.tmp
 

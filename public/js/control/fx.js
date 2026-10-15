@@ -3,7 +3,8 @@
  * 表单按服务端给的设定格式（lib/fx.js 的 SCHEMA）生成；值存在服务端 data/fx.json。
  * 「设定给」= 所有屏幕，或某一个屏幕（只记录改过的项目，其余跟随所有屏幕）。
  * 「即时套用到大屏」开：改了约 0.3 秒后自动保存并推送；关：只改右边预览（fxPreviewSet），按「套用到大屏」才推送。
- * 下方「导出影片」：开一个隐藏的输出页（record=1，display/record.js）逐帧渲染成 .mp4 下载。
+ * 下方「导出影片」：开一个隐藏的输出页（record=1，display/record.js）逐帧渲染成 .mp4 下载；
+ *   「在服务器渲染」：交给服务端（lib/render.js，/api/control/render）在那台电脑上渲染，这里每 1.5 秒看一次进度、提供下载。
  * 提供：fxOpen()、fxClose()、fxDirty
  * 需要：core.js（$、V、api、el、toast、store）
  */
@@ -25,9 +26,9 @@ async function fxOpen() {
   fxScope = scope.value;
   pv.replaceChildren(...fxScreens().map((sc, i) => el('option', { value: i }, `${sc.name || '输出页'} ${sc.width}×${sc.height}`)));
   if ([...pv.options].some(o => o.value === keepPv)) pv.value = keepPv;
-  fxBuild(); fxPvLoad(); fxStatus(); recInfo();
+  fxBuild(); fxPvLoad(); fxStatus(); recInfo(); srvStart();
 }
-function fxClose() { if ($('fxPv').src !== 'about:blank') $('fxPv').src = 'about:blank'; }   // 不在这页就停掉预览（省电）
+function fxClose() { srvStop(); if ($('fxPv').src !== 'about:blank') $('fxPv').src = 'about:blank'; }   // 不在这页就停掉预览（省电）
 
 /* ---------- 值：所有屏幕 / 单一屏幕 ---------- */
 const fxOver = k => !!(fxScope && fxData.screens[fxScope] && k in fxData.screens[fxScope]);
@@ -181,3 +182,47 @@ $('bRec').onclick = async () => {
   $('bRec').disabled = false; $('bRecStop').classList.add('hidden');
 };
 $('bRecStop').onclick = () => { try { recFrame?.contentWindow?.recCancel(); } catch {} };
+
+/* ---------- 服务器渲染：交给服务端（lib/render.js）在那台电脑上渲染，这里只看进度、下载 ---------- */
+let srvPoll = 0, srvSig = '';
+const SRV_NAME = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
+const srvMB = b => (b / 1048576).toFixed(1) + ' MB';
+function srvStart() { srvFill(); srvRefresh(); clearInterval(srvPoll); srvPoll = setInterval(srvRefresh, 1500); }
+function srvStop() { clearInterval(srvPoll); srvPoll = 0; }
+function srvFill() {
+  const sel = $('srvScreen'), keep = sel.value;
+  sel.replaceChildren(el('option', { value: '*' }, '全部屏幕'), ...(V?.screens || []).map(sc => el('option', { value: sc.name }, `${sc.name} ${sc.width}×${sc.height}`)));
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+async function srvRefresh() {
+  let st; try { st = await api('GET', '/api/control/render'); } catch { return; }
+  $('srvAvail').textContent = st.available ? `服务端 CPU ${st.cpus} 核` : '⚠ ' + st.reason;
+  $('srvAvail').style.color = st.available ? '' : 'var(--warn)';
+  $('bSrvRender').disabled = !st.available;
+  if (!$('srvPar').dataset.set) { $('srvPar').value = st.parallel; $('srvPar').dataset.set = '1'; }
+  const sig = JSON.stringify([st.jobs, st.files]); if (sig === srvSig) return; srvSig = sig;   // 没变就不重画
+  const jobs = [...st.jobs].reverse();
+  $('srvJobs').replaceChildren(...jobs.map(j => {
+    const active = j.state === 'queued' || j.state === 'running';
+    const info = j.state === 'done' ? `${srvMB(j.size)} · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.hw ? '显卡编码' : 'CPU 编码'} · 每秒 ${j.speed?.toFixed(1)} 帧 · ${Math.round((j.ended - j.started) / 1000)} 秒`
+      : j.state === 'error' ? '失败：' + j.error : j.state === 'running' ? `${j.what} ${(j.prog * 100).toFixed(0)}%` : j.what;
+    return el('div', { class: 'srvrow' },
+      el('span', {}, `#${j.id} ${SRV_NAME[j.content]} · ${j.screen} ${j.width}×${j.height} · ${j.seconds}s · ${j.fps}fps`),
+      el('div', { class: 'autobar' }, el('i', { style: `width:${(j.prog * 100).toFixed(1)}%;${j.state === 'error' ? 'background:var(--bad)' : j.state === 'done' ? 'background:var(--go)' : ''}` })),
+      el('span', { class: 'muted' }, info),
+      active ? el('button', { onclick: () => api('POST', '/api/control/render/cancel', { id: j.id }).then(srvRefresh).catch(e => toast(e.message, true)) }, '取消')
+        : j.state === 'done' ? el('a', { href: '/api/control/render/file?name=' + encodeURIComponent(j.file), download: j.file }, '下载') : el('span'));
+  }));
+  $('srvFiles').replaceChildren(...(st.files.length ? [el('div', { class: 'muted', style: 'font-size:12px;margin:6px 0 2px' }, `服务端已有的影片（${st.files.length}）`)] : []),
+    ...st.files.map(f => el('div', { class: 'srvrow file' },
+      el('span', {}, f.name), el('span', { class: 'muted' }, `${srvMB(f.size)} · ${new Date(f.mtime).toLocaleString('zh-CN', { hour12: false })}`),
+      el('a', { href: '/api/control/render/file?name=' + encodeURIComponent(f.name), download: f.name }, '下载'),
+      el('button', { onclick: () => { if (confirm(`删除服务端上的「${f.name}」？`)) api('POST', '/api/control/render/delete', { name: f.name }).then(srvRefresh).catch(e => toast(e.message, true)); } }, '删除'))));
+}
+$('bSrvRender').onclick = async () => {
+  const job = { screen: $('srvScreen').value, content: $('recContent').value, seconds: +$('recSec').value || 60, fade: +$('recFade').value || 0,
+    fps: +$('recFps').value, quality: +$('recQ').value };
+  if (fxDirty) toast('提醒：效果设定还没套用到大屏，服务器会用已保存的设定');
+  try { const r = await api('POST', '/api/control/render', { jobs: [job], parallel: +$('srvPar').value || 1 }); toast(`已交给服务器：${r.added} 支`); srvRefresh(); }
+  catch (e) { toast('服务器渲染失败：' + e.message, true); }
+};

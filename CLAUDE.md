@@ -53,6 +53,7 @@ lib/                      服务端，按功能分（只用 Node 内建模块）
   http.js                 安全标头、sendJson / sendText / sendStatic、readBody、csrfOk、safeAsset
   media.js                照片（压缩版优先、ETag）和字体文件
   obs.js                  OBS 场景集合
+  render.js               服务器渲染影片：零依赖 CDP（Node 22 fetch / WebSocket）开无头 Chrome 跑 display.html?record=1 的 recStart()，分块取回存 Result/影片/；排队 enqueue / cancel / state（控制端 /api/control/render*），命令行 tools/render-video.js 共用
   cli.js                  quit()、口令输入、encrypt / decrypt 命令
   routes/index.js         路由总入口：IP 检查后依次交给 assets → display → guest → control
   routes/assets.js        /assets/css|js|img/…（静态资源，不需要密钥）
@@ -70,6 +71,8 @@ public/                   网页（只有程序和样式，没有数据）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
                           → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ fx.js（效果控制）→ main.js（启动）
   js/guest/main.js        嘉宾揭晓页
+start.sh                  Linux / macOS：启动服务端；`./start.sh render` 批量导出影片（⚠ 必须 LF，见 .gitattributes）
+tools/render-video.js     批量导出影片（命令行）：用 lib/render.js；任务格式 tools/render-jobs.example.json
 build.bat                 双击编译 exe
 build/build-exe.js        SEA 打包脚本（离线）：bundle() 合并服务端代码，public/ 全部作为资源
 build/vendor/             随附的 postject（注入 SEA blob）和 resedit（改 exe 图标与版本信息），都是 MIT

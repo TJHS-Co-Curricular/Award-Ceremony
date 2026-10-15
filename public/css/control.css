@@ -188,3 +188,10 @@ code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius
 .fxr.over .fxu{visibility:visible}
 .fxr.over>span:first-child{color:var(--gold)}
 .fxr.lock{opacity:.45}
+/* 服务器渲染 */
+.srvrow{display:grid;grid-template-columns:minmax(0,2.2fr) 120px minmax(0,2fr) auto;gap:10px;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--line)}
+.srvrow.file{grid-template-columns:minmax(0,2.2fr) minmax(0,1.4fr) auto auto}
+.srvrow>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srvrow button{padding:3px 9px;font-size:12px}
+.srvrow a{color:var(--gold)}
+.srvrow .autobar{margin:0}

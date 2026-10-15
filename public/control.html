@@ -224,6 +224,16 @@
                 <span id="recState" class="muted" style="font-size:12px;flex:1"></span>
               </div>
               <div class="autobar" style="margin-top:8px"><i id="recBar"></i></div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)">
+                <b style="color:var(--text,#eee)">在服务器渲染</b>
+                <label class="xl">屏幕 <select id="srvScreen" style="width:auto"></select></label>
+                <label class="xl">同时 <input id="srvPar" type="number" min="1" max="8" value="1" style="width:56px"> 支</label>
+                <button id="bSrvRender">交给服务器渲染</button>
+                <span id="srvAvail" class="muted" style="font-size:12px;flex:1"></span>
+              </div>
+              <div id="srvJobs" style="margin-top:8px"></div>
+              <div id="srvFiles" style="margin-top:8px"></div>
+              <p class="help">「交给服务器渲染」：用上面的内容 / 长度 / 帧率 / 画质，在<b>服务端那台电脑</b>上开无头 Chrome 渲染（不占你这台电脑），渲染好的影片在下面下载，存在服务端的 <code>Result/影片/</code>。用的是服务端已保存的效果设定（还没套用到大屏的改动不算）。服务端需要 Node.js 22+ 和 Chrome。</p>
               <p class="help">分辨率 = 上面「预览」选的屏幕；用的是这一页目前的效果设定（包括还没套用到大屏的）。逐帧离线渲染，电脑慢只是导出久一点，影片不会掉帧；导出时请留在这一页。影片首尾会交叉淡化，播放器设「循环播放」就看不出接缝（淡化设 0 = 不循环）。闪光影片每 4 秒闪一次。需要新版 Chrome / Edge。</p>
             </div>
           </div>

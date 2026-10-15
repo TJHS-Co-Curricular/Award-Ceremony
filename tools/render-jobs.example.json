@@ -1,0 +1,8 @@
+{
+  "说明": "批量导出影片的任务清单：./start.sh render tools/render-jobs.example.json。screen = config.json 里的屏幕名称（\"*\" = 所有屏幕）；content：standby 待机画面 / standbybg 待机背景 / base 底层背景 / flash 揭晓闪光；seconds 3–600；fade 循环淡接秒数（0 = 不循环）；fps 30 / 60；quality：标准 / 高 / 极高；file 可省略（自动命名）。",
+  "jobs": [
+    { "screen": "*", "content": "standby", "seconds": 60, "fade": 2, "fps": 30, "quality": "高" },
+    { "screen": "*", "content": "standbybg", "seconds": 60, "fade": 2, "fps": 30, "quality": "高" },
+    { "screen": "主屏", "content": "flash", "seconds": 12, "fps": 30, "quality": "高" }
+  ]
+}
