@@ -199,9 +199,12 @@ OBS 的浏览器来源开着硬件加速时（AMD 内置显卡特别明显），
 - 服务端没在跑会自动在后台开（输出写到 `logs/render-server.log`），导完自动关；名单加密的话会问口令，或先 `export AWARD_PASS=口令`。
 - 影片存到 `Result/影片/`（不进 Git），文件名和控制端导出的一样。效果设定用 `data/fx.json`，先在控制端「效果控制」调好再导。
 - **任务清单**（`tools/render-jobs.example.json`）：`screen`（屏幕名称，`"*"` = 全部）、`content`（`standby` / `standbybg` / `base` / `flash`）、`seconds`、`fade`、`fps`（30 / 60）、`quality`（标准 / 高 / 极高）、`file`（可省略）。
-- **多核**：`--parallel N` 同时导几支（默认 CPU 核心数 ÷ 4），每支各自一个 Chrome 进程。
+- **多核**：`--parallel N` 同时导几支（默认 CPU 核心数 ÷ 4），每支各自一个 Chrome 分页。命令行其实是把任务交给服务端的队列（和网页版同一个），所以网页上也看得到进度；按 Ctrl+C 会取消这一批。
 - ⚠ 服务器要装中文字体（例如 `sudo apt install fonts-noto-cjk`），或在「奖项编辑」上传字体文件，否则活动名称会变成方块。
-- 显卡编码：Linux 上的 Chrome 只在 Intel / AMD（VA-API）可能用显卡编码；NVIDIA 在 Linux Chrome 里通常是 CPU 编码。完成时每支都会显示用了哪一种。
+- **显卡 / 多核编码（建议装 ffmpeg：`sudo apt install ffmpeg`）**：有 ffmpeg 时，浏览器只画画面，编码交给 ffmpeg——先用 **NVENC（NVIDIA 显卡，例如 Tesla P40）**，不行用 **x264（CPU 多核）**。没有 ffmpeg 才用浏览器内建编码（Linux Chrome 用不到 NVIDIA 显卡编码，而且慢）。控制端「在服务器渲染」和命令行都会显示用了哪一种。
+  - NVENC 不能用、显示「Cannot load libnvidia-encode」之类：装上和驱动同版本的 `libnvidia-encode-版本号`（例如 `sudo apt install libnvidia-encode-580-server`）。
+  - Chrome 画画面也会自动试着用显卡（Vulkan / EGL），状态栏「画面：」显示实际用到的显卡；显示「CPU 模拟」就是没用上（不影响结果，只是慢一点）。
+  - 关掉：`RENDER_NVENC=0`（不用 NVENC）、`RENDER_FFMPEG=0`（不用 ffmpeg）、`RENDER_GPU=off`（Chrome 不试显卡）。
 
 ### 性能
 

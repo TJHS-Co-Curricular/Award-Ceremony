@@ -2,11 +2,22 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.29] — 2026-10-15
+
+### 新增
+- **服务器渲染用上显卡（例如 Tesla P40）**：
+  - **编码**：Linux 版 Chrome 用不到 NVIDIA 的 NVENC，所以服务器装了 ffmpeg 时，改成浏览器只负责画画面，每帧原始画面（RGBA）经本机 POST 给服务端（`/api/display/render-frame`，只限本机连线 + 每支影片一次性密钥），由 ffmpeg 编码：先试 **h264_nvenc（显卡）**，不能用就 **libx264（CPU 多核）**，都没有才用浏览器内建编码。ffmpeg 中途失败会自动改用浏览器编码重来。输出 H.264 High、BT.709、`+faststart`。
+  - **画面**：无头 Chrome 依次试 Vulkan / EGL 启动参数，挑第一组真的用上显卡的（用 `SystemInfo.getInfo` 检查，SwiftShader / llvmpipe 算软件），都不行就照旧。
+  - 控制端「在服务器渲染」显示服务端用什么编码、Chrome 画面用哪张显卡；每支完成时显示编码方式。
+  - 环境变量：`RENDER_NVENC=0`（不用 NVENC）、`RENDER_FFMPEG=0`（不用 ffmpeg）、`RENDER_GPU=off`（不试显卡参数）、`FFMPEG=路径`。
+- **命令行 `start.sh render` 改成交给服务端的队列**（和网页版同一套，所以 NVENC 也一样用得上）：自动用 config.json 的密码登录、排任务、显示进度；Ctrl+C 取消这一批。版本号升到 1.29。
+
 ## [1.28] — 2026-10-15
 
 ### 新增
 - **服务器渲染**（「效果控制 → 导出影片 → 在服务器渲染」）：从任何一台电脑的控制端，把影片交给**服务端那台电脑**渲染（不占你的电脑）。选屏幕（可全部屏幕）、同时几支，用上面的内容 / 长度 / 帧率 / 画质；每 1.5 秒更新进度，可取消；渲染好的影片列在下面，可下载、删除（存在服务端 `Result/影片/`）。
   - 服务端新文件 `lib/render.js`（排队、无头 Chrome、DevTools 协议，命令行 `tools/render-video.js` 也改用它）；接口 `GET/POST /api/control/render`、`POST /api/control/render/cancel`、`POST /api/control/render/delete`、`GET /api/control/render/file`（只限已登录；文件名只认 `Result/影片/` 里的 .mp4）。
+  - `start.sh` 用 `sh start.sh` 执行（Ubuntu / Debian 的 sh 是 dash）时会报 `Illegal option -o pipefail`：现在自动改用 bash 重新执行。
   - 闲置 20 秒自动关掉 Chrome。需要服务端是 Node.js 22+（exe 已内建）并装有 Chrome / Edge。版本号升到 1.28。
 
 ## [1.27] — 2026-10-15

@@ -9,7 +9,8 @@
  *   flash     揭晓闪光（黑底，叠加时用「滤色 / Screen」混合）
  * 循环：最后 fade 秒和开头交叉淡化，首尾接得上，播放器设「循环播放」就看不出接缝。
  * 文字是按网页实际排版逐字画到画布上的（位置、字体、渐层、阴影跟网页一样）。
- * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, codec, width, height }>、recCancel()
+ * opt.sink（服务器渲染、服务端有 NVENC 时由 lib/render.js 给）：每帧原始画面交给服务端的 ffmpeg 用显卡编码，不在浏览器编码（blob = null）。
+ * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, size, codec, hw, width, height, speed }>、recCancel()
  * 需要：stage.js、clock.js、fxconf.js、mp4.js、fx/*、render.js、main.js（booted）
  */
 'use strict';
@@ -166,8 +167,37 @@ async function recStart(opt, fx, onProgress = () => {}) {
     return await recRun(opt, fx, onProgress, false);
   }
 }
+/* 服务器渲染 + NVENC（lib/render.js）：不在浏览器编码，每一帧原始画面（RGBA）POST 给本机服务端，由 ffmpeg 交给显卡编码。
+ * 两块缓冲轮流用：上一帧在上传时，这一帧已经在读回画面。 */
+function recSink(sink, W, H) {
+  const bufs = [new Uint8Array(W * H * 4), new Uint8Array(W * H * 4)];
+  let pending = null, n = 0, ended = false;
+  const post = async (q, body) => {
+    const r = await fetch(sink.url + '&' + q, { method: 'POST', body });
+    if (!r.ok) throw Object.assign(new Error('显卡编码（NVENC）失败：' + (await r.text()).slice(0, 300)), { recSink: true });
+    return r;
+  };
+  return {
+    hw: true, codec: 'h264_nvenc', failed: () => null,
+    async push(cv, k, ctx) {
+      const buf = bufs[n++ % 2], layout = [{ offset: 0, stride: W * 4 }];
+      let fmt = 'RGBA', data = buf;
+      const f = new VideoFrame(cv, { timestamp: k });
+      try { await f.copyTo(buf, { format: 'RGBA', layout }); }
+      catch {
+        try { await f.copyTo(buf, { layout }); fmt = f.format; }
+        catch { data = new Uint8Array(ctx.getImageData(0, 0, W, H).data.buffer); fmt = 'RGBA'; }
+      } finally { f.close(); }
+      if (pending) await pending;
+      pending = post(`i=${k}&fmt=${fmt}`, data);
+    },
+    async finish() { if (pending) await pending; ended = true; const r = await post('end=1'); return { blob: null, ...(await r.json()) }; },
+    close() { if (!ended) fetch(sink.url + '&abort=1', { method: 'POST' }).catch(() => {}); }
+  };
+}
+
 async function recRun(opt, fx, onProgress, allowHw) {
-  if (typeof VideoEncoder === 'undefined') throw new Error('这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge');
+  if (typeof VideoEncoder === 'undefined' && !opt.sink) throw new Error('这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge');
   recStop = false;
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
   if (!booted) throw new Error('连不上服务端');
@@ -183,11 +213,32 @@ async function recRun(opt, fx, onProgress, allowHw) {
 
   const N = Math.round(opt.seconds * fps), loop = content !== 'flash' && opt.fade > 0, C = loop ? Math.min(Math.round(opt.fade * fps), Math.floor(N / 2)) : 0;
   const P = loop ? opt.seconds / Math.max(1, Math.round(opt.seconds / SHIMMER_P)) : SHIMMER_P;   // 流光周期：让影片长度刚好是整数个周期，循环时文字也接得上
-  const samples = []; let desc = null;
-  const E = await recEncoder(W, H, fps, Math.round(W * H * fps * (opt.bpp || .15)), (chunk, meta) => {
-    if (meta?.decoderConfig?.description) desc = new Uint8Array(meta.decoderConfig.description instanceof ArrayBuffer ? meta.decoderConfig.description : meta.decoderConfig.description.buffer || meta.decoderConfig.description);
-    const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data); samples.push({ data, key: chunk.type === 'key' });
-  }, allowHw);
+  // 编码器：服务器渲染有 NVENC 时交给服务端（recSink），否则用浏览器内建的 WebCodecs（recEncoder + mp4Mux）
+  let E;
+  if (opt.sink) E = recSink(opt.sink, W, H);
+  else {
+    const samples = []; let desc = null;
+    const X = await recEncoder(W, H, fps, Math.round(W * H * fps * (opt.bpp || .15)), (chunk, meta) => {
+      if (meta?.decoderConfig?.description) desc = new Uint8Array(meta.decoderConfig.description instanceof ArrayBuffer ? meta.decoderConfig.description : meta.decoderConfig.description.buffer || meta.decoderConfig.description);
+      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data); samples.push({ data, key: chunk.type === 'key' });
+    }, allowHw);
+    E = {
+      hw: X.hw, codec: X.codec, failed: X.failed,
+      async push(cv, k) {
+        const frame = new VideoFrame(cv, { timestamp: Math.round(k * 1e6 / fps), duration: Math.round(1e6 / fps) });
+        X.enc.encode(frame, { keyFrame: k % (fps * 2) === 0 }); frame.close();
+        while (X.enc.encodeQueueSize > 4) await new Promise(r => X.enc.addEventListener('dequeue', r, { once: true }));
+      },
+      async finish() {
+        try { await X.enc.flush(); } catch (e) { throw Object.assign(new Error('编码失败：' + e.message), { recHw: X.hw }); }
+        if (X.kind === 'avc' && !desc) throw new Error('编码器没有给出 H.264 设定');
+        onProgress(1, '封装中');
+        const blob = mp4Mux({ kind: X.kind, width: W, height: H, fps, desc, samples });
+        return { blob, size: blob.size };
+      },
+      close() { try { X.enc.close(); } catch {} }
+    };
+  }
   const recT0 = Date.now();
   const head = [];   // 循环用：开头 C 帧的背景（WebP 暂存，最后几秒拿来交叉淡化）
   const flashAt = []; if (content === 'flash') for (let t = .3; t === .3 || t + 2.6 <= opt.seconds; t += 4) flashAt.push(t);
@@ -210,16 +261,12 @@ async function recRun(opt, fx, onProgress, allowHw) {
       }
       const k = i - C;   // 影片里的第 k 帧
       if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, ((k / fps) / P) % 1); }
-      const frame = new VideoFrame(out, { timestamp: Math.round(k * 1e6 / fps), duration: Math.round(1e6 / fps) });
-      E.enc.encode(frame, { keyFrame: k % (fps * 2) === 0 }); frame.close();
-      while (E.enc.encodeQueueSize > 4) await new Promise(r => E.enc.addEventListener('dequeue', r, { once: true }));
+      await E.push(out, k, o);
       onProgress((i + 1) / (N + C), '渲染中');
       if (i % 2 === 0) await recYield();
     }
-    try { await E.enc.flush(); } catch (e) { throw Object.assign(new Error('编码失败：' + e.message), { recHw: E.hw }); }
-  } finally { try { E.enc.close(); } catch {} }
-  if (E.kind === 'avc' && !desc) throw new Error('编码器没有给出 H.264 设定');
-  onProgress(1, '封装中');
+    var res = await E.finish();
+  } finally { E.close(); }
   const secs = (Date.now() - recT0) / 1000;   // 注意：录影时 performance.now 是虚拟时钟，这里用真实时间
-  return { blob: mp4Mux({ kind: E.kind, width: W, height: H, fps, desc, samples }), codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs) };
+  return { ...res, codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs) };
 }

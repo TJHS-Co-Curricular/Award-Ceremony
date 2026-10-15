@@ -196,7 +196,8 @@ function srvFill() {
 }
 async function srvRefresh() {
   let st; try { st = await api('GET', '/api/control/render'); } catch { return; }
-  $('srvAvail').textContent = st.available ? `服务端 CPU ${st.cpus} 核` : '⚠ ' + st.reason;
+  $('srvAvail').textContent = st.available ? `服务端 CPU ${st.cpus} 核 · 编码：${st.encoder?.ok ? st.encoder.label : '浏览器内建'}${st.gpu ? ' · 画面：' + st.gpu : ''}` : '⚠ ' + st.reason;
+  $('srvAvail').title = st.encoder?.reason || '';
   $('srvAvail').style.color = st.available ? '' : 'var(--warn)';
   $('bSrvRender').disabled = !st.available;
   if (!$('srvPar').dataset.set) { $('srvPar').value = st.parallel; $('srvPar').dataset.set = '1'; }
@@ -204,7 +205,7 @@ async function srvRefresh() {
   const jobs = [...st.jobs].reverse();
   $('srvJobs').replaceChildren(...jobs.map(j => {
     const active = j.state === 'queued' || j.state === 'running';
-    const info = j.state === 'done' ? `${srvMB(j.size)} · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.hw ? '显卡编码' : 'CPU 编码'} · 每秒 ${j.speed?.toFixed(1)} 帧 · ${Math.round((j.ended - j.started) / 1000)} 秒`
+    const info = j.state === 'done' ? `${srvMB(j.size)} · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.encoder || (j.hw ? '显卡编码' : 'CPU 编码')} · 每秒 ${j.speed?.toFixed(1)} 帧 · ${Math.round((j.ended - j.started) / 1000)} 秒`
       : j.state === 'error' ? '失败：' + j.error : j.state === 'running' ? `${j.what} ${(j.prog * 100).toFixed(0)}%` : j.what;
     return el('div', { class: 'srvrow' },
       el('span', {}, `#${j.id} ${SRV_NAME[j.content]} · ${j.screen} ${j.width}×${j.height} · ${j.seconds}s · ${j.fps}fps`),
