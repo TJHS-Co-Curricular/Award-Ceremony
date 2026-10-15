@@ -44,7 +44,7 @@ function diagLoop(now) {
   const low = diagHist.length ? Math.min(...diagHist.map(h => h[1])) : fps;
   const off = $('conn').classList.contains('show');
   const scene = document.querySelector('.scene.active')?.id?.replace('s-', '') || '-';
-  const parts = typeof gyOn !== 'undefined' && gyOn ? `星系粒子 ${gyStreaks.length + gyDust.length + gyDots.length}` : typeof gOn !== 'undefined' && gOn ? `光河粒子 ${gParts.length}` : '';
+  const parts = FX_WORKER ? (FX_STATS ? FX_STATS + '（后台线程）' : '特效在后台线程') : typeof gyOn !== 'undefined' && gyOn ? `星系粒子 ${gyStreaks.length + gyDust.length + gyDots.length}` : typeof gOn !== 'undefined' && gOn ? `光河粒子 ${gParts.length}` : '';
   const mem = performance.memory ? ` · 内存 ${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)}MB` : '';
   diagBox.style.color = fps >= 50 ? '#9ff0b0' : fps >= 30 ? '#ffd27a' : '#ff8a8a';
   diagBox.textContent =

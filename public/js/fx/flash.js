@@ -10,7 +10,7 @@
 const fx = $('fx').getContext('2d');
 let flashes = [], running = false;
 const flashSprite = (() => {   // 预画好的闪光光晕
-  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const c = mkCanvas(256, 256);
   const g = c.getContext('2d'), r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
   r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.08, 'rgba(255,255,255,.95)'); r.addColorStop(.22, 'rgba(255,246,225,.55)');
   r.addColorStop(.5, 'rgba(255,225,170,.16)'); r.addColorStop(1, 'rgba(255,210,140,0)');

@@ -9,12 +9,13 @@
 
 const gc = $('goldfx'), gx = gc.getContext('2d');
 const sprite = (() => {   // 预先画好的发光圆点，比每帧画渐层快很多
-  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const c = mkCanvas(64, 64);
   const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   r.addColorStop(0, 'rgba(255,248,215,1)'); r.addColorStop(.18, 'rgba(255,222,120,.9)'); r.addColorStop(.45, 'rgba(255,184,40,.35)'); r.addColorStop(1, 'rgba(255,160,20,0)');
   g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c;
 })();
-let gBg = null, gW = 0, gH = 0, gParts = [], gSpark = [], gLanes = [], gOn = false, gLast = 0, gSlow = 0;
+const gBgCanvas = mkCanvas();   // 静态背景只用这一张（重建时重用）
+let gSkip = false, gBg = null, gW = 0, gH = 0, gParts = [], gSpark = [], gLanes = [], gOn = false, gLast = 0, gSlow = 0;
 const HZ = .57;   // 地平线（光晕中心）在画面高度的位置
 // 光丝的路径：u = 横向位置（-1 ~ 1），t = 0（画面下方，最近）→ 1（地平线）。近处宽、远处收拢，整体是一道 S 形的弯
 function gPos(u, t) {
@@ -29,7 +30,7 @@ function gLaneU() {   // 光丝集中成几道光带（像参考图的金色气�
 }
 function gBuild() {
   gW = SW; gH = SH;
-  gBg = document.createElement('canvas'); gBg.width = Math.round(gW * REC_K); gBg.height = Math.round(gH * REC_K);   // 导出影片时背景也用高分辨率
+  gBg = gBgCanvas; gBg.width = Math.round(gW * REC_K); gBg.height = Math.round(gH * REC_K);   // 导出影片时背景也用高分辨率
   const g = gBg.getContext('2d'); g.scale(REC_K, REC_K);
   const cx = gW / 2, hy = gH * HZ, R = Math.max(gW, gH), k = gH / 1080;
   const base = g.createLinearGradient(0, 0, 0, gH);
@@ -82,6 +83,8 @@ function gSeed(p, fresh) {
 function gFrame(now) {
   if (!gOn) return;
   requestAnimationFrame(gFrame);
+  if (FXC.bgFps === '30' && !RECORD && (gSkip = !gSkip)) return;   // 「效果控制 → 背景帧率 30」：隔一帧画一次
+  if (typeof fxDrawn !== 'undefined') fxDrawn++;   // 后台线程：数实际画了几帧（诊断框）
   const dt = Math.min(.05, (now - (gLast || now)) / 1000); gLast = now;
   if (gW !== SW || gH !== SH || !gBg) gBuild();
   const t0 = performance.now(), k = gH / 1080, time = now / 1000;

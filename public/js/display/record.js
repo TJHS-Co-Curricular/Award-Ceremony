@@ -139,22 +139,34 @@ function recBaseLayers(W, H) {
   return { bgc, fr };
 }
 
-/* ---------- 编码器：先试 H.264（各级别），不支持再用 VP9 ---------- */
-async function recEncoder(W, H, fps, bitrate, onChunk) {
-  const tries = ['avc1.640034', 'avc1.640033', 'avc1.4d0034', 'avc1.4d0033', 'avc1.42e034', 'vp09.00.51.08', 'vp09.00.41.08'];
-  for (const codec of tries) {
-    const cfg = { codec, width: W, height: H, bitrate, framerate: fps, bitrateMode: 'variable', latencyMode: 'quality', ...(codec.startsWith('avc') ? { avc: { format: 'avc' } } : {}) };
-    try { if (!(await VideoEncoder.isConfigSupported(cfg)).supported) continue; } catch { continue; }
-    let err = null;
-    const enc = new VideoEncoder({ output: onChunk, error: e => { err = e; } });
-    enc.configure(cfg);
-    return { enc, kind: codec.startsWith('avc') ? 'avc' : 'vp9', codec, failed: () => err };
+/* ---------- 编码器：先要求显卡编码（NVIDIA NVENC / AMD AMF / Intel QSV），不行再用 CPU 软件编码；
+ * 编码格式先试 H.264（各级别），不支持再用 VP9 ---------- */
+async function recEncoder(W, H, fps, bitrate, onChunk, allowHw = true) {
+  const codecs = ['avc1.640034', 'avc1.640033', 'avc1.4d0034', 'avc1.4d0033', 'avc1.42e034', 'vp09.00.51.08', 'vp09.00.41.08'];
+  for (const accel of allowHw ? ['prefer-hardware', 'prefer-software'] : ['prefer-software']) {
+    for (const codec of codecs) {
+      const cfg = { codec, width: W, height: H, bitrate, framerate: fps, bitrateMode: 'variable', latencyMode: 'quality', hardwareAcceleration: accel,
+        ...(codec.startsWith('avc') ? { avc: { format: 'avc' } } : {}) };
+      try { if (!(await VideoEncoder.isConfigSupported(cfg)).supported) continue; } catch { continue; }
+      let err = null;
+      const enc = new VideoEncoder({ output: onChunk, error: e => { err = e; } });
+      enc.configure(cfg);
+      return { enc, kind: codec.startsWith('avc') ? 'avc' : 'vp9', codec, hw: accel === 'prefer-hardware', failed: () => err };
+    }
   }
   throw new Error('这个浏览器不支持影片编码（请用新版 Chrome 或 Edge）');
 }
 
 /* ---------- 主程序 ---------- */
 async function recStart(opt, fx, onProgress = () => {}) {
+  try { return await recRun(opt, fx, onProgress, true); }
+  catch (e) {
+    if (!e.recHw) throw e;   // 显卡编码中途失败（驱动不支持这个尺寸等）：自动改用软件编码重来一次
+    onProgress(0, '显卡编码失败，改用软件编码');
+    return await recRun(opt, fx, onProgress, false);
+  }
+}
+async function recRun(opt, fx, onProgress, allowHw) {
   if (typeof VideoEncoder === 'undefined') throw new Error('这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge');
   recStop = false;
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
@@ -175,14 +187,15 @@ async function recStart(opt, fx, onProgress = () => {}) {
   const E = await recEncoder(W, H, fps, Math.round(W * H * fps * (opt.bpp || .15)), (chunk, meta) => {
     if (meta?.decoderConfig?.description) desc = new Uint8Array(meta.decoderConfig.description instanceof ArrayBuffer ? meta.decoderConfig.description : meta.decoderConfig.description.buffer || meta.decoderConfig.description);
     const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data); samples.push({ data, key: chunk.type === 'key' });
-  });
+  }, allowHw);
+  const recT0 = Date.now();
   const head = [];   // 循环用：开头 C 帧的背景（WebP 暂存，最后几秒拿来交叉淡化）
   const flashAt = []; if (content === 'flash') for (let t = .3; t === .3 || t + 2.6 <= opt.seconds; t += 4) flashAt.push(t);
   let ft = 0;
   try {
     for (let i = 0; i < N + C; i++) {
       if (recStop) throw new Error('已取消');
-      if (E.failed()) throw new Error('编码失败：' + E.failed().message);
+      if (E.failed()) throw Object.assign(new Error('编码失败：' + E.failed().message), { recHw: E.hw });
       if (content === 'flash') { const t = i / fps; while (ft < flashAt.length && flashAt[ft] <= t) { burst(260); ft++; } }
       for (let s = 0; s < sub; s++) recTick(1000 / 60);
       // 背景
@@ -203,9 +216,10 @@ async function recStart(opt, fx, onProgress = () => {}) {
       onProgress((i + 1) / (N + C), '渲染中');
       if (i % 2 === 0) await recYield();
     }
-    await E.enc.flush();
+    try { await E.enc.flush(); } catch (e) { throw Object.assign(new Error('编码失败：' + e.message), { recHw: E.hw }); }
   } finally { try { E.enc.close(); } catch {} }
   if (E.kind === 'avc' && !desc) throw new Error('编码器没有给出 H.264 设定');
   onProgress(1, '封装中');
-  return { blob: mp4Mux({ kind: E.kind, width: W, height: H, fps, desc, samples }), codec: E.codec, width: W, height: H };
+  const secs = (Date.now() - recT0) / 1000;   // 注意：录影时 performance.now 是虚拟时钟，这里用真实时间
+  return { blob: mp4Mux({ kind: E.kind, width: W, height: H, fps, desc, samples }), codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs) };
 }

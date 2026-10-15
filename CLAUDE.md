@@ -65,7 +65,7 @@ public/                   网页（只有程序和样式，没有数据）
   css/display.css / control.css / guest.css
   img/icon.svg            网页图标（= build/icon/icon-small.svg）
   js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）
-  js/fx/                  大屏特效：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）、goldriver.js（待机金色光河，原本）、standby.js（切换）
+  js/fx/                  大屏特效（host.js 决定在后台线程 worker.js 或主线程跑；react.js 两边共用）：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）、goldriver.js（待机金色光河，原本）、standby.js（切换）
   js/display/             大屏（record.js + mp4.js = 导出影片）：stage.js（参数、舞台自适应）→ clock.js（导出影片的虚拟时钟）→ fxconf.js（效果设定 FXC）→ [js/fx/*] → fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
                           → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ fx.js（效果控制）→ main.js（启动）
@@ -141,6 +141,7 @@ README.md                 用户文档（中文）
 - **导出影片**：控制端 `js/control/fx.js` 开隐藏 iframe `/display?…&preview=1&record=1&res=宽x高`，调用 `recStart(opt, fx, onProgress)`（`js/display/record.js`）。`RECORD` 时：`clock.js` 把 `requestAnimationFrame` / `performance.now` 换成 `recTick(ms)` 推进的虚拟时间（每格 1/60 秒，30 fps 就每 2 格取一帧）；`fit()` 让 canvas 用真正的屏幕像素并 `setTransform(REC_K)`，特效照样用舞台坐标画（⚠ 特效代码不要 `setTransform` / `resetTransform`，静态背景按 `REC_K` 建、用 `drawImage(bg, 0, 0, SW, SH)` 画）；`main.js` 只收第一份数据，固定成待机画面后关掉连线。文字不是截图：`recDrawChars()` 用 Range 量每个字的位置，按网页的字体、渐层、阴影画到画布上（改了待机画面 CSS 要同步改 `record.js`）。WebCodecs 编码（H.264 → VP9 后备），`mp4Mux()`（`js/display/mp4.js`）封装。循环：多渲染 fade 秒，开头那几帧背景先存成 WebP，最后几帧交叉淡化；流光周期 `SHIMMER_P` 调成影片长度的整数分之一。
 - **输出页外壳**：`/display` 默认给 `display-shell.html` + `js/display/shell.js`（`inner=1`、`preview=1`、`record=1`、`renew=0` 才直接给 `display.html`，见 `lib/routes/display.js`）。外壳每 0.25 秒问 iframe 里的 `renewOk()` / `renewKey()` / `renewCount()` / `renewMinutes()` / `renewEvery()`（`main.js`，⚠ 必须是 `function` 宣告才挂在 `window` 上）。到时间或揭晓次数到了就在后面载入新的 iframe（一样连 SSE、跟着现场走），`renewKey()`（= 最新一份公开视图原文）相同、两边 `renewOk()`（停好：动画 / 闪光 / 照片 / 字体都完成）时旧的淡出丢掉。目的：OBS 内置浏览器硬件加速会累积显卡内存，只有丢掉整个文件才会释放。
 - **照片**：大屏照片用 `drawPhoto()`（`cards.js`）画进卡片大小的 canvas，⚠ 不要改回 `<img>`——OBS 内置浏览器 + 内置显卡会把每张原图留在显存里，揭晓多了会吃光内存。`fit()` 只调整 `#bg`、`#goldfx`、`#fx` 三个画布。
+- **特效线程**：`js/fx/host.js` 决定特效在哪跑。默认后台线程：把 `#bg` / `#goldfx` / `#fx` `transferControlToOffscreen()` 交给 `js/fx/worker.js`（`importScripts` 同一份特效脚本），主线程只剩转达函数 `burst` / `standbyFx` / `fxPush` / `fxSizeCanvases`（挂在 `window`）。`RECORD`、`&worker=0`、不支持、或 worker 6 秒没回报 → 主线程（`document.write` 同步载入 dust / flash / goldriver / galaxy / standby / react）。⚠ 特效脚本要两边都能跑：不能用 `document` / DOM（画布用 `mkCanvas()`），只能用 `SW` / `SH` / `PREVIEW` / `RECORD` / `REC_K` / `FXC` / `$`（worker 里 `$` 只认三个画布 id）；设定变更走 `fxPush(next, flags)`，画布尺寸走 `fxSizeCanvases()`（`js/fx/react.js`，`#goldfx` 按 `FXC.bgScale` 缩小，canvas 一律 `setTransform` 成舞台坐标）。主线程的 `diag.js` 读不到粒子数，改看 worker 回报的 `FX_STATS`。
 - **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（`FXC.flashOn / flashPeak / flashAmount`）；待机背景由 `standbyFx(on, FXC.standby)` 切换——`galaxyFx(on)` 旋涡星系（默认，`FXC.gy*`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
 - **不要用 `seq` 去重渲染**：存数据时不会递增 `seq`，但活动名称等内容会变。
 

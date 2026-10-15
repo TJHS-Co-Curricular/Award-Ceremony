@@ -173,7 +173,7 @@ $('bRec').onclick = async () => {
     const name = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' }[opt.content];
     const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}-${opt.seconds}s-${opt.fps}fps.mp4` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    $('recState').textContent = `完成：${(r.blob.size / 1048576).toFixed(1)} MB，${r.codec.startsWith('avc') ? 'H.264' : 'VP9'}，用了 ${Math.round((Date.now() - t0) / 1000)} 秒`;
+    $('recState').textContent = `完成：${(r.blob.size / 1048576).toFixed(1)} MB · ${r.codec.startsWith('avc') ? 'H.264' : 'VP9'} · ${r.hw ? '显卡编码' : 'CPU 软件编码'} · 每秒算 ${r.speed.toFixed(1)} 帧 · 用了 ${Math.round((Date.now() - t0) / 1000)} 秒`;
   } catch (e) {
     $('recState').textContent = '没有导出：' + e.message;
   }

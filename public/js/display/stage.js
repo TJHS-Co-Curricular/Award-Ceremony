@@ -1,6 +1,6 @@
 /*
  * 大屏 · 舞台：网址参数、按屏幕比例自适应、全屏 / 隐藏鼠标。
- * 提供：qs、KEY、PREVIEW、RECORD、REC_K、$、stage、SW / SH（舞台尺寸）、lastV（最新画面数据）、fit()
+ * 提供：qs、KEY、PREVIEW、RECORD、REC_K、$、mkCanvas、stage、SW / SH（舞台尺寸）、lastV（最新画面数据）、fit()
  */
 'use strict';
 
@@ -9,6 +9,8 @@ const KEY = qs.get('k') || '';
 const RECORD = qs.get('record') === '1';                 // 控制端「导出影片」用的隐藏页面（display/record.js）
 const PREVIEW = qs.get('preview') === '1' && !RECORD;   // 预览：粒子少一点（导出影片时不减）
 const $ = id => document.getElementById(id);
+// 建一张画布（特效脚本用这个，不直接用 document：它们也可能在后台线程 fx/worker.js 里跑）
+const mkCanvas = (w = 1, h = 1) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 
 /* ---------- 舞台：按屏幕比例自适应 ----------
  * 以 1920×1080 为基准单位，短边固定、长边延伸：
@@ -29,11 +31,9 @@ function fit() {
   stage.style.setProperty('--sw', SW + 'px'); stage.style.setProperty('--sh', SH + 'px');
   if (RECORD) REC_K = (RES ? +RES[1] : tw) / SW;
   const cw = RECORD ? Math.round(SW * REC_K / 2) * 2 : SW, ch = RECORD ? Math.round(SH * REC_K / 2) * 2 : SH;   // 影片宽高要双数
-  // 只调整全屏的特效画布；卡片里的照片画布（cards.js）自己定尺寸
-  for (const c of [$('bg'), $('goldfx'), $('fx')]) if (c.width !== cw || c.height !== ch) {
-    c.width = cw; c.height = ch;
-    if (RECORD) c.getContext('2d').setTransform(cw / SW, 0, 0, ch / SH, 0, 0);   // 特效照样用舞台坐标画
-  }
+  // 只调整三个全屏特效画布（卡片里的照片画布 cards.js 自己定尺寸）：交给 fx/react.js（或后台线程）；特效还没载入时先直接设
+  if (typeof fxSizeCanvases === 'function') fxSizeCanvases(cw, ch);
+  else for (const c of [$('bg'), $('goldfx'), $('fx')]) if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
   const s = Math.min(innerWidth / SW, innerHeight / SH);
   stage.style.transform = `translate(-50%,-50%) scale(${s})`;
   if (changed && lastV) { clearTimeout(resizeT); resizeT = setTimeout(relayout, 250); }
