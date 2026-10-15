@@ -13,6 +13,8 @@ const R = require('../lib/render');
     try {
       const c = await R.launchChromeWith(flags, name);
       console.log(`${c.gpu.hw ? '显卡 ✓' : 'CPU  ✗'}  ${name.padEnd(12)} ${c.gpu.renderer}\n         参数：${flags.join(' ') || '（无）'}`);
+      const f = c.gpu.features || {};   // 2d_canvas = 网页画布、rasterization = 画面光栅化、gpu_compositing = 合成，要是 enabled 才是用显卡
+      if (c.gpu.hw) console.log(`         画布 ${f['2d_canvas'] || '?'} · 光栅化 ${f.rasterization || '?'} · 合成 ${f.gpu_compositing || '?'}`);
       c.close();
     } catch (e) { console.log(`失败    ${name.padEnd(12)} ${e.message.split('\n')[0]}`); }
   }
