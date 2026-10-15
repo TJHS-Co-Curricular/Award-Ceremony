@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.30] — 2026-10-15
+
+### 新增
+- **`node tools/gpu-check.js`**：把每一组显卡启动参数都试一次，列出无头 Chrome 实际用到的显卡（「显卡 ✓」/「CPU ✗」）和编码方式，方便在服务器上排查。可用 `RENDER_GPU_FLAGS="…"` 加一组自订参数（排最前面试）。
+- 显卡参数多试几组（Vulkan 原生 / 旧参数、EGL（ANGLE）、EGL）；检查显卡改成开分页用 WebGL 问（比 SystemInfo 准，也会把显卡进程叫起来）。版本号升到 1.30。
+
 ## [1.29] — 2026-10-15
 
 ### 新增

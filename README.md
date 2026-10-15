@@ -203,7 +203,7 @@ OBS 的浏览器来源开着硬件加速时（AMD 内置显卡特别明显），
 - ⚠ 服务器要装中文字体（例如 `sudo apt install fonts-noto-cjk`），或在「奖项编辑」上传字体文件，否则活动名称会变成方块。
 - **显卡 / 多核编码（建议装 ffmpeg：`sudo apt install ffmpeg`）**：有 ffmpeg 时，浏览器只画画面，编码交给 ffmpeg——先用 **NVENC（NVIDIA 显卡，例如 Tesla P40）**，不行用 **x264（CPU 多核）**。没有 ffmpeg 才用浏览器内建编码（Linux Chrome 用不到 NVIDIA 显卡编码，而且慢）。控制端「在服务器渲染」和命令行都会显示用了哪一种。
   - NVENC 不能用、显示「Cannot load libnvidia-encode」之类：装上和驱动同版本的 `libnvidia-encode-版本号`（例如 `sudo apt install libnvidia-encode-580-server`）。
-  - Chrome 画画面也会自动试着用显卡（Vulkan / EGL），状态栏「画面：」显示实际用到的显卡；显示「CPU 模拟」就是没用上（不影响结果，只是慢一点）。
+  - Chrome 画画面也会自动试着用显卡（Vulkan / EGL），状态栏「画面：」显示实际用到的显卡；显示「CPU 模拟」就是没用上（不影响结果，只是慢一点）。纯命令行服务器通常要补装图形驱动组件（例如 `sudo apt install libnvidia-gl-580-server vulkan-tools`，`vulkaninfo --summary` 看得到显卡），再用 `node tools/gpu-check.js` 看哪一组参数用得上，装好后要重启服务端。
   - 关掉：`RENDER_NVENC=0`（不用 NVENC）、`RENDER_FFMPEG=0`（不用 ffmpeg）、`RENDER_GPU=off`（Chrome 不试显卡）。
 
 ### 性能
