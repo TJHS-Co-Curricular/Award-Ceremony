@@ -2,6 +2,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.31] — 2026-10-15
+
+### 性能
+- **导出影片「准备循环接缝」快很多**：开头那几秒的画面原本压成 WebP 暂存（4096 宽一张要几百毫秒，全在 CPU），现在总量不超过 800 MB 时直接留在显卡里（ImageBitmap），太大才压成 JPEG（比 WebP 快很多）。测试：副屏 4 秒影片从 39 秒降到 23 秒，接缝也更干净（不再有压缩损失）。
+- 完成时多显示「准备接缝 x 秒 / 渲染 + 编码 x 秒」，看得出时间花在哪。
+- `gpu-check` 显示画布 / 光栅化 / 合成是否用显卡（无头 Chrome 的「合成 disabled_software」是正常的，导出直接读画布，用不到合成）。版本号升到 1.31。
+
 ## [1.30] — 2026-10-15
 
 ### 新增

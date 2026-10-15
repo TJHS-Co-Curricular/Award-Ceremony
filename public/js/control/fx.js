@@ -205,7 +205,7 @@ async function srvRefresh() {
   const jobs = [...st.jobs].reverse();
   $('srvJobs').replaceChildren(...jobs.map(j => {
     const active = j.state === 'queued' || j.state === 'running';
-    const info = j.state === 'done' ? `${srvMB(j.size)} · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.encoder || (j.hw ? '显卡编码' : 'CPU 编码')} · 每秒 ${j.speed?.toFixed(1)} 帧 · ${Math.round((j.ended - j.started) / 1000)} 秒`
+    const info = j.state === 'done' ? `${srvMB(j.size)} · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.encoder || (j.hw ? '显卡编码' : 'CPU 编码')} · 每秒 ${j.speed?.toFixed(1)} 帧 · ${Math.round((j.ended - j.started) / 1000)} 秒${j.headSecs != null ? `（接缝 ${j.headSecs.toFixed(1)} 秒 / 渲染 ${j.renderSecs.toFixed(1)} 秒）` : ''}`
       : j.state === 'error' ? '失败：' + j.error : j.state === 'running' ? `${j.what} ${(j.prog * 100).toFixed(0)}%` : j.what;
     return el('div', { class: 'srvrow' },
       el('span', {}, `#${j.id} ${SRV_NAME[j.content]} · ${j.screen} ${j.width}×${j.height} · ${j.seconds}s · ${j.fps}fps`),

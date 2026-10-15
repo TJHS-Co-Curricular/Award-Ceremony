@@ -80,7 +80,7 @@ async function api(method, url, body) {
       if (['done', 'error', 'canceled'].includes(j.state) && !said.has(j.id)) {
         said.add(j.id);
         if (j.state === 'done') {
-          console.log(`${tag} ✓ Result/影片/${j.file}  ${(j.size / 1048576).toFixed(1)} MB · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.encoder} · 每秒算 ${j.speed?.toFixed(1)} 帧 · 用了 ${fmtTime((j.ended - j.started) / 1000)}`);
+          console.log(`${tag} ✓ Result/影片/${j.file}  ${(j.size / 1048576).toFixed(1)} MB · ${j.codec?.startsWith('avc') ? 'H.264' : 'VP9'} · ${j.encoder} · 每秒算 ${j.speed?.toFixed(1)} 帧 · 用了 ${fmtTime((j.ended - j.started) / 1000)}${j.headSecs != null ? `（准备接缝 ${j.headSecs.toFixed(1)} 秒、渲染 + 编码 ${j.renderSecs.toFixed(1)} 秒）` : ''}`);
           if (j.ffError) console.log(`${tag}   （ffmpeg 编码失败，已改用浏览器编码：${j.ffError}）`);
           if (opt.out) { fs.mkdirSync(opt.out, { recursive: true }); fs.copyFileSync(path.join(ROOT, 'Result', '影片', j.file), path.join(opt.out, j.file)); }
         } else console.log(`${tag} ✗ ${j.state === 'canceled' ? '已取消' : '失败：' + j.error}`);

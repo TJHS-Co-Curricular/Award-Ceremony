@@ -240,7 +240,10 @@ async function recRun(opt, fx, onProgress, allowHw) {
     };
   }
   const recT0 = Date.now();
-  const head = [];   // 循环用：开头 C 帧的背景（WebP 暂存，最后几秒拿来交叉淡化）
+  // 循环用：开头 C 帧的背景，最后几秒拿来交叉淡化。总量不大（≤ 800 MB）时直接留在显卡里（ImageBitmap，最快），
+  // 太大就压成 JPEG 暂存（比 WebP 快很多；只用在淡化那几秒，看不出差别）
+  const head = [], headRaw = W * H * 4 * C <= 800 * 1048576;
+  let tHead = 0;
   const flashAt = []; if (content === 'flash') for (let t = .3; t === .3 || t + 2.6 <= opt.seconds; t += 4) flashAt.push(t);
   let ft = 0;
   try {
@@ -254,9 +257,14 @@ async function recRun(opt, fx, onProgress, allowHw) {
       if (content === 'standby' || content === 'standbybg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
       else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
       else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
-      if (i < C) { head.push(await new Promise(r => out.toBlob(r, 'image/webp', .95))); onProgress((i + 1) / (N + C), '准备循环接缝'); continue; }
+      if (i < C) {
+        const t = Date.now();
+        head.push(headRaw ? await createImageBitmap(out) : await new Promise(r => out.toBlob(r, 'image/jpeg', .92)));
+        tHead += Date.now() - t;
+        onProgress((i + 1) / (N + C), '准备循环接缝'); continue;
+      }
       if (i >= N) {   // 最后 C 帧：慢慢换成开头的画面
-        const bm = await createImageBitmap(head[i - N]); head[i - N] = null;
+        const bm = headRaw ? head[i - N] : await createImageBitmap(head[i - N]); head[i - N] = null;
         o.globalAlpha = (i - N + .5) / C; o.drawImage(bm, 0, 0); o.globalAlpha = 1; bm.close();
       }
       const k = i - C;   // 影片里的第 k 帧
@@ -268,5 +276,5 @@ async function recRun(opt, fx, onProgress, allowHw) {
     var res = await E.finish();
   } finally { E.close(); }
   const secs = (Date.now() - recT0) / 1000;   // 注意：录影时 performance.now 是虚拟时钟，这里用真实时间
-  return { ...res, codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs) };
+  return { ...res, codec: E.codec, hw: E.hw, width: W, height: H, speed: (N + C) / Math.max(.001, secs), headSecs: tHead / 1000, renderSecs: secs - tHead / 1000 };
 }
