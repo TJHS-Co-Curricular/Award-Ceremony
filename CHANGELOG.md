@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.34] — 2026-10-15
+
+### 新增
+- **导出影片可选「在哪里渲染」：这台电脑 / 服务器**，两种都留着。选「服务器」：把同一个屏幕、同一组设定交给服务器渲染，完成后自动下载到这台电脑。选「这台电脑」：照旧在这台浏览器逐帧渲染。会记住上次的选择；第一次用时，浏览器能编码就默认本机，不能就默认服务器。
+- 用 `http://IP` 打开控制端时，浏览器默认不给影片编码（WebCodecs 只在 https / 127.0.0.1 才有）。这时选「这台电脑」会显示设定说明：在 `chrome://flags/#unsafely-treat-insecure-origin-as-secure`（Edge 是 `edge://flags/…`）填控制端地址、设成 Enabled、重开浏览器，之后就能用 IP 在本机渲染。1.33 那种「自动改成服务器渲染」拿掉，改由这个选项决定。版本号升到 1.34。
+
 ## [1.33] — 2026-10-15
 
 ### 性能

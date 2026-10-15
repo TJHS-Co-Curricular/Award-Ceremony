@@ -217,7 +217,9 @@
                 <label class="xl">循环接缝淡化 <input id="recFade" type="number" min="0" max="10" step="0.5" value="2" style="width:60px"> 秒</label>
                 <label class="xl">帧率 <select id="recFps" style="width:auto"><option value="30">30 fps</option><option value="60">60 fps</option></select></label>
                 <label class="xl">画质 <select id="recQ" style="width:auto"><option value=".08">标准</option><option value=".15" selected>高</option><option value=".3">极高（文件大）</option></select></label>
+                <label class="xl">在哪里渲染 <select id="recWhere" style="width:auto"><option value="local">这台电脑（浏览器）</option><option value="srv">服务器（完成后自动下载）</option></select></label>
               </div>
+              <div id="recLocalHelp" class="help hidden" style="margin-top:8px;line-height:1.7"></div>
               <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
                 <button id="bRec" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700">开始导出</button>
                 <button id="bRecStop" class="hidden">取消</button>

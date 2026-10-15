@@ -148,23 +148,38 @@ $('bFxBack').onclick = () => fxWin()?.relayout?.();
 
 /* ---------- 导出影片：开一个隐藏的输出页（record=1）逐帧渲染，回来下载 .mp4 ---------- */
 let recBusy = false, recFrame = null;
+// 本机能不能编码：WebCodecs 只在安全连线（https / 127.0.0.1 / 浏览器设成信任这个地址）才有
+const recLocalOk = () => typeof VideoEncoder !== 'undefined';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// 「在哪里渲染」：记住上次的选择；第一次用时本机能编码就选本机，不能就选服务器
+try { $('recWhere').value = localStorage.getItem('ac.recWhere') || (recLocalOk() ? 'local' : 'srv'); } catch { $('recWhere').value = recLocalOk() ? 'local' : 'srv'; }
+$('recWhere').addEventListener('change', () => { try { localStorage.setItem('ac.recWhere', $('recWhere').value); } catch {} recInfo(); });
 function recInfo() {
-  const sc = fxPvScreen();
+  const sc = fxPvScreen(), local = $('recWhere').value === 'local';
   $('recRes').textContent = `${sc.width}×${sc.height}${sc.name ? '（' + sc.name + '）' : ''}`;
-  // 用 http://IP 打开控制端时浏览器不给影片编码（WebCodecs 只在 https / 127.0.0.1 才有）：提示改用服务器渲染
-  if (!isSecureContext && !recBusy && !srvAutoDl.size) $('recState').textContent = '用 http://IP 打开时这台浏览器不能编码，「开始导出」会自动交给服务器渲染，完成后自动下载';
+  // 选了本机但这台浏览器不能编码（用 http://IP 打开）：说明怎么让浏览器信任这个地址
+  const help = $('recLocalHelp'), need = local && !recLocalOk();
+  help.classList.toggle('hidden', !need);
+  if (need) help.innerHTML = !isSecureContext
+    ? `用 <b>${esc(location.origin)}</b> 打开时，浏览器默认不给网页做影片编码。要在这台电脑渲染，请做一次设定：<br>
+       1. 在 Chrome 网址列打开 <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>（Edge 用 <code>edge://flags/#unsafely-treat-insecure-origin-as-secure</code>）<br>
+       2. 在框里填 <code>${esc(location.origin)}</code>，右边改成 <b>Enabled</b>，按下面的 <b>Relaunch</b> 重开浏览器<br>
+       或者：这台电脑自己跑服务端，用 <code>http://127.0.0.1</code> 打开控制端也能本机渲染。不想设定就把「在哪里渲染」改成服务器。`
+    : '这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge，或把「在哪里渲染」改成服务器。';
+  if (!recBusy && !srvAutoDl.size) $('recState').textContent = local ? '' : '会交给服务器渲染这个屏幕，完成后自动下载到这台电脑';
 }
 $('fxPvScreen').addEventListener('change', recInfo);
 $('bRec').onclick = async () => {
   if (recBusy) return;
-  // 用 http://IP 打开（浏览器不给影片编码）：自动改成交给服务器渲染这个屏幕，完成后自动下载到这台电脑
-  if (!isSecureContext) {
+  if ($('recWhere').value === 'local' && !recLocalOk()) { recInfo(); $('recState').textContent = '这台浏览器现在还不能编码：照上面的说明设定一次，或改成服务器渲染'; return; }
+  // 选了服务器：交给服务器渲染这个屏幕，完成后自动下载到这台电脑
+  if ($('recWhere').value === 'srv') {
     const sc = fxPvScreen();
     const job = { screen: sc.name || '*', content: $('recContent').value, seconds: +$('recSec').value || 60, fade: +$('recFade').value || 0, fps: +$('recFps').value, quality: +$('recQ').value };
     try {
       const r = await api('POST', '/api/control/render', { jobs: [job], parallel: +$('srvPar').value || undefined });
       r.ids.forEach(id => srvAutoDl.add(id));
-      $('recState').textContent = '已交给服务器渲染（这台浏览器不能编码），完成后会自动下载；进度在下面';
+      $('recState').textContent = '已交给服务器渲染，完成后会自动下载；进度在下面';
       srvRefresh();
     } catch (e) { $('recState').textContent = '没有导出：' + e.message; }
     return;
