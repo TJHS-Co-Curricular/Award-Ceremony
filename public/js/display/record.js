@@ -197,7 +197,9 @@ function recSink(sink, W, H) {
 }
 
 async function recRun(opt, fx, onProgress, allowHw) {
-  if (typeof VideoEncoder === 'undefined' && !opt.sink) throw new Error('这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge');
+  if (typeof VideoEncoder === 'undefined' && !opt.sink) throw new Error(!isSecureContext
+    ? '浏览器只在安全连线下才给影片编码：现在是用 http://IP 打开控制端。请改按「交给服务器渲染」，或用 SSH 通道 / 本机 http://127.0.0.1 打开控制端'
+    : '这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge，或改按「交给服务器渲染」');
   recStop = false;
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
   if (!booted) throw new Error('连不上服务端');

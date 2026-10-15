@@ -2,6 +2,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
 
+## [1.33] — 2026-10-15
+
+### 性能
+- **画面不再经过服务端主线程**：分 8 段同时渲染时每秒有 1 GB 以上的原始画面，原本全由服务端 Node 主线程（一个核心）转送给 ffmpeg，`top` 看得到它卡在 100%。现在每支（每段）影片开一个后台线程（worker_threads），自己听一个本机端口收画面、直接写进它自己的 ffmpeg；只听 127.0.0.1、要一次性密钥。服务器渲染的输出页（本机 record=1）CSP 放行连到 127.0.0.1 的其它端口。旧的 `/api/display/render-frame` 拿掉。版本号升到 1.33。
+
 ## [1.32] — 2026-10-15
 
 ### 性能
