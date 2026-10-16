@@ -148,6 +148,26 @@ README.md                 用户文档（中文）
 - **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（`FXC.flashOn / flashPeak / flashAmount`）；待机背景由 `standbyFx(on, FXC.standby)` 切换——`galaxyFx(on)` 旋涡星系（默认，`FXC.gy*`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
 - **不要用 `seq` 去重渲染**：存数据时不会递增 `seq`，但活动名称等内容会变。
 
+## 现场与环境（2026-10-16 转到 Claude Code 时整理）
+
+**用户确认过的需求**
+- 嘉宾揭晓只限内网（同一 WiFi）；真正异地才考虑 VPN，目前不做。
+- 两块屏幕内容同步，各自按比例排版。
+- 自动播放 = 服务端每 N 秒自动按一次「下一步」。
+- 导出影片用来在现场播放、代替实时渲染（待机背景 + 标题 + 浮尘 + 闪光，逐帧离线渲染 MP4）。本机导出和服务器渲染两种都保留；编码优先用显卡。
+- 金字流光左右来回，不能突然跳回起点。「先一后全」也要按揭晓次数换新输出页。
+- OBS 要放在 NVIDIA 显卡的电脑上跑（现场是 i7-11 代 + RTX 3070 + 32 GB），输出页自动换新保持开着。
+
+**已知、还没解决的问题**
+- AMD 核显 + OBS 浏览器来源，显存会越用越多。照片画进 canvas、输出页自动换新只是缓解，没有根治。
+- 服务器渲染：接缝画面压 JPEG 在服务器上约 3.8 秒/张（本机约 0.4 秒），原因没查实，怀疑多个分页共用一个 Chrome 显卡进程。1.35 只是让那一段变短来绕开。
+- ⚠ **文件被盖回旧版**：用户电脑上的编辑器多次把 `CHANGELOG.md`、`lib/env.js`、`public/js/control/core.js` 盖回旧版；2026-10-16 还有一次迁移把整个项目盖回 1.2（`migrate-to-code` 分支）。提交前要核对两边版本号和 CHANGELOG 第一条。
+- 服务器 `git pull` 时 `start.sh` 的执行权限会造成冲突：`git checkout -- start.sh` 或 `git config core.fileMode false`。
+
+**服务器渲染用的服务器**：Linux（Debian / Ubuntu 系），只有命令行，16 核、约 31 GB 内存。显卡是 Tesla P40 24 GB，但和 llama-server 共用（它占约 18.9 GB），所以接缝画面超过 800 MB 就不放显卡（`headRaw` 上限）。8 个分页时内存约用 21–25 GB。ffmpeg 已装，`h264_nvenc` 可用。用户自己 SSH 登录（IP、帐号问用户）。更新流程：Windows 上 `git push` → 服务器 `git pull` → `sh start.sh` 重启。
+
+**用户的 Windows 电脑**：Node.js v24.21.0；Claude Code 直接在这台电脑上跑，可以本机编译、运行 exe。
+
 ## 测试方法（云端环境验证过的流程）
 
 - **服务端流程**：用 `curl` 登录（带 `X-AC: 1`）→ 发动作 → 读 `/api/display/stream`（用 `--max-time 1`），确认未揭晓的名字没有出现在输出里。
@@ -159,7 +179,8 @@ README.md                 用户文档（中文）
   - 云端用 npm 包 `node-win-x64@<与本机 node 相同版本>` 作为 Windows 底座。
   - 用 Linux 的 node 作为底座、`EXE_NAME=xxx` 打一个 Linux 版 SEA，实际跑起来验证 SEA 代码路径。
   - Windows 版 exe 只能检查 PE 结构：签名表已清空、包含 `NODE_SEA_BLOB`、fuse 已翻转。
-- **杀进程**：不要用 `pkill -f "node server.js"`，它会连执行命令的 shell 一起杀掉。按 `/proc/*/cwd` 或端口找进程。
+- **杀进程**：不要用 `pkill -f "node server.js"`，它会连执行命令的 shell 一起杀掉。按 `/proc/*/cwd` 或端口找进程；Windows 上用 `Get-NetTCPConnection -LocalPort 端口` 找到进程 ID 再 `Stop-Process`。
+- **在 Windows 本机测试**：用 `git archive HEAD server.js lib public | tar -x -C <临时目录>` 取一份副本，`config.json` 预先写 `{"port":8097,"host":"127.0.0.1"}`，启动后会自动生成示例名单。不要在项目主目录跑测试（会用到真实的 `data/`）。
 
 ## 图标
 

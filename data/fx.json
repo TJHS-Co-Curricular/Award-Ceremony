@@ -16,6 +16,10 @@
     "flashPeak": 0.42,
     "flashAmount": 1,
     "cascadeMs": 600,
+    "bgFps": "60",
+    "bgScale": "1",
+    "renewMin": 3,
+    "renewReveals": 5,
     "photoUp": 0.25
   },
   "screens": {}
