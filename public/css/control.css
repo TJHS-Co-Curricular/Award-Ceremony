@@ -88,7 +88,7 @@ kbd{font:11px ui-monospace,Consolas,monospace;border:1px solid #444b58;border-bo
 .quick button{font-size:12px;padding:4px 10px}
 
 /* ===== 现场控制 · 右：名单、嘉宾、地址、自动播放 ===== */
-.wlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.wlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:340px;overflow:auto;overscroll-behavior:contain;position:relative}
 .wlist li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--panel)}
 .wlist li .n{flex:1;min-width:0}
 .wlist li .n .d{color:var(--muted);font-size:12px}

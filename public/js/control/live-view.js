@@ -240,8 +240,13 @@ function render() {
     V.awards.find((a) => a.id === (sel || showId)) ||
     V.awards.find((a) => a.id === showId);
   const wl = $("wlist");
+  // 名单很长时只在框内滚动（不用拉整页）；重画时保留滚动位置，揭晓进度变了就把最新一位滚进框里
+  const wlTop = wl.scrollTop;
+  const wlKey = cur ? cur.id + ":" + (s.awardId === cur.id ? s.revealed : -1) : "";
   wl.textContent = "";
-  $("curName").textContent = cur ? "· " + cur.title : "";
+  $("curName").textContent = cur
+    ? "· " + cur.title + "（" + cur.winners.length + "）"
+    : "";
   if (!cur) wl.append(el("li", { class: "muted" }, "点选左侧奖项查看名单"));
   else
     cur.winners.forEach((w, i) => {
@@ -265,6 +270,14 @@ function render() {
         ),
       );
     });
+  wl.scrollTop = wlTop;
+  if (wlKey !== wl.dataset.key) {
+    if (wl.dataset.key?.split(":")[0] !== cur?.id) wl.scrollTop = 0;
+    const last = wl.querySelectorAll("li.on");
+    const it = last[last.length - 1];
+    if (it) wl.scrollTop = Math.max(0, it.offsetTop - wl.clientHeight / 2 + it.offsetHeight / 2);
+    wl.dataset.key = wlKey;
+  }
   $("bRevealAll").disabled = !(s.mode === "title" || s.mode === "reveal");
   $("bPhoto").disabled = !(sel || s.awardId);
   $("bDiag").textContent = V.diag
