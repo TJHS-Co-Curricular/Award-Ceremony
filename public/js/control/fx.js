@@ -3,6 +3,7 @@
  * 表单按服务端给的设定格式（lib/fx.js 的 SCHEMA）生成；值存在服务端 data/fx.json。
  * 「设定给」= 所有屏幕，或某一个屏幕（只记录改过的项目，其余跟随所有屏幕）。
  * 「即时套用到大屏」开：改了约 0.3 秒后自动保存并推送；关：只改右边预览（fxPreviewSet），按「套用到大屏」才推送。
+ * 「照片右上角 Logo」那一组多一行上传 / 移除学校 Logo（浏览器先缩成长边 ≤ 1024 的 PNG，存 data/logo.png）。
  * 下方「导出影片」：开一个隐藏的输出页（record=1，display/record.js）逐帧渲染成 .mp4 下载；
  *   「在服务器渲染」：交给服务端（lib/render.js，/api/control/render）在那台电脑上渲染，这里每 1.5 秒看一次进度、提供下载。
  * 提供：fxOpen()、fxClose()、fxDirty
@@ -10,13 +11,13 @@
  */
 'use strict';
 
-let fxSchema = null, fxSaved = null, fxData = null, fxDirty = false, fxScope = '', fxSaveT = 0, fxBusy = false;
+let fxSchema = null, fxSaved = null, fxData = null, fxDirty = false, fxScope = '', fxSaveT = 0, fxBusy = false, fxLogo = '';
 const fxClone = o => JSON.parse(JSON.stringify(o));
 const fxScreens = () => V?.screens?.length ? V.screens : [{ name: '', width: 1920, height: 1080 }];
 
 async function fxOpen() {
   if (!fxDirty) {
-    try { const j = await api('GET', '/api/control/fx'); fxSchema = j.schema; fxSaved = j.fx; fxData = fxClone(j.fx); }
+    try { const j = await api('GET', '/api/control/fx'); fxSchema = j.schema; fxSaved = j.fx; fxData = fxClone(j.fx); fxLogo = j.logo || ''; }
     catch (e) { toast('读取效果设定失败：' + e.message, true); return; }
   }
   $('fxLive').checked = store.get('ac_fxlive') !== '0';
@@ -58,6 +59,7 @@ function fxBuild() {
   for (const [g, items] of groups) {
     const card = el('div', { class: 'ecard' }, el('div', { class: 'head' }, el('b', { style: 'flex:1' }, g)));
     for (const s of items) card.append(fxRow(s));
+    if (items.some(s => s.key === 'logoOn')) card.append(fxLogoRow());
     form.append(card);
   }
 }
@@ -87,6 +89,38 @@ function fxRow(s) {
   row.append(el('span', {}, s.label || '背景'), ctl, out, undo);
   if (locked) { row.classList.add('lock'); row.title = '这项只能在「所有屏幕」设定'; for (const i of row.querySelectorAll('input,select')) i.disabled = true; }
   return row;
+}
+/* ---------- 学校 Logo（叠在大屏照片右上角）---------- */
+const LOGO_EDGE = 1024;   // 上传前缩到长边 1024（够 4K 屏幕上一张大照片用），保留透明
+function fxLogoRow() {
+  const file = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', class: 'hidden', onchange: e => { const f = e.target.files[0]; e.target.value = ''; if (f) fxLogoUp(f); } });
+  const pic = fxLogo
+    ? el('img', { src: '/media/logo?v=' + fxLogo, alt: '', style: 'height:44px;max-width:120px;object-fit:contain;background:repeating-conic-gradient(#333 0 25%,#222 0 50%) 0 0/12px 12px;border-radius:4px' })
+    : el('span', { class: 'muted' }, '还没有 Logo');
+  return el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' }, pic, el('span', { class: 'grow', style: 'flex:1' }),
+    el('button', { onclick: () => file.click() }, fxLogo ? '换一个…' : '上传 Logo…'),
+    ...(fxLogo ? [el('button', { onclick: fxLogoDel }, '移除')] : []), file);
+}
+async function fxLogoUp(f) {
+  try {
+    const src = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(new Error('读不到文件')); r.readAsDataURL(f); });
+    const im = await loadImg(src);
+    if (!im.naturalWidth || !im.naturalHeight) throw new Error('读不出图片尺寸（SVG 请先另存成 PNG）');
+    const k = Math.min(1, LOGO_EDGE / Math.max(im.naturalWidth, im.naturalHeight));   // 等比例缩小，不改变 Logo 的长宽比
+    const cv = el('canvas'); cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k));
+    const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const r = await fetch('/api/control/logo', { method: 'POST', headers: { 'X-AC': '1', 'Content-Type': 'image/png' }, body: blob, credentials: 'same-origin' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    fxLogo = j.logo; fxBuild(); toast('Logo 已上传，大屏照片右上角会显示');
+    log(`上传学校 Logo（${cv.width}×${cv.height}）`);
+  } catch (e) { toast('上传 Logo 失败：' + e.message, true); }
+}
+async function fxLogoDel() {
+  if (!confirm('移除学校 Logo？大屏照片上的 Logo 会马上消失。')) return;
+  try { await api('POST', '/api/control/logo/delete', {}); fxLogo = ''; fxBuild(); toast('已移除 Logo'); log('移除学校 Logo'); }
+  catch (e) { toast('移除失败：' + e.message, true); }
 }
 const fxMark = row => row.classList.toggle('over', !!fxScope);
 

@@ -17,7 +17,8 @@ function renewMark(raw, v) {
   renewSettle = first ? 800 : 2200 + cascade;
   if (!first && v.mode === 'reveal') renewReveals++;
 }
-const renewPhotosDone = () => [...document.querySelectorAll('canvas.ph')].every(c => c.classList.contains('ok') || c.parentElement.classList.contains('nopic'));
+const renewPhotosDone = () => [...document.querySelectorAll('canvas.ph')].every(c => c.classList.contains('ok') || c.parentElement.classList.contains('nopic'))
+  && [...document.querySelectorAll('img.logo')].every(im => im.complete);
 function renewOk() { return booted && performance.now() - renewSince > renewSettle && document.fonts.status === 'loaded' && renewPhotosDone(); }
 function renewKey() { return renewState; }
 function renewCount() { return renewReveals; }
@@ -34,6 +35,7 @@ function connect() {
     }
     diagSet(v.diag);
     fxSet(v.fx);
+    logoSet(v.logo);
     render(v);
     renewMark(e.data, v);
     booted = true;

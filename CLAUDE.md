@@ -46,18 +46,19 @@ lib/                      服务端，按功能分（只用 Node 内建模块）
   show.js                 现场流程状态机：findAward、groupRun、isComplete、planNext、commit、undo、进度存档
   autoplay.js             自动播放（服务端计时）
   guest.js                嘉宾揭晓授权
+  buttons.js              ESP32 实体按钮的连线情况（rt.buttons：信号 rssi、延迟 rtt、最后联系时间）；sse.js 每 2 秒用 "buttons" 事件推给控制端（sendControlEvent，只发控制端）
   actions.js              控制端动作 doAction()、afterChange()（注册到 rt.hooks）
   views.js                ⚠ 防泄露核心：publicView()（大屏 / 嘉宾）、controlView()（控制端）
   sse.js                  实时推送：sseOpen、broadcast、dropClients
   sessions.js             登录会话、密码错误次数限制
   http.js                 安全标头、sendJson / sendText / sendStatic、readBody、csrfOk、safeAsset
-  media.js                照片（压缩版优先、ETag）和字体文件
+  media.js                照片（压缩版优先、ETag）、字体文件、学校 Logo（data/logo.png，/media/logo 要输出页 / 嘉宾密钥或已登录）
   obs.js                  OBS 场景集合
   render.js               服务器渲染影片：零依赖 CDP（Node 22 fetch / WebSocket）开无头 Chrome（自动试 Vulkan / EGL 显卡参数）跑 display.html?record=1 的 recStart()；有 ffmpeg 时 opt.sink 让每帧 RGBA POST 到每支影片专属的本机端口（sinkCreate() 开一个 worker_threads 收画面、直接写进 ffmpeg，一次性密钥；record=1 本机页面的 CSP 放行 127.0.0.1:*）由 ffmpeg h264_nvenc → libx264 编码，否则浏览器编码分块取回；存 Result/影片/。排队 enqueue / cancel / state（控制端 /api/control/render*；有 ffmpeg 时一支影片按 planSegs() 切段，每段 opt.seg = { from, to } 一个分页，concatSegs() 用 ffmpeg concat 接起来——⚠ 靠导出时固定种子的 Math.random 和 REC_SKIP 快转，特效脚本新增随机或有状态的东西时，要在 REC_SKIP 时照样推进状态）；命令行 tools/render-video.js 是这个队列的客户端（用 config.json 密码登录）
   cli.js                  quit()、口令输入、encrypt / decrypt 命令
   routes/index.js         路由总入口：IP 检查后依次交给 assets → display → guest → control
   routes/assets.js        /assets/css|js|img/…（静态资源，不需要密钥）
-  routes/display.js       /display、/api/display/stream、/media/font、/media/photo（输出页密钥）
+  routes/display.js       /display、/api/display/stream、/media/font、/media/logo、/media/photo（输出页密钥）
   routes/guest.js         /guest、/api/guest/*（嘉宾密钥）
   routes/control.js       /control、/api/login、/api/logout、/api/control/*（登录 + 防 CSRF；接口表 API）
 public/                   网页（只有程序和样式，没有数据）
@@ -73,6 +74,7 @@ public/                   网页（只有程序和样式，没有数据）
   js/guest/main.js        嘉宾揭晓页
 start.sh                  Linux / macOS：启动服务端；`./start.sh render` 批量导出影片（⚠ 必须 LF，见 .gitattributes）
 tools/render-video.js     批量导出影片（命令行）：用 lib/render.js；任务格式 tools/render-jobs.example.json
+Keypad/                   所有实体按键相关的东西都放这里（见 Keypad/README.md）：嘉宾揭晓按钮：Pico 版用 /api/guest/stream 的 "guestArmed"；ESP32 两个版本每 0.5 秒 GET /api/guest/button?k=&id=&rssi=&rtt=&miss=&up=&v=（回 {armed}，以服务端为准，顺便报信号和延迟，控制端显示），揭晓都用 /api/guest/reveal：pico-guest-button/（CircuitPython code.py 经 USB 串口和电脑端 bridge.js 交换一行一句的 KEY:DOWN / L:灯号，bridge 用 PowerShell 的 .NET SerialPort 开串口，零依赖；bridge-config.json 不进 git）、esp32-guest-button/（Arduino，自己连 WiFi；设置存 NVS（Preferences），插电按住按钮 / 未设置 / 60 秒连不上 WiFi 时开热点 AwardButton-XXXX + 设置网页 192.168.4.1；可选的 secrets.h 只当默认值，不进 git）、esp32-guest-button-lcd/（同一份程序的屏幕版：灯换成 1602A，自己写的 HD44780 驱动只用 Wire，I2C 转接板或并口都可以；和灯版共用 NVS 命名空间 guestbtn，改了两边共有的逻辑要两个文件一起改）；test-protocol.js 用 Node 模拟 ESP32 的请求；code.py 是无关的 MIDI 键盘
 build.bat                 双击编译 exe
 build/build-exe.js        SEA 打包脚本（离线）：bundle() 合并服务端代码，public/ 全部作为资源
 build/vendor/             随附的 postject（注入 SEA blob）和 resedit（改 exe 图标与版本信息），都是 MIT
@@ -82,7 +84,7 @@ start.bat                 启动源码版
 README.md                 用户文档（中文）
 ```
 
-运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/fx.json`（效果设定）、`logs/audit.log`。
+运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/fx.json`（效果设定）、`data/logo.png`（照片右上角的学校 Logo）、`logs/audit.log`。
 
 ### 网页脚本的规则
 
@@ -143,6 +145,7 @@ README.md                 用户文档（中文）
 - **效果设定**：`lib/fx.js` 的 `SCHEMA` 是唯一的设定清单（key、类型 num / bool / enum / auto、范围、默认值、`global` = 只能所有屏幕一起设）。数据 `{ all: {...}, screens: { 屏幕名: {只写改过的} } }`，经 `publicView().fx` 推给大屏（不含名单）。大屏 `js/display/fxconf.js`：`FXC` = 默认 ← all ← 本屏幕（`name=` 去掉 `·OBS`）← 控制端预览的 `fxPreviewSet()`；值改了由 `fxUpdate()` 让星系 / 光河下一帧重建（`gyW = 0` / `gW = 0`）、重建浮尘、切背景、重算合影位置。`cascadeMs` 服务端读（`views.js` 的 `award.cascade`、`autoplay.js`）。新增一项效果：`SCHEMA` 加一行 + `fxconf.js` 的 `FX_DEF` 加默认值 + 特效代码读 `FXC.xxx`（需要重建的在 `fxUpdate()` 处理），控制端表单自动生成。控制端 `js/control/fx.js`；预览 iframe 的函数（`show`、`burst`、`relayout`、`fxPreviewSet`）用 `contentWindow` 调用（`FXC` 是 `let`，不在 `window` 上）。
 - **导出影片**：控制端 `js/control/fx.js` 开隐藏 iframe `/display?…&preview=1&record=1&res=宽x高`，调用 `recStart(opt, fx, onProgress)`（`js/display/record.js`）。`RECORD` 时：`clock.js` 把 `requestAnimationFrame` / `performance.now` 换成 `recTick(ms)` 推进的虚拟时间（每格 1/60 秒，30 fps 就每 2 格取一帧）；`fit()` 让 canvas 用真正的屏幕像素并 `setTransform(REC_K)`，特效照样用舞台坐标画（⚠ 特效代码不要 `setTransform` / `resetTransform`，静态背景按 `REC_K` 建、用 `drawImage(bg, 0, 0, SW, SH)` 画）；`main.js` 只收第一份数据，固定成待机画面后关掉连线。文字不是截图：`recDrawChars()` 用 Range 量每个字的位置，按网页的字体、渐层、阴影画到画布上（改了待机画面 CSS 要同步改 `record.js`）。WebCodecs 编码（H.264 → VP9 后备），`mp4Mux()`（`js/display/mp4.js`）封装。循环：多渲染 fade 秒，开头那几帧背景先存成 WebP，最后几帧交叉淡化；流光周期 `SHIMMER_P` 调成影片长度的整数分之一。
 - **输出页外壳**：`/display` 默认给 `display-shell.html` + `js/display/shell.js`（`inner=1`、`preview=1`、`record=1`、`renew=0` 才直接给 `display.html`，见 `lib/routes/display.js`）。外壳每 0.25 秒问 iframe 里的 `renewOk()` / `renewKey()` / `renewCount()` / `renewMinutes()` / `renewEvery()`（`main.js`，⚠ 必须是 `function` 宣告才挂在 `window` 上）。到时间或揭晓次数到了就在后面载入新的 iframe（一样连 SSE、跟着现场走），`renewKey()`（= 最新一份公开视图原文）相同、两边 `renewOk()`（停好：动画 / 闪光 / 照片 / 字体都完成）时旧的淡出丢掉。目的：OBS 内置浏览器硬件加速会累积显卡内存，只有丢掉整个文件才会释放。
+- **照片 Logo**：`publicView().logo` = `/media/logo?v=<大小-修改时间>`（没有就不带）；`cards.js` 的 `logoSet()` 在每个 `canvas.ph` 后面加 `<img class="logo">`（全页同一个网址，只解码一份，所以不用画进 canvas）。大小 / 边距 / 不透明度是 CSS 变量 `--logo-k/-m/-o`（`fxconf.js` 的 `fxUpdate()` 设），框是正方形、`object-fit: contain` 贴右上角，Logo 不会变形。
 - **照片**：大屏照片用 `drawPhoto()`（`cards.js`）画进卡片大小的 canvas，⚠ 不要改回 `<img>`——OBS 内置浏览器 + 内置显卡会把每张原图留在显存里，揭晓多了会吃光内存。`fit()` 只调整 `#bg`、`#goldfx`、`#fx` 三个画布。
 - **特效线程**：`js/fx/host.js` 决定特效在哪跑。默认后台线程：把 `#bg` / `#goldfx` / `#fx` `transferControlToOffscreen()` 交给 `js/fx/worker.js`（`importScripts` 同一份特效脚本），主线程只剩转达函数 `burst` / `standbyFx` / `fxPush` / `fxSizeCanvases`（挂在 `window`）。`RECORD`、`&worker=0`、不支持、或 worker 6 秒没回报 → 主线程（`document.write` 同步载入 dust / flash / goldriver / galaxy / standby / react）。⚠ 特效脚本要两边都能跑：不能用 `document` / DOM（画布用 `mkCanvas()`），只能用 `SW` / `SH` / `PREVIEW` / `RECORD` / `REC_K` / `FXC` / `$`（worker 里 `$` 只认三个画布 id）；设定变更走 `fxPush(next, flags)`，画布尺寸走 `fxSizeCanvases()`（`js/fx/react.js`，`#goldfx` 按 `FXC.bgScale` 缩小，canvas 一律 `setTransform` 成舞台坐标）。主线程的 `diag.js` 读不到粒子数，改看 worker 回报的 `FX_STATS`。
 - **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（`FXC.flashOn / flashPeak / flashAmount`）；待机背景由 `standbyFx(on, FXC.standby)` 切换——`galaxyFx(on)` 旋涡星系（默认，`FXC.gy*`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
@@ -180,7 +183,7 @@ README.md                 用户文档（中文）
   - 用 Linux 的 node 作为底座、`EXE_NAME=xxx` 打一个 Linux 版 SEA，实际跑起来验证 SEA 代码路径。
   - Windows 版 exe 只能检查 PE 结构：签名表已清空、包含 `NODE_SEA_BLOB`、fuse 已翻转。
 - **杀进程**：不要用 `pkill -f "node server.js"`，它会连执行命令的 shell 一起杀掉。按 `/proc/*/cwd` 或端口找进程；Windows 上用 `Get-NetTCPConnection -LocalPort 端口` 找到进程 ID 再 `Stop-Process`。
-- **在 Windows 本机测试**：用 `git archive HEAD server.js lib public | tar -x -C <临时目录>` 取一份副本，`config.json` 预先写 `{"port":8097,"host":"127.0.0.1"}`，启动后会自动生成示例名单。不要在项目主目录跑测试（会用到真实的 `data/`）。
+- **在 Windows 本机测试**：用 `git archive HEAD server.js lib public | tar -x -C <临时目录>` 取一份副本，`config.json` 预先写 `{"port":8097,"host":"127.0.0.1","openBrowser":false}`，启动后会自动生成示例名单。⚠ 一定要 `openBrowser: false`：否则测试服务端会在用户的浏览器打开控制端，而副本的密码是随机新生成的，用户拿平时的密码登录会一直错、还会被锁 5 分钟（2026-10-19 发生过）。不要在项目主目录跑测试（会用到真实的 `data/`）。
 
 ## 图标
 

@@ -31,6 +31,7 @@ const EX_PRESET = () => ({
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
+  logoOn: true, logoSize: 16, logoMargin: 2.5, logoOpacity: 100,   // 照片右上角的学校 Logo（「效果控制」上传）；大小、边距 = 照片宽度 %
   size: '1920x1080', fmt: 'jpg'
 });
 // 读回来的设计要检查一遍：缺的补默认值、数字限制范围、颜色必须是 #rrggbb
@@ -46,6 +47,7 @@ function exClean(v) {
   o.shade = num(v?.shade, 0, 100, d.shade); o.shadow = num(v?.shadow, 0, 100, d.shadow);
   o.textX = num(v?.textX, 15, 50, d.textX); o.nameY = num(v?.nameY, 15, 70, d.nameY);
   o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false;
+  o.logoOn = v?.logoOn !== false; o.logoSize = num(v?.logoSize, 4, 50, d.logoSize); o.logoMargin = num(v?.logoMargin, 0, 10, d.logoMargin); o.logoOpacity = num(v?.logoOpacity, 20, 100, d.logoOpacity);
   o.size = ['1920x1080', '3840x2160', 'photo'].includes(v?.size) ? v.size : d.size;
   o.fmt = v?.fmt === 'png' ? 'png' : 'jpg';
   return o;
@@ -71,6 +73,22 @@ function exLoad(name) {
   if (!name) return Promise.resolve(null);
   if (!exImgCache.has(name)) exImgCache.set(name, loadImg('/api/control/photo?name=' + encodeURIComponent(name)).catch(() => null));
   return exImgCache.get(name);
+}
+// 学校 Logo（V.logo = 版本标记，换了 Logo 就重新读）
+let exLogoImg = { ver: null, p: null };
+function exLoadLogo() {
+  const ver = V?.logo || '';
+  if (exLogoImg.ver !== ver) exLogoImg = { ver, p: ver ? loadImg('/media/logo?v=' + encodeURIComponent(ver)).catch(() => null) : Promise.resolve(null) };
+  return exLogoImg.p;
+}
+// 在照片（x, y, 宽 w）右上角画 Logo：正方形框 = w × 大小%，Logo 按原比例缩进框里、贴右上角，不变形
+function exLogo(g, logo, x, y, w) {
+  const S = EXS; if (!logo || !S.logoOn || !logo.naturalWidth) return;
+  const box = w * S.logoSize / 100, m = w * S.logoMargin / 100, k = Math.min(box / logo.naturalWidth, box / logo.naturalHeight);
+  const lw = logo.naturalWidth * k, lh = logo.naturalHeight * k;
+  g.save(); g.globalAlpha = S.logoOpacity / 100; g.shadowColor = 'transparent';
+  g.drawImage(logo, x + w - m - lw, y + m, lw, lh);
+  g.restore();
 }
 function exWrap(g, text, maxW) {   // 英文按单词换行；中文按字换行
   const parts = /\s/.test(text) ? text.split(/(\s+)/) : [...text], lines = [];
@@ -98,7 +116,7 @@ function exText(g, text, st, fam, px, x, y, maxW) {
 }
 
 async function exRender(award, w, fam) {
-  const S = EXS, E = S.elems, img = await exLoad(w.photo);
+  const S = EXS, E = S.elems, img = await exLoad(w.photo), logo = img ? await exLoadLogo() : null;   // Logo 和大屏一样：有照片才加
   let W = S.size === 'photo' && img ? img.naturalWidth : +S.size.split('x')[0], H = S.size === 'photo' && img ? img.naturalHeight : +S.size.split('x')[1];
   if (!W || !H) { W = 1920; H = 1080; }
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -124,6 +142,7 @@ async function exRender(award, w, fam) {
       sh.addColorStop(0, `rgba(0,0,0,${a})`); sh.addColorStop(.86, `rgba(0,0,0,${a * .84})`); sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh; g.fillRect(0, 0, sw, H);
     }
+    exLogo(g, logo, 0, 0, W);
     shadow(true);
     let y = H * .115;
     if (E.top.show && head[0]) exText(g, head[0], E.top, headFam, E.top.size * k, cx, y, maxW);
@@ -172,6 +191,7 @@ async function exRender(award, w, fam) {
     if (img) g.drawImage(img, px0, py, pw, ph);
     else { const gr = g.createRadialGradient(px0 + pw / 2, py + ph * .35, 0, px0 + pw / 2, py + ph * .35, pw * .7); gr.addColorStop(0, '#a9822f'); gr.addColorStop(1, '#3e3016'); g.fillStyle = gr; g.fillRect(px0, py, pw, ph); }
     g.strokeStyle = S.teamFrame; g.lineWidth = Math.max(2, U * .003); g.strokeRect(px0, py, pw, ph);
+    exLogo(g, logo, px0, py, pw);
     y = py + ph + U * .03;
     shadow(true);
     block.forEach(([key, t, m], i) => {
@@ -223,7 +243,9 @@ function exBuildUI() {
       el('td', {}, n('spacing', '0.02', 58)),
       el('td', {}, f)));
   }
-  for (const id of ['shade', 'shadow', 'textX', 'nameY']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + (id === 'textX' || id === 'nameY' ? '%' : '%'); }
+  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
+  $('exG_logoOn').checked = EXS.logoOn;
+  $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
   $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow;
   $('exSize').value = EXS.size; $('exFmt').value = EXS.fmt;
 }
@@ -239,10 +261,11 @@ async function exSave() {
   try { await api('PUT', '/api/control/export-style', EXS); $('exSaveState').textContent = '设计已保存'; $('exSaveState').className = 'muted'; }
   catch (e) { $('exSaveState').textContent = '保存失败：' + e.message; }
 }
-for (const id of ['shade', 'shadow', 'textX', 'nameY']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
+for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
 $('exG_teamBg').oninput = e => { EXS.teamBg = e.target.value; exChanged(); };
 $('exG_teamFrame').oninput = e => { EXS.teamFrame = e.target.value; exChanged(); };
 $('exG_teamGlow').onchange = e => { EXS.teamGlow = e.target.checked; exChanged(); };
+$('exG_logoOn').onchange = e => { EXS.logoOn = e.target.checked; exChanged(); };
 $('exSize').onchange = () => { EXS.size = $('exSize').value; exChanged(); };
 $('exFmt').onchange = () => { EXS.fmt = $('exFmt').value; exChanged(); };
 $('exAward').onchange = () => { exFillWho(); exPreview().catch(e => toast(e.message, true)); };

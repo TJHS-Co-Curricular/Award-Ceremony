@@ -89,6 +89,10 @@
   "teamBg": "#07060c",
   "teamFrame": "#d9b25f",
   "teamGlow": true,
+  "logoOn": true,
+  "logoSize": 16,
+  "logoMargin": 2.5,
+  "logoOpacity": 100,
   "size": "1920x1080",
   "fmt": "jpg"
 }

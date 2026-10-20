@@ -15,7 +15,8 @@ const FX_DEF = {
   flashOn: true, flashPeak: .42, flashAmount: 1,
   cascadeMs: 600, photoUp: .25,
   bgFps: '60', bgScale: '1',   // 待机背景的帧率 / 解析度（省显卡、CPU）
-  renewMin: 3, renewReveals: 5   // 外壳（shell.js）每隔几分钟 / 每揭晓几次，在后台换新一次画面，释放显卡内存
+  renewMin: 3, renewReveals: 5,   // 外壳（shell.js）每隔几分钟 / 每揭晓几次，在后台换新一次画面，释放显卡内存
+  logoOn: true, logoSize: .16, logoMargin: .025, logoOpacity: 1   // 照片右上角的学校 Logo（大小、边距 = 照片宽度的比例）
 };
 const FX_SCREEN = (qs.get('name') || '').replace(/·OBS$/, '');
 let FXC = { ...FX_DEF }, fxSrv = null, fxLocal = null;
@@ -40,6 +41,9 @@ function fxUpdate() {
   };
   clearTimeout(fxRebuild.t);
   if (RECORD) go(); else fxRebuild.t = setTimeout(go, 400);   // 导出影片：马上重建（之后时间由导出程序控制）
+  const rs = document.documentElement.style;   // 照片 Logo：只是 CSS 变量，改了马上生效，不用重画照片
+  rs.setProperty('--logo-k', next.logoSize); rs.setProperty('--logo-m', next.logoMargin); rs.setProperty('--logo-o', next.logoOpacity);
+  document.documentElement.classList.toggle('nologo', !next.logoOn);
   $('goldfx').style.filter = next.standby === 'goldriver' && next.grBright !== 1 ? `brightness(${next.grBright})` : '';
   if (ch('standby') && $('s-standby').classList.contains('active')) standbyFx(true, next.standby);
   if (ch('photoUp') && cur.mode === 'photo') photoShift();

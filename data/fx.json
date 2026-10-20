@@ -20,6 +20,10 @@
     "bgScale": "1",
     "renewMin": 3,
     "renewReveals": 5,
+    "logoOn": true,
+    "logoSize": 0.3,
+    "logoMargin": 0,
+    "logoOpacity": 1,
     "photoUp": 0.25
   },
   "screens": {}

@@ -1,0 +1,5 @@
+{
+  "使用说明": "复制这个文件改名为 bridge-config.json（同一个文件夹），用记事本填「嘉宾链接」。改完要关掉黑色窗口再重开 start-bridge.bat。bridge-config.json 含嘉宾密钥，不进 git。",
+  "嘉宾链接": "http://192.168.0.204:80/guest?k=e6e8ff34fa62100d",
+  "串口": "自动"
+}

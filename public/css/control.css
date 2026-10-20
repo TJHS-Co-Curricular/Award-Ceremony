@@ -128,6 +128,9 @@ body.privacy .secret:hover,body.privacy .secret:focus{filter:none}
 #qrModal .qr svg{display:block;width:100%;height:100%}
 #qrModal .u{font:13px ui-monospace,Consolas,monospace;color:var(--muted);word-break:break-all;max-width:min(64vh,78vw,520px);margin:0 auto 12px}
 #qrModal .acts{display:flex;gap:8px;justify-content:center}
+.btnrow{margin-top:6px;padding:6px 8px;border-radius:6px;background:#0c0e12;border:1px solid var(--line);font-size:12px;line-height:1.6}
+.btnrow.off{border-color:var(--bad)}
+.lv.ok{color:var(--go-hi)}.lv.mid{color:var(--gold)}.lv.low{color:var(--warn)}.lv.bad{color:var(--bad)}
 .gstate{padding:8px 10px;border-radius:6px;background:#0c0e12;border:1px solid var(--line);margin-bottom:8px;font-size:13px}
 
 /* ===== 图片导出分页 ===== */

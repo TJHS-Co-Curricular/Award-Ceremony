@@ -108,6 +108,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #grid.photo .card::after{inset:0;border:1px solid rgba(217,178,95,.35);border-radius:6px;z-index:3}
 .card .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity .45s ease}
 .card .ph.ok{opacity:1}
+/* 学校 Logo（照片右上角）：正方形框 = 照片宽 × --logo-k，按原比例缩进框里贴右上角，不变形；照片画好才淡入 */
+.card .logo{position:absolute;z-index:2;top:calc(var(--cw,300px) * var(--logo-m,.025));right:calc(var(--cw,300px) * var(--logo-m,.025));
+  width:calc(var(--cw,300px) * var(--logo-k,.16));height:calc(var(--cw,300px) * var(--logo-k,.16));object-fit:contain;object-position:right top;
+  opacity:0;transition:opacity .45s ease;pointer-events:none}
+.card .ph.ok ~ .logo{opacity:var(--logo-o,1)}
+.nologo .card .logo{display:none}
 .card .shade{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,6,12,.72) 0%,rgba(8,6,12,.5) 30%,rgba(8,6,12,.18) 48%,transparent 58%)}
 .card.nopic{background:linear-gradient(90deg,#55535a 0%,#7c7a80 51%,#a57a22 52%,#c79530 100%)}   /* 没有照片：模拟灰 / 金幕布 */
 #grid.photo .card .tx{position:absolute;z-index:2;left:6%;top:0;bottom:0;width:41%;justify-content:center;align-items:flex-start;text-align:left}

@@ -62,6 +62,12 @@ function connect() {
     if (prevDisplays != null && prevDisplays !== V.displays.length)
       log(`输出页数量：${V.displays.length}`);
   };
+  // 实体按钮的信号 / 延迟（小事件，不带整份视图）
+  es.addEventListener("buttons", (e) => {
+    if (!V) return;
+    V.buttons = JSON.parse(e.data);
+    renderButtons();
+  });
   es.onerror = async () => {
     $("connDot").classList.remove("ok");
     $("connTxt").textContent = "重连中…";

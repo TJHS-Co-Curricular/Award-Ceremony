@@ -102,6 +102,7 @@
             <span class="muted" style="font-size:12px;flex:1" id="gList">嘉宾手机：未连接</span>
             <button id="bRotate" style="font-size:12px;padding:4px 8px">更换嘉宾链接</button>
           </div>
+          <div id="bList"></div>
         </div>
         <div class="sec">
           <h2>输出页地址（内网）</h2>
@@ -163,6 +164,13 @@
               <label class="xr">背景颜色 <input type="color" id="exG_teamBg" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">相框 / 线条颜色 <input type="color" id="exG_teamFrame" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">背景金色光晕 <input type="checkbox" id="exG_teamGlow" style="width:auto"><span></span></label>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">照片右上角 Logo</b><span id="exLogoInfo" class="muted" style="font-size:12px"></span></div>
+              <label class="xr">显示 <input type="checkbox" id="exG_logoOn" style="width:auto"><span></span></label>
+              <label class="xr">大小（照片宽度 %） <input type="range" id="exG_logoSize" min="4" max="50" step="0.5"><span id="exG_logoSizeV"></span></label>
+              <label class="xr">离边缘（照片宽度 %） <input type="range" id="exG_logoMargin" min="0" max="10" step="0.5"><span id="exG_logoMarginV"></span></label>
+              <label class="xr">不透明度 <input type="range" id="exG_logoOpacity" min="20" max="100" step="5"><span id="exG_logoOpacityV"></span></label>
             </div>
             <p class="help">内容来自「奖项编辑」（含还没保存的修改）。奖项有分类时，上方写分类、学会下面写奖项名；没分类就上方写奖项名。学会写在得奖者的「备注」栏（例如 <code>学长团Prefectorial Board</code>，自动拆成中英文两行）。照片要先放进 <code>data/photos/</code>。设计会自动存到服务端，换电脑也一样。⚠ 导出的图片含名字，请当作保密资料保管。</p>
           </div>

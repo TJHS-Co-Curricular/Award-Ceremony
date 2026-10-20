@@ -17,6 +17,10 @@ dist/
 /加密名单.bat
 /解密名单.bat
 
+# 嘉宾实体按钮的 WiFi 密码和嘉宾密钥
+Keypad/**/secrets.h
+Keypad/**/bridge-config.json
+
 # OBS 场景文件（含输出页密钥）
 obs/
 

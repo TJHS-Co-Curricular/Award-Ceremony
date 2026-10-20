@@ -1,8 +1,52 @@
 /*
  * 控制端 · 现场控制的画面：顶栏状态、奖项列表、当前名单、嘉宾状态、输出页地址、预览窗口、OBS 下载。
- * 提供：render()、setupPreview()、fillObsHosts()
+ * 提供：render()、renderButtons()、setupPreview()、fillObsHosts()
  */
 "use strict";
+
+// 实体按钮（ESP32）：信号强度、延迟。服务端每 2 秒推一次 "buttons" 事件（session.js），只重画这一块
+const rssiLv = (r) =>
+  r == null ? ["", "—"] : r >= -60 ? ["ok", "好"] : r >= -70 ? ["mid", "一般"] : r >= -80 ? ["low", "弱"] : ["bad", "很弱，靠近路由器"];
+const rttLv = (ms) =>
+  ms == null ? "" : ms <= 60 ? "ok" : ms <= 200 ? "mid" : ms <= 500 ? "low" : "bad";
+function upTxt(sec) {
+  if (sec == null) return "";
+  if (sec < 60) return `${sec} 秒`;
+  if (sec < 3600) return `${Math.floor(sec / 60)} 分钟`;
+  return `${Math.floor(sec / 3600)} 小时 ${Math.floor((sec % 3600) / 60)} 分`;
+}
+function renderButtons() {
+  const box = $("bList");
+  box.textContent = "";
+  for (const b of V?.buttons || []) {
+    const [rc, rt] = rssiLv(b.rssi);
+    box.append(
+      el(
+        "div",
+        { class: "btnrow" + (b.online ? "" : " off") },
+        el("div", {}, el("b", {}, `🔘 ${b.id}`), el("span", { class: "muted" }, ` ${b.ip}`)),
+        b.online
+          ? el(
+              "div",
+              {},
+              "信号 ",
+              el("span", { class: "lv " + rc }, b.rssi == null ? "—" : `${b.rssi} dBm（${rt}）`),
+              " · 延迟 ",
+              el("span", { class: "lv " + rttLv(b.rttAvg) }, b.rtt == null ? "—" : `${b.rtt} ms`),
+              b.rttAvg == null ? "" : el("span", { class: "muted" }, `（平均 ${b.rttAvg}，最高 ${b.rttMax}）`),
+            )
+          : el("div", { class: "lv bad" }, `⚠ 离线：${upTxt(b.ago)}前最后联系（灯不会亮，按了也没用）`),
+        b.online
+          ? el(
+              "div",
+              { class: "muted" },
+              `开机 ${upTxt(b.up)}` + (b.miss ? ` · 开机以来问服务端失败 ${b.miss} 次` : ""),
+            )
+          : null,
+      ),
+    );
+  }
+}
 
 function render() {
   if (!V) return;
@@ -15,6 +59,7 @@ function render() {
   V.auto ||= { on: false, remainingMs: 0 };
   V.guest ||= { armed: false };
   V.guests ||= [];
+  V.buttons ||= [];
   for (const u of V.urls || []) u.guest ||= "（需重启服务端）";
   const s = V.state;
   $("hSub").textContent = V.event.title;
@@ -65,12 +110,13 @@ function render() {
     );
   $("gState").textContent = g.armed
     ? `🎤 已授权：嘉宾可揭晓「${gAward?.title || ""}」（${s.mode === "reveal" ? s.revealed : 0}/${gAward?.winners.length || 0}），揭晓完自动收回`
-    : V.guests.length
-      ? "未授权：嘉宾手机显示「等待授权」"
-      : "嘉宾手机尚未打开嘉宾页";
+    : V.guests.length || V.buttons.some((b) => b.online)
+      ? "未授权：嘉宾手机显示「等待授权」，实体按钮的灯不亮"
+      : "嘉宾手机尚未打开嘉宾页，实体按钮也没有连上";
   $("gList").textContent = V.guests.length
     ? `嘉宾手机：${V.guests.join("、")}`
     : "嘉宾手机：未连接";
+  renderButtons();
   const gu = $("gUrls");
   gu.textContent = "";
   V.urls.forEach((u, i) =>

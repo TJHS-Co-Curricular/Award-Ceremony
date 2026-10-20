@@ -1,6 +1,6 @@
 /*
  * 大屏 · 揭晓画面的名字卡：按人数排版（纯文字 / 照片卡 / 团体照片在上）、填入得奖者、自动缩字。
- * 提供：buildGrid(view)、fillCard(card, winner, animate)、fitText(el)、div(cls, text)
+ * 提供：buildGrid(view)、fillCard(card, winner, animate)、fitText(el)、div(cls, text)、logoSet(url)
  * 需要：stage.js（$、SW、SH、KEY）
  */
 'use strict';
@@ -69,6 +69,17 @@ async function drawPhoto(cv, box, url) {
     cv.classList.add('ok');
   } catch { box.classList.add('nopic'); }
 }
+/* 学校 Logo：叠在每张照片右上角。整个页面只有一个 Logo 网址，浏览器只解码一份，不像学生照片那样要画进 canvas。
+ * 大小在 CSS：一个正方形框（边长 = 照片宽 × --logo-k），Logo 按原比例缩进框里、贴右上角（object-fit: contain），不会变形。 */
+let LOGO = '';
+function logoImg() { const im = document.createElement('img'); im.className = 'logo'; im.alt = ''; im.src = LOGO + '&k=' + encodeURIComponent(KEY); return im; }
+function logoSet(url) {
+  url = url || '';
+  if (url === LOGO) return;
+  LOGO = url;
+  for (const im of document.querySelectorAll('img.logo')) im.remove();   // 换了 / 移除：已经在画面上的照片一起更新
+  if (LOGO) for (const cv of document.querySelectorAll('#grid canvas.ph')) cv.after(logoImg());
+}
 function fillCard(card, w, animate) {
   card.className = 'card' + (animate ? ' pop' : '') + (w.type === 'team' ? ' team' : '');
   card.textContent = '';
@@ -84,6 +95,7 @@ function fillCard(card, w, animate) {
       cv.className = 'ph';
       holder.appendChild(cv);
       drawPhoto(cv, holder, w.photo + '&k=' + encodeURIComponent(KEY));
+      if (LOGO) holder.appendChild(logoImg());   // 放在照片后面：CSS 让它等照片画好才出现
     } else holder.classList.add('nopic');
     if (!cap) card.appendChild(div('shade'));
     if (w.cls || w.sid || w.detail) tx.appendChild(div('rule'));
