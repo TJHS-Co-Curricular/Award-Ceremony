@@ -1,6 +1,7 @@
-# 更新日志
+# 更新记录
 
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。版本号即 `server.js` 的 `VERSION` 与 `control.html` 的 `CLIENT_VERSION`。
+版本号格式：`主.次`（本项目例外，例：`1.38`）。唯一来源：`lib/env.js` 的 `VERSION`，`public/js/control/core.js` 的 `CLIENT_VERSION` 必须同值。
+版本标题保留 `## [x.y]` 的方括号写法：打包脚本 `build/build-exe.js` 靠它决定 exe 文件名。
 
 ## [1.38] — 2026-10-20
 
