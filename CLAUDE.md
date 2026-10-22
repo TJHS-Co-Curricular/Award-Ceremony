@@ -1,7 +1,9 @@
 # CLAUDE.md — 表扬大会 · 颁奖公布系统
 
+> 通用规范在全局规则（`~/.claude/rules/zhijie-standard/`），这里**只写本项目特有、或和全局不同的内容**。
+> 和全局不同的地方写在文末「本项目例外」。
+
 内网（LAN）颁奖公布网页系统：服务端保管名单，控制端操作，输出页上大屏，嘉宾页给嘉宾用手机揭晓。
-与用户沟通用**简体中文**；代码注释也用中文。
 
 ## 硬性约束（改代码前先看）
 
@@ -11,10 +13,9 @@
    - 照片优先发 `data/photos/_cache/<原名>__<大小>_<mtime>.jpg`（控制端压缩上传的版本），见 `lib/media.js` 的 `photoSource()`。
    - `/assets/*` 只放程序代码、样式和图标，不需要密钥；**绝不能**把名单、照片或任何数据放进 `public/`。
    - 照片文件名会出现在控制端，所以提示用户用编号命名（`001.jpg`）。
-2. **零依赖。** 服务端只能用 Node 内建模块（`http`、`fs`、`crypto` 等），不要加 npm 依赖。代码按功能分在 `lib/` 里（见下面「代码结构」）；SEA 里 `require` 只能加载内建模块，所以 `build-exe.js` 会先把 `server.js` + `lib/**/*.js` 合并成一个文件（`bundle()`）。模块之间只用**相对路径** `require('./xxx')`，不要用动态 require 或 `__dirname` 拼路径找代码。
-3. **离线可用。** 网页的 CSS / JS 都在 `public/` 里，经 `/assets/…` 由服务端提供（exe 里打包了一份）。不能引用 CDN、Google Fonts 或任何外网资源，现场可能没有外网。
-4. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它决定 exe 文件名，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
-5. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/`、`data/export-style.json`、`data/fx.json`，这几项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。新增会产生敏感内容的路径时，同步加进 `.gitignore`。
+2. **SEA 打包合并代码。** 代码按功能分在 `lib/` 里（见下面「代码结构」）；SEA 里 `require` 只能加载内建模块，所以 `build-exe.js` 会先把 `server.js` + `lib/**/*.js` 合并成一个文件（`bundle()`）。网页的 CSS / JS 都在 `public/` 里，经 `/assets/…` 由服务端提供（exe 里打包了一份）。
+3. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它决定 exe 文件名，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
+4. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/`、`data/export-style.json`、`data/fx.json`，这几项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。
 
 ## 运行
 
@@ -90,8 +91,7 @@ README.md                 用户文档（中文）
 
 - 不用打包工具，也不用 ES module：每个页面按 `<script src>` 的顺序载入普通脚本，**所有脚本共用同一个全局作用域**（顶层的 `const` / `let` / `function` 互相看得到）。
   - 新文件要放对位置：载入时就会执行的代码，只能用前面文件已经定义好的东西；事件处理和函数内部可以用后面文件的。
-  - 同一页面的所有脚本里，顶层名字不能重复；也不要用 `top`、`name`、`status`、`location` 之类浏览器保留的名字。
-  - 每个文件开头写注释：这个文件做什么、「提供」哪些名字、「需要」哪些文件。文件里加 `'use strict'`。
+  - 同一页面的所有脚本里，顶层名字不能重复。
 - 新增 css / js 文件放在 `public/css|js|img/` 下（文件名只用字母、数字、`-`、`_`），exe 会自动打包，服务端不用改。
 - 字体：`event.fontTitle` = 中文字体、`fontText` = 英文 / 数字字体（字段名是历史原因），值是系统字体名或 `file:文件名`；两者拼成「英文, 中文, 默认」套用到 `--serif` 和 `--sans`。`sysFont()` / `fontFamily()` 在 `js/shared/fonts.js`（大屏、控制端共用一份）；大屏的 `applyFonts()` 在 `js/display/fonts.js`。默认字体只在 `css/fonts.css` 定义，控制端的 `HTML_FONT`（`js/control/export.js`）用 `getComputedStyle` 读它。
 - 图片导出：`js/control/export.js` 的 `exRender()` 用 canvas 画、`makeZip()`（`js/shared/zip.js`）打包；样式对象 `EXS`（`EX_PRESET()` 为默认，`exClean()` 整理），经 `GET/PUT /api/control/export-style` 存到 `data/export-style.json`。⚠ `exChanged()` 会把 `EXS` 换成新对象，事件处理里要按 key 现取 `EXS.elems[key]`，不能抓住旧对象。快捷键只在 `#live` 显示时生效（`js/control/live.js`）。
@@ -119,8 +119,6 @@ README.md                 用户文档（中文）
 - **安全**：
   - IP 白名单（`allowedNetworks`），控制端可再限定 IP（`controlAllowedIps`）。
   - 登录失败 5 次锁 5 分钟；会话绑定登录 IP，Cookie 为 HttpOnly + SameSite=Strict。
-  - 写操作要求请求头 `X-AC: 1` 且 Origin 与 Host 一致（防 CSRF）。
-  - 所有响应 `no-store`、`no-referrer`、CSP；未知路径一律 404。
   - 审计记录写到 `logs/audit.log`。
 - **exe 模式**：`IS_EXE`（`node:sea`）为真时：
   - `ROOT` 取 exe 所在目录。
@@ -182,7 +180,6 @@ README.md                 用户文档（中文）
   - 云端用 npm 包 `node-win-x64@<与本机 node 相同版本>` 作为 Windows 底座。
   - 用 Linux 的 node 作为底座、`EXE_NAME=xxx` 打一个 Linux 版 SEA，实际跑起来验证 SEA 代码路径。
   - Windows 版 exe 只能检查 PE 结构：签名表已清空、包含 `NODE_SEA_BLOB`、fuse 已翻转。
-- **杀进程**：不要用 `pkill -f "node server.js"`，它会连执行命令的 shell 一起杀掉。按 `/proc/*/cwd` 或端口找进程；Windows 上用 `Get-NetTCPConnection -LocalPort 端口` 找到进程 ID 再 `Stop-Process`。
 - **在 Windows 本机测试**：用 `git archive HEAD server.js lib public | tar -x -C <临时目录>` 取一份副本，`config.json` 预先写 `{"port":8097,"host":"127.0.0.1","openBrowser":false}`，启动后会自动生成示例名单。⚠ 一定要 `openBrowser: false`：否则测试服务端会在用户的浏览器打开控制端，而副本的密码是随机新生成的，用户拿平时的密码登录会一直错、还会被锁 5 分钟（2026-10-19 发生过）。不要在项目主目录跑测试（会用到真实的 `data/`）。
 
 ## 图标
@@ -191,10 +188,18 @@ README.md                 用户文档（中文）
 - 网页图标是 `public/img/icon.svg`（= `icon-small.svg`），改图标时要一起更新。
 - `build-exe.js` 的顺序必须是：去签名 → postject 注入 → `setIconAndVersion()`。如果先改图标再注入，postject（LIEF）会报 “Relocation corrupted”。
 
-## 格式与编码
+## 本项目例外（和全局规则不同的地方）
 
-- `.bat` 必须是 **CRLF** 换行、UTF-8 编码，开头加 `chcp 65001 >nul`。
-   - `build.bat` 里 `node build\build-exe.js` 之后只能放纯英文行：cmd 在 chcp 65001 下跑完长命令后会读错后面的中文行（出现 `'e' is not recognized`）。编译后的提示文字由 build-exe.js 输出。
-  - 用 Python 改 `.bat` 时要 `open(..., newline='')`，否则匹配不到 `\r\n`。
-- 在 cmd 里设置环境变量要写成 `set "VAR=value"`，否则值末尾会带空格。
-- 所有新功能都要同步写进 `README.md`（用户看的，中文）和 `CHANGELOG.md`。
+C 类：改了会影响现场设置或使用习惯，维持现状。如果真的要改，打包脚本和版本检查要一起改。
+
+- **设置文件是根目录的 `config.json`**（JSON camelCase，含控制端密码和密钥），不是 `config/config.ini`。
+- **版本号格式 `主.次`（如 `1.38`）**，不是 `主.次.修订`；`CHANGELOG.md` 标题保留 `## [x.y]` 的方括号写法，`build/build-exe.js` 靠它决定 exe 文件名。
+- **exe 文件名带版本号**：`AwardCeremony-V<版本>.exe`。
+- **端口 80**（现场固定）。
+- **控制端和输出页只有深色**，没有亮色 / 主题切换（现场大屏和控制台用）。
+- 网页脚本用「共享全局作用域」，不用命名空间（全局 JavaScript 规范已允许本项目维持现状）。
+
+### 暂未对齐（B 类，以后再做；不是例外，不要擅自改）
+
+- `.bat` 用 UTF-8 + 中文提示，开头 `chcp 65001 >nul`（全局要求纯 ASCII）。现在的写法要遵守：`build.bat` 里 `node build\build-exe.js` 之后只能放纯英文行（cmd 在 chcp 65001 下跑完长命令后会读错后面的中文行，出现 `'e' is not recognized`），编译后的提示文字由 build-exe.js 输出。
+- 日志只有 `logs/audit.log`，没有每天一个的程序日志。
