@@ -12,14 +12,16 @@
 const FX_WORKER = !RECORD && qs.get('worker') !== '0' && typeof OffscreenCanvas === 'function' &&
   'transferControlToOffscreen' in HTMLCanvasElement.prototype && typeof Worker === 'function';
 let FX_STATS = '';
+// 旋涡星系默认用 WebGL 画（fx/galaxy-gl.js），每帧几万笔变 4 笔；网址 &gl=0 改回原本画法；导出影片不用（要和以前逐帧一样）
+const FX_GL = !RECORD && qs.get('gl') !== '0';
 
 if (!FX_WORKER) {
-  for (const f of ['dust', 'flash', 'goldriver', 'galaxy', 'standby', 'react']) document.write(`<script src="/assets/js/fx/${f}.js"><\/script>`);
+  for (const f of ['dust', 'flash', 'goldriver', 'galaxy', 'galaxy-gl', 'standby', 'react']) document.write(`<script src="/assets/js/fx/${f}.js"><\/script>`);
 } else {
   const ids = ['bg', 'goldfx', 'fx'], cw = $('bg').width, ch = $('bg').height;
   const canvases = ids.map(id => [id, $(id).transferControlToOffscreen()]);
   const fxWorker = new Worker('/assets/js/fx/worker.js');
-  fxWorker.postMessage({ init: { SW, SH, PREVIEW, FXC, cw, ch, canvases } }, canvases.map(c => c[1]));
+  fxWorker.postMessage({ init: { SW, SH, PREVIEW, FXC, FX_GL, cw, ch, canvases } }, canvases.map(c => c[1]));
   let alive = false;
   fxWorker.onmessage = e => { if ('stats' in e.data) { FX_STATS = e.data.stats; alive = true; } };
   fxWorker.onerror = e => console.error('特效后台线程出错：', e.message);

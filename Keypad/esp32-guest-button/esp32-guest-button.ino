@@ -15,7 +15,9 @@
  * 设置（WiFi 名称、密码、嘉宾链接）用手机网页改，存在 ESP32 里，不用重新烧录：
  *   - 第一次开机（还没设置过）、或插电时按住按钮 3 秒 → 进入「设置模式」
  *   - 开机 60 秒还连不上 WiFi → 也会开设置网页（同时继续试连 WiFi）
- *   手机连 WiFi「AwardButton-XXXX」（密码见 AP_PASS），浏览器打开 http://192.168.4.1
+ *   手机连 WiFi「AwardBox-XXXX」（密码见 AP_PASS），浏览器打开 http://192.168.4.1
+ *   已经连上 WiFi 时：同一个 WiFi 的电脑 / 手机直接打开按钮的 IP（路由器里显示为 AwardBox-XXXX），
+ *   保存时要输入设置密码（= AP_PASS）
  * 同一个文件夹有 secrets.h 时，里面的值只当作「还没设置过」时的默认值（可以不要这个文件）。
  * 接线、灯号说明见 Keypad/README.md。
  */
@@ -72,8 +74,8 @@ const unsigned long POLL_MS = 500;
 // 连续几次问不到才算和服务端断线（偶尔掉一个包，灯不会乱跳）
 const int POLL_FAIL_LIMIT = 3;
 
-// 设置用的 WiFi 热点密码（至少 8 位）。热点名称是 AwardButton- 加上这块板子编号的后 4 位
-const char *AP_PASS = "award123";
+// 设置用的 WiFi 热点密码（至少 8 位）。热点名称是 AwardBox- 加上这块板子编号的后 4 位
+const char *AP_PASS = "tjhscca";
 
 // 开机多久连不上 WiFi，就打开设置网页（毫秒）
 const unsigned long PORTAL_AFTER_MS = 60000;
@@ -143,7 +145,7 @@ bool parseGuestUrl(String u, String &h, uint16_t &p, String &k) {
 // 灯号（优先级从上到下）：             单灯            三色灯
 //   刚揭晓成功                          闪 3 下         绿闪 3 下
 //   按了但还没授权 / 太快                短闪 1 下       红短闪 1 下
-//   设置模式（手机连 AwardButton-XXXX）  慢闪            红黄轮流慢闪
+//   设置模式（手机连 AwardBox-XXXX）  慢闪            红黄轮流慢闪
 //   正在连 WiFi 或服务端                 快闪            红常亮
 //   嘉宾链接错误（密钥不对）             闪 2 下停一下   红闪 2 下停一下
 //   已连上，等待授权                     灭              黄常亮
@@ -231,7 +233,9 @@ void updateRgb(unsigned long now) {
 
 
 // ============================================================
-// 设置网页（手机连 ESP32 的热点后打开 http://192.168.4.1）
+// 设置网页
+//   - 设置热点：手机连 AwardBox-XXXX 后打开 http://192.168.4.1
+//   - 已连上 WiFi：同一个 WiFi 里打开按钮的 IP（保存要输入设置密码 AP_PASS，免得别人乱改）
 // ============================================================
 
 WebServer web(80);
@@ -250,6 +254,11 @@ String esc(const String &s) {
     else o += c;
   }
   return o;
+}
+
+// 这个请求是不是从设置热点来的（热点上不用密码；从现场 WiFi 来的要输入设置密码）
+bool viaAp() {
+  return portalOn && web.client().localIP() == WiFi.softAPIP();
 }
 
 // 密钥只显示后 4 位，不在网页上露出整条
@@ -272,15 +281,20 @@ small{color:#666}</style></head><body><h1>🎤 嘉宾按钮设置</h1>)";
 // 附近的 WiFi 选项：打开设置网页时扫一次存起来（扫描约 2 秒，每次开网页都扫的话手机会一直卡）
 String wifiOptions;
 
-void scanOptions() {
-  Serial.println("[设置网页] 扫描附近的 WiFi …");
-  int n = WiFi.scanNetworks();
+// 用刚扫到的结果（scanNetworks() 之后、scanDelete() 之前）做下拉选项
+void fillOptions(int n) {
   wifiOptions = "";
   for (int i = 0; i < n; i++) {
     String s = WiFi.SSID(i);
     if (!s.length() || wifiOptions.indexOf(">" + esc(s) + "<") >= 0) continue;   // 同名的只列一次
     wifiOptions += "<option>" + esc(s) + "</option>";
   }
+}
+
+void scanOptions() {
+  Serial.println("[设置网页] 扫描附近的 WiFi …");
+  int n = WiFi.scanNetworks();
+  fillOptions(n);
   WiFi.scanDelete();
   Serial.printf("[设置网页] 扫到 %d 个 WiFi\n", n < 0 ? 0 : n);
 }
@@ -289,15 +303,21 @@ void sendForm(const String &msg) {
   String h = FPSTR(PAGE_HEAD);
   if (msg.length()) h += "<p class=err>" + esc(msg) + "</p>";
   h += "<div class=now>现在的设置：<br>WiFi：" + esc(cfgSsid.length() ? cfgSsid : "（还没设置）") +
-       "<br>嘉宾链接：" + esc(maskedUrl()) + "<br>板子编号：" + esc(apName) + "</div>";
+       "<br>嘉宾链接：" + esc(maskedUrl()) + "<br>板子编号：" + esc(apName);
+  if (WiFi.status() == WL_CONNECTED)
+    h += "<br>本机 IP：" + WiFi.localIP().toString() + "（信号 " + String(WiFi.RSSI()) + " dBm）<br>服务端：" +
+         (status == ST_READY ? (armed ? "已连上，主持人已授权" : "已连上，等主持人授权") : status == ST_BADKEY ? "嘉宾链接错误" : "还没连上");
+  h += "</div>";
+  if (!viaAp()) h += "<p><small>⚠ 保存后按钮会重启，约 10 秒内不能按，现场揭晓中不要改。</small></p>";
   h += "<form method=post action=/save><label>现场 WiFi</label><select name=pick onchange=\"if(this.value)ssid.value=this.value\"><option value=''>— 从附近的 WiFi 选（或在下面直接输入）—</option>";
   h += wifiOptions;
   h += "</select><small>列表里没有？<a href=/rescan>重新扫描</a></small><input name=ssid id=ssid value=\"" + esc(cfgSsid) + "\" placeholder='WiFi 名称'>"
        "<label>WiFi 密码</label><input name=pass type=password placeholder='留空 = 不改'>"
        "<small>只支持 2.4 GHz、普通密码的 WiFi（要输入帐号的学校 WiFi 连不上）</small>"
        "<label>嘉宾链接</label><input name=url placeholder='留空 = 不改' autocapitalize=off autocomplete=off>"
-       "<small>控制端右侧「嘉宾揭晓」→「复制」，整条贴上。例：http://192.168.1.10/guest?k=…</small>"
-       "<button>保存并重启</button></form></body></html>";
+       "<small>控制端右侧「嘉宾揭晓」→「复制」，整条贴上。例：http://192.168.1.10/guest?k=…</small>";
+  if (!viaAp()) h += "<label>设置密码</label><input name=apw type=password autocomplete=off><small>和设置热点的密码一样</small>";
+  h += "<button>保存并重启</button></form></body></html>";
   web.send(200, "text/html; charset=utf-8", h);
 }
 
@@ -305,6 +325,10 @@ void handleSave() {
   String ssid = web.arg("ssid"), pass = web.arg("pass"), url = web.arg("url");
   ssid.trim();
   url.trim();
+  if (!viaAp() && web.arg("apw") != AP_PASS) {
+    Serial.printf("[设置网页] %s 输入的设置密码不对，没有保存\n", web.client().remoteIP().toString().c_str());
+    return sendForm("设置密码不对，没有保存");
+  }
   if (!ssid.length()) return sendForm("请填 WiFi 名称");
   if (url.length()) {
     String h, k;
@@ -326,14 +350,12 @@ void handleSave() {
   ESP.restart();
 }
 
-void startPortal(bool onlySetup) {
-  if (portalOn) return;
-  portalOn = true;
-  setupOnly = onlySetup;
-  WiFi.mode(WIFI_AP_STA);   // 留着 STA：才能扫描附近的 WiFi
-  scanOptions();            // 热点开之前先扫：这时还没有手机连着，扫描不会让手机断线
-  WiFi.softAP(apName.c_str(), AP_PASS);
-  dns.start(53, "*", WiFi.softAPIP());   // 任何网址都指到设置页，手机会自动弹出
+bool webOn = false;
+
+// 开设置网页（热点和现场 WiFi 共用同一个，只开一次）
+void webStart() {
+  if (webOn) return;
+  webOn = true;
   web.on("/", HTTP_GET, []() {
     Serial.println("[设置网页] 有人打开了设置页");
     sendForm("");
@@ -350,33 +372,48 @@ void startPortal(bool onlySetup) {
   // 其它网址（手机 / 电脑检测「要不要登录」用的）一律转到设置页。
   // ⚠ Windows 会改开 https://www.msn.com，HTTPS 转不过来，只能手动打开 http://192.168.4.1
   web.onNotFound([]() {
+    if (!viaAp()) {   // 从现场 WiFi 来的：不是检测登录，转回首页就好
+      web.sendHeader("Location", "/");
+      web.send(302, "text/plain", "");
+      return;
+    }
     Serial.printf("[设置网页] %s%s → 转到设置页\n", web.hostHeader().c_str(), web.uri().c_str());
     web.sendHeader("Location", "http://192.168.4.1/");
     web.send(302, "text/plain", "");
   });
   web.begin();
+}
+
+void startPortal(bool onlySetup) {
+  if (portalOn) return;
+  portalOn = true;
+  setupOnly = onlySetup;
+  WiFi.mode(WIFI_AP_STA);   // 留着 STA：才能扫描附近的 WiFi
+  scanOptions();            // 热点开之前先扫：这时还没有手机连着，扫描不会让手机断线
+  WiFi.softAP(apName.c_str(), AP_PASS);
+  dns.start(53, "*", WiFi.softAPIP());   // 任何网址都指到设置页，手机会自动弹出
+  webStart();
   Serial.printf("设置网页已打开：手机连 WiFi「%s」（密码 %s），浏览器打开 http://192.168.4.1\n", apName.c_str(), AP_PASS);
 }
 
 void stopPortal() {
   if (!portalOn) return;
-  web.stop();
-  dns.stop();
+  dns.stop();   // 网页不关：连上 WiFi 后在同一个 WiFi 里打开按钮的 IP 还能改设置
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
   portalOn = false;
-  Serial.println("WiFi 已连上，关闭设置网页");
+  Serial.println("WiFi 已连上，关闭设置热点");
 }
 
 
 // ============================================================
 // 问服务端：现在能不能按（每 POLL_MS 一次，以服务端的回答为准）
-//   GET /api/guest/button?k=密钥&id=AwardButton-XXXX&rssi=-55&rtt=12&miss=0&up=123&v=2
+//   GET /api/guest/button?k=密钥&id=AwardBox-XXXX&rssi=-55&rtt=12&miss=0&up=123&v=2
 //   → 200 {"armed":true} / {"armed":false}；403 = 密钥不对；404 = 服务端太旧（1.38 以前）
 // 信号（rssi，dBm）、上一次的延迟（rtt，毫秒）、开机以来失败几次（miss）给控制端看
 // ============================================================
 
-const char *FW_VER = "2";   // 按钮程序的版本，控制端看得到
+const char *FW_VER = "3";   // 按钮程序的版本，控制端看得到
 const uint16_t HTTP_TIMEOUT_MS = 1500;
 
 // 问状态和揭晓共用一条连接（keep-alive），量到的延迟就是一次请求来回的时间，不含重新连线
@@ -576,6 +613,7 @@ void onWifiEvent(WiFiEvent_t e, WiFiEventInfo_t info) {
   } else if (e == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
     Serial.print("[WiFi] 拿到 IP：");
     Serial.println(WiFi.localIP());
+    Serial.printf("[WiFi] 同一个 WiFi 里用浏览器打开 http://%s 可以改设置\n", WiFi.localIP().toString().c_str());
   } else if (e == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
     uint8_t r = info.wifi_sta_disconnected.reason;
     if (selfDisconnect && (r == 3 || r == 8)) { selfDisconnect = false; return; }
@@ -591,6 +629,7 @@ void scanWifi() {
     Serial.println("[WiFi] 附近一个 WiFi 都没扫到（天线 / 板子有问题？）");
     return;
   }
+  fillOptions(n);   // 连上 WiFi 后打开设置网页时，下拉选单就用这一次的结果
   bool found = false;
   for (int i = 0; i < n && i < 20; i++) {
     bool me = WiFi.SSID(i) == cfgSsid;
@@ -611,7 +650,7 @@ void heartbeat() {
   const char *st = status == ST_SETUP ? "设置模式" : status == ST_WIFI ? "连 WiFi 中" : status == ST_SERVER ? "连服务端中"
                  : status == ST_BADKEY ? "嘉宾链接错误" : "已连上服务端";
   Serial.printf("[现况] %s ｜ WiFi：%s", st, wifiStatusText(WiFi.status()));
-  if (WiFi.status() == WL_CONNECTED) Serial.printf("（%s，信号 %d dBm）", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  if (WiFi.status() == WL_CONNECTED) Serial.printf("（%s，信号 %d dBm；设置网页 http://%s）", WiFi.localIP().toString().c_str(), WiFi.RSSI(), WiFi.localIP().toString().c_str());
   else if (!setupOnly && wifiSince && !portalOn) Serial.printf("（%lu 秒后打开设置网页）", (PORTAL_AFTER_MS - min(PORTAL_AFTER_MS, millis() - wifiSince)) / 1000);
   if (status == ST_READY) Serial.printf(" ｜ 延迟 %ld ms ｜ %s", lastRtt, armed ? "已授权，可以按" : "等主持人授权");
   if (portalOn) Serial.printf(" ｜ 设置网页开着：手机连「%s」", apName.c_str());
@@ -665,7 +704,8 @@ void setup() {
   uint64_t mac = ESP.getEfuseMac();
   char id[5];
   snprintf(id, sizeof(id), "%04X", (unsigned)((mac >> 32) & 0xFFFF));
-  apName = String("AwardButton-") + id;
+  apName = String("AwardBox-") + id;
+  WiFi.setHostname(apName.c_str());   // 路由器的设备列表里显示 AwardBox-XXXX，好找 IP
 
   WiFi.onEvent(onWifiEvent);   // 设置模式也要：看得到手机有没有连上设置热点
   loadSettings();
@@ -702,10 +742,8 @@ void setup() {
 }
 
 void loop() {
-  if (portalOn) {
-    dns.processNextRequest();
-    web.handleClient();
-  }
+  if (portalOn) dns.processNextRequest();
+  if (webOn) web.handleClient();
   heartbeat();
   if (setupOnly) {   // 设置模式：只等手机来改设置
     updateLed();
@@ -715,6 +753,7 @@ void loop() {
   ensureWifi();
   if (WiFi.status() == WL_CONNECTED) {
     if (portalOn) stopPortal();
+    webStart();
     if (status == ST_WIFI) {
       Serial.print("WiFi 已连上，本机 IP：");
       Serial.println(WiFi.localIP());

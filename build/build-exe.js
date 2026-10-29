@@ -7,7 +7,8 @@
  *         node build/build-exe.js path\to\node.exe  指定底座（版本须与运行本脚本的 node 完全一致）
  *
  * 输出到项目主目录（和 config.json、data\ 放一起，源码版和 exe 共用同一份设置与名单）。
- * 文件名带版本号：AwardCeremony-V1.13.exe（版本取自 CHANGELOG.md 最新一个「## [x.y]」）。
+ * 文件名固定 AwardCeremony.exe（不带版本号：Windows 防火墙按文件路径记住允许，改名每次编译都会再问一次）；
+ * 版本号（取自 CHANGELOG.md 最新一个「## [x.y]」）写在 exe「属性」和启动窗口里。
  * 服务端代码（server.js + lib/）会先合并成一个文件（SEA 只能执行单个脚本，见 bundle()）；
  * public/ 里的网页、css、js、图标全部作为资源打包进 exe。
  * 想输出到别的文件夹（例如做 U 盘便携版）：设置环境变量 OUT_DIR=dist
@@ -26,7 +27,7 @@ const VER_LOG = (readText('CHANGELOG.md').match(/^##\s*\[(\d+(?:\.\d+)+)\]/m) ||
 const VER_SRV = (readText('lib/env.js').match(/const VERSION = '([\d.]+)'/) || [])[1] || '';
 const VER_CLI = (readText('public/js/control/core.js').match(/const CLIENT_VERSION = '([\d.]+)'/) || [])[1] || '';
 const VER = VER_LOG || VER_SRV || '1.0';
-const EXE_NAME = process.env.EXE_NAME || `AwardCeremony-V${VER}.exe`;
+const EXE_NAME = process.env.EXE_NAME || 'AwardCeremony.exe';
 const FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
 
 function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
@@ -88,7 +89,7 @@ function fail(msg) { console.error('\n✗ ' + msg); process.exit(1); }
   const bat = cmd => ['@echo off', 'chcp 65001 >nul', 'cd /d "%~dp0"', `"${EXE_NAME}" ${cmd}`, 'pause', ''].join('\r\n');
   fs.writeFileSync(path.join(DIST, '加密名单.bat'), bat('encrypt'));
   fs.writeFileSync(path.join(DIST, '解密名单.bat'), bat('decrypt'));
-  if (!IN_ROOT) fs.writeFileSync(path.join(DIST, '使用说明.txt'), fs.readFileSync(path.join(__dirname, '使用说明.txt'), 'utf8').replaceAll('AwardCeremony.exe', EXE_NAME));   // 说明里的文件名换成带版本号的
+  if (!IN_ROOT) fs.writeFileSync(path.join(DIST, '使用说明.txt'), fs.readFileSync(path.join(__dirname, '使用说明.txt'), 'utf8').replaceAll('AwardCeremony.exe', EXE_NAME));   // 说明里的文件名换成实际的（设了 EXE_NAME 时）
   // 清理旧的分卷文件
   for (const f of fs.readdirSync(DIST)) if (/\.part\d$/.test(f) || f === '合并成exe.bat') fs.rmSync(path.join(DIST, f), { force: true });
   fs.rmSync(tmp, { recursive: true, force: true });

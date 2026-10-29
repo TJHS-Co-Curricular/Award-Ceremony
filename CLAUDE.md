@@ -14,7 +14,7 @@
    - `/assets/*` 只放程序代码、样式和图标，不需要密钥；**绝不能**把名单、照片或任何数据放进 `public/`。
    - 照片文件名会出现在控制端，所以提示用户用编号命名（`001.jpg`）。
 2. **SEA 打包合并代码。** 代码按功能分在 `lib/` 里（见下面「代码结构」）；SEA 里 `require` 只能加载内建模块，所以 `build-exe.js` 会先把 `server.js` + `lib/**/*.js` 合并成一个文件（`bundle()`）。网页的 CSS / JS 都在 `public/` 里，经 `/assets/…` 由服务端提供（exe 里打包了一份）。
-3. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它决定 exe 文件名，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
+3. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它写 exe 的版本信息，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
 4. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/`、`data/export-style.json`、`data/fx.json`，这几项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。
 
 ## 运行
@@ -24,7 +24,7 @@ start.bat                      :: 源码版（需要 Node.js 18+，编译 exe �
 node server.js                 :: 同上
 node server.js encrypt         :: data/awards.json → data/awards.enc（AES-256-GCM + scrypt），抹除明文
 node server.js decrypt         :: 反向
-build.bat                      :: 编译 AwardCeremony-V<版本>.exe 到项目主目录（版本取自 CHANGELOG.md 最新的 ## [x.y]）
+build.bat                      :: 编译 AwardCeremony.exe 到项目主目录（版本号取自 CHANGELOG.md 最新的 ## [x.y]，写进 exe 属性）
 set "OUT_DIR=dist" && node build\build-exe.js   :: 输出到 dist\（U 盘便携版）
 ```
 
@@ -68,14 +68,14 @@ public/                   网页（只有程序和样式，没有数据）
   css/display.css / control.css / guest.css
   img/icon.svg            网页图标（= build/icon/icon-small.svg）
   js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）
-  js/fx/                  大屏特效（host.js 决定在后台线程 worker.js 或主线程跑；react.js 两边共用）：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）、goldriver.js（待机金色光河，原本）、standby.js（切换）
+  js/fx/                  大屏特效（host.js 决定在后台线程 worker.js 或主线程跑；react.js 两边共用）：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）+ galaxy-gl.js（星系的 WebGL 画法，默认用；`&gl=0` / 导出影片 / 不支持时用 galaxy.js 的 canvas 2D）、goldriver.js（待机金色光河，原本）、standby.js（切换）
   js/display/             大屏（record.js + mp4.js = 导出影片）：stage.js（参数、舞台自适应）→ clock.js（导出影片的虚拟时钟）→ fxconf.js（效果设定 FXC）→ [js/fx/*] → fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
                           → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ fx.js（效果控制）→ main.js（启动）
   js/guest/main.js        嘉宾揭晓页
 start.sh                  Linux / macOS：启动服务端；`./start.sh render` 批量导出影片（⚠ 必须 LF，见 .gitattributes）
 tools/render-video.js     批量导出影片（命令行）：用 lib/render.js；任务格式 tools/render-jobs.example.json
-Keypad/                   所有实体按键相关的东西都放这里（见 Keypad/README.md）：嘉宾揭晓按钮：Pico 版用 /api/guest/stream 的 "guestArmed"；ESP32 两个版本每 0.5 秒 GET /api/guest/button?k=&id=&rssi=&rtt=&miss=&up=&v=（回 {armed}，以服务端为准，顺便报信号和延迟，控制端显示），揭晓都用 /api/guest/reveal：pico-guest-button/（CircuitPython code.py 经 USB 串口和电脑端 bridge.js 交换一行一句的 KEY:DOWN / L:灯号，bridge 用 PowerShell 的 .NET SerialPort 开串口，零依赖；bridge-config.json 不进 git）、esp32-guest-button/（Arduino，自己连 WiFi；设置存 NVS（Preferences），插电按住按钮 / 未设置 / 60 秒连不上 WiFi 时开热点 AwardButton-XXXX + 设置网页 192.168.4.1；可选的 secrets.h 只当默认值，不进 git）、esp32-guest-button-lcd/（同一份程序的屏幕版：灯换成 1602A，自己写的 HD44780 驱动只用 Wire，I2C 转接板或并口都可以；和灯版共用 NVS 命名空间 guestbtn，改了两边共有的逻辑要两个文件一起改）；test-protocol.js 用 Node 模拟 ESP32 的请求；code.py 是无关的 MIDI 键盘
+Keypad/                   所有实体按键相关的东西都放这里（见 Keypad/README.md）：嘉宾揭晓按钮：Pico 版用 /api/guest/stream 的 "guestArmed"；ESP32 两个版本每 0.5 秒 GET /api/guest/button?k=&id=&rssi=&rtt=&miss=&up=&v=（回 {armed}，以服务端为准，顺便报信号和延迟，控制端显示），揭晓都用 /api/guest/reveal：pico-guest-button/（CircuitPython code.py 经 USB 串口和电脑端 bridge.js 交换一行一句的 KEY:DOWN / L:灯号，bridge 用 PowerShell 的 .NET SerialPort 开串口，零依赖；bridge-config.json 不进 git）、esp32-guest-button/（Arduino，自己连 WiFi；设置存 NVS（Preferences），插电按住按钮 / 未设置 / 60 秒连不上 WiFi 时开热点 AwardBox-XXXX（主机名同名，连上 WiFi 后打开按钮 IP 也是设置页） + 设置网页 192.168.4.1；可选的 secrets.h 只当默认值，不进 git）、esp32-guest-button-lcd/（同一份程序的屏幕版：灯换成 1602A，自己写的 HD44780 驱动只用 Wire，I2C 转接板或并口都可以；和灯版共用 NVS 命名空间 guestbtn，改了两边共有的逻辑要两个文件一起改）；test-protocol.js 用 Node 模拟 ESP32 的请求；code.py 是无关的 MIDI 键盘
 build.bat                 双击编译 exe
 build/build-exe.js        SEA 打包脚本（离线）：bundle() 合并服务端代码，public/ 全部作为资源
 build/vendor/             随附的 postject（注入 SEA blob）和 resedit（改 exe 图标与版本信息），都是 MIT
@@ -145,7 +145,7 @@ README.md                 用户文档（中文）
 - **输出页外壳**：`/display` 默认给 `display-shell.html` + `js/display/shell.js`（`inner=1`、`preview=1`、`record=1`、`renew=0` 才直接给 `display.html`，见 `lib/routes/display.js`）。外壳每 0.25 秒问 iframe 里的 `renewOk()` / `renewKey()` / `renewCount()` / `renewMinutes()` / `renewEvery()`（`main.js`，⚠ 必须是 `function` 宣告才挂在 `window` 上）。到时间或揭晓次数到了就在后面载入新的 iframe（一样连 SSE、跟着现场走），`renewKey()`（= 最新一份公开视图原文）相同、两边 `renewOk()`（停好：动画 / 闪光 / 照片 / 字体都完成）时旧的淡出丢掉。目的：OBS 内置浏览器硬件加速会累积显卡内存，只有丢掉整个文件才会释放。
 - **照片 Logo**：`publicView().logo` = `/media/logo?v=<大小-修改时间>`（没有就不带）；`cards.js` 的 `logoSet()` 在每个 `canvas.ph` 后面加 `<img class="logo">`（全页同一个网址，只解码一份，所以不用画进 canvas）。大小 / 边距 / 不透明度是 CSS 变量 `--logo-k/-m/-o`（`fxconf.js` 的 `fxUpdate()` 设），框是正方形、`object-fit: contain` 贴右上角，Logo 不会变形。
 - **照片**：大屏照片用 `drawPhoto()`（`cards.js`）画进卡片大小的 canvas，⚠ 不要改回 `<img>`——OBS 内置浏览器 + 内置显卡会把每张原图留在显存里，揭晓多了会吃光内存。`fit()` 只调整 `#bg`、`#goldfx`、`#fx` 三个画布。
-- **特效线程**：`js/fx/host.js` 决定特效在哪跑。默认后台线程：把 `#bg` / `#goldfx` / `#fx` `transferControlToOffscreen()` 交给 `js/fx/worker.js`（`importScripts` 同一份特效脚本），主线程只剩转达函数 `burst` / `standbyFx` / `fxPush` / `fxSizeCanvases`（挂在 `window`）。`RECORD`、`&worker=0`、不支持、或 worker 6 秒没回报 → 主线程（`document.write` 同步载入 dust / flash / goldriver / galaxy / standby / react）。⚠ 特效脚本要两边都能跑：不能用 `document` / DOM（画布用 `mkCanvas()`），只能用 `SW` / `SH` / `PREVIEW` / `RECORD` / `REC_K` / `FXC` / `$`（worker 里 `$` 只认三个画布 id）；设定变更走 `fxPush(next, flags)`，画布尺寸走 `fxSizeCanvases()`（`js/fx/react.js`，`#goldfx` 按 `FXC.bgScale` 缩小，canvas 一律 `setTransform` 成舞台坐标）。主线程的 `diag.js` 读不到粒子数，改看 worker 回报的 `FX_STATS`。
+- **特效线程**：`js/fx/host.js` 决定特效在哪跑。默认后台线程：把 `#bg` / `#goldfx` / `#fx` `transferControlToOffscreen()` 交给 `js/fx/worker.js`（`importScripts` 同一份特效脚本），主线程只剩转达函数 `burst` / `standbyFx` / `fxPush` / `fxSizeCanvases`（挂在 `window`）。`RECORD`、`&worker=0`、不支持、或 worker 6 秒没回报 → 主线程（`document.write` 同步载入 dust / flash / goldriver / galaxy / galaxy-gl / standby / react）。⚠ 特效脚本要两边都能跑：不能用 `document` / DOM（画布用 `mkCanvas()`），只能用 `SW` / `SH` / `PREVIEW` / `RECORD` / `REC_K` / `FXC` / `$`（worker 里 `$` 只认三个画布 id）；设定变更走 `fxPush(next, flags)`，画布尺寸走 `fxSizeCanvases()`（`js/fx/react.js`，`#goldfx` 按 `FXC.bgScale` 缩小，canvas 一律 `setTransform` 成舞台坐标）。主线程的 `diag.js` 读不到粒子数，改看 worker 回报的 `FX_STATS`。
 - **特效**（`js/fx/`）：`burst(n)` 揭晓闪光（`FXC.flashOn / flashPeak / flashAmount`）；待机背景由 `standbyFx(on, FXC.standby)` 切换——`galaxyFx(on)` 旋涡星系（默认，`FXC.gy*`）/ `goldFx(on)` 金色光河（原本的设计），只在待机画面显示时运行（`render.js` 的 `show()` 控制），两者共用 canvas `#goldfx`；背景浮尘一直运行（隔帧画）。
 - **不要用 `seq` 去重渲染**：存数据时不会递增 `seq`，但活动名称等内容会变。
 
@@ -193,8 +193,8 @@ README.md                 用户文档（中文）
 C 类：改了会影响现场设置或使用习惯，维持现状。如果真的要改，打包脚本和版本检查要一起改。
 
 - **设置文件是根目录的 `config.json`**（JSON camelCase，含控制端密码和密钥），不是 `config/config.ini`。
-- **版本号格式 `主.次`（如 `1.38`）**，不是 `主.次.修订`；`CHANGELOG.md` 标题保留 `## [x.y]` 的方括号写法，`build/build-exe.js` 靠它决定 exe 文件名。
-- **exe 文件名带版本号**：`AwardCeremony-V<版本>.exe`。
+- **版本号格式 `主.次`（如 `1.38`）**，不是 `主.次.修订`；`CHANGELOG.md` 标题保留 `## [x.y]` 的方括号写法，`build/build-exe.js` 靠它取版本号。
+- **exe 文件名是 `AwardCeremony.exe`**（全局规则要求 = 项目英文名 `Award-Ceremony.exe`，维持旧名）；不带版本号是用户定（2026-10-29）：带版本号每次编译 Windows 防火墙都会再问一次。
 - **端口 80**（现场固定）。
 - **控制端和输出页只有深色**，没有亮色 / 主题切换（现场大屏和控制台用）。
 - 网页脚本用「共享全局作用域」，不用命名空间（全局 JavaScript 规范已允许本项目维持现状）。

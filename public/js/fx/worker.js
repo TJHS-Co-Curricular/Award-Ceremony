@@ -8,7 +8,7 @@
  */
 'use strict';
 
-var SW = 1920, SH = 1080, PREVIEW = false, RECORD = false, REC_SKIP = false, REC_K = 1, FXC = {};
+var SW = 1920, SH = 1080, PREVIEW = false, RECORD = false, REC_SKIP = false, REC_K = 1, FXC = {}, FX_GL = false;
 const FX_CANVAS = {};
 const $ = id => FX_CANVAS[id];
 const mkCanvas = (w = 1, h = 1) => new OffscreenCanvas(w, h);
@@ -19,14 +19,14 @@ let fxReady = false;
 self.onmessage = e => {
   const m = e.data;
   if (m.init) {
-    ({ SW, SH, PREVIEW, FXC } = m.init);
+    ({ SW, SH, PREVIEW, FXC, FX_GL } = m.init);
     for (const [id, c] of m.init.canvases) FX_CANVAS[id] = c;
-    importScripts('dust.js', 'flash.js', 'goldriver.js', 'galaxy.js', 'standby.js', 'react.js');
+    importScripts('dust.js', 'flash.js', 'goldriver.js', 'galaxy.js', 'galaxy-gl.js', 'standby.js', 'react.js');
     fxSizeCanvases(m.init.cw, m.init.ch);
     fxReady = true;
     setInterval(() => {
       const parts = gyOn ? '星系粒子 ' + (gyStreaks.length + gyDust.length + gyDots.length) : gOn ? '光河粒子 ' + gParts.length : '';
-      self.postMessage({ stats: parts ? parts + '   背景 ' + fxDrawn + ' fps' : '' }); fxDrawn = 0;
+      self.postMessage({ stats: parts ? parts + '   背景 ' + fxDrawn + ' fps' + (gyOn ? (gyGlOk ? '（WebGL）' : '（没用 WebGL：' + gyGlWhy + '）') : '') : '' }); fxDrawn = 0;
     }, 1000);
     return;
   }

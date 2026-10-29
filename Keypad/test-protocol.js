@@ -17,7 +17,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let lastRtt = -1;
 async function poll(k = key) {
   const t0 = Date.now();
-  const q = `k=${k}&id=AwardButton-TEST&rssi=-58&miss=0&up=${Math.round(process.uptime())}&v=2` + (lastRtt >= 0 ? `&rtt=${lastRtt}` : '');
+  const q = `k=${k}&id=AwardBox-TEST&rssi=-58&miss=0&up=${Math.round(process.uptime())}&v=2` + (lastRtt >= 0 ? `&rtt=${lastRtt}` : '');
   const r = await fetch(`${base}/api/guest/button?${q}`);
   lastRtt = Date.now() - t0;
   const body = await r.text();
@@ -45,7 +45,7 @@ const reveal = () => fetch(`${base}/api/guest/reveal?k=${key}`, { method: 'POST'
     p = await poll();
     console.log('灯应该灭：armed =', p.armed);
     const st = await fetch(`${base}/api/control/state`, { headers: { Cookie: cookie } }).then(r => r.json());
-    const b = (st.buttons || []).find(x => x.id === 'AwardButton-TEST');
+    const b = (st.buttons || []).find(x => x.id === 'AwardBox-TEST');
     console.log('控制端看到的按钮：', b ? `${b.online ? '在线' : '离线'}，信号 ${b.rssi} dBm，延迟 ${b.rtt} ms（平均 ${b.rttAvg}）` : '⚠ 没有');
   }
   console.log('错的密钥：', (await poll('wrong')).code, '（应为 403）');

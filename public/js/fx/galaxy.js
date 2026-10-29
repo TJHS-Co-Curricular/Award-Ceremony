@@ -62,6 +62,7 @@ function gyBuild() {
     return { r: r * (1 + gyGauss() * .06), a: armAngle(r) + gyGauss() * (Math.random() < .6 ? .5 : 2.2), w: spin(r), s: .7 + Math.random() * 1.3, al: .25 + Math.random() * .6, tw: Math.random() * 6.28, f: .5 + Math.random() * 2 };
   });
   gyDots = Array.from({ length: Math.round(GY.DOTS * k) }, () => { const r = G.R0 * 1.2 + Math.random() * (G.RMAX - G.R0); return { r, a: Math.random() * 6.28, w: spin(r), s: 2 + Math.random() * 5, tw: Math.random() * 6.28 }; });
+  if (typeof gyGlUpload === 'function') gyGlUpload();   // WebGL 画法：背景和粒子资料放进显卡（fx/galaxy-gl.js）
 }
 // 星系平面上的 (半径, 角度) → 画面坐标（倾斜成椭圆再转一点角度）
 function gyProj(r, a) {
@@ -78,7 +79,9 @@ function gyFrame(now) {
   if (gyW !== SW || gyH !== SH || !gyBg) gyBuild();
   if (REC_SKIP) return;   // 导出影片快转：星系只靠时间 gyT，不用画
   const g = gyCtx, B = FXC.gyBright, t0 = performance.now();
-  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.drawImage(gyBg, 0, 0, SW, SH);
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  if (typeof gyGlOk !== 'undefined' && gyGlOk) { g.drawImage(gyGlDraw(now), 0, 0, SW, SH); return; }   // WebGL 画好整张（背景 + 粒子），一次贴上（fx/galaxy-gl.js）
+  g.drawImage(gyBg, 0, 0, SW, SH);
   g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
   // 弧形光痕：按「颜色 × 亮度（12 级）× 粗细（0.5 一级）」分组，每组合成一条路径一次画完。
   // 原本一条一条画（约 1 万次），现在约 100 多次：CPU 准备画图的时间少四分之三，显卡也少很多次切换；画面几乎一样（亮度差约 2%）
