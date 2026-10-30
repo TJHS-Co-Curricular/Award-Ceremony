@@ -62,6 +62,11 @@ function connect() {
     if (prevDisplays != null && prevDisplays !== V.displays.length)
       log(`输出页数量：${V.displays.length}`);
   };
+  // 公开视图：转给页面里的预览框（LIVE 预览、效果预览、导出影片），它们不用自己开连线（输出页 main.js 的 pvFeed）
+  es.addEventListener("public", (e) => {
+    pvRaw = e.data;
+    pvSend(e.data);
+  });
   // 实体按钮的信号 / 延迟（小事件，不带整份视图）
   es.addEventListener("buttons", (e) => {
     if (!V) return;
@@ -69,6 +74,7 @@ function connect() {
     renderButtons();
   });
   es.onerror = async () => {
+    pvSend(null);
     $("connDot").classList.remove("ok");
     $("connTxt").textContent = "重连中…";
     try {

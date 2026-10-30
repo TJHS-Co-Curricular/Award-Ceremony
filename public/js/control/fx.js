@@ -113,7 +113,7 @@ async function fxLogoUp(f) {
     const r = await fetch('/api/control/logo', { method: 'POST', headers: { 'X-AC': '1', 'Content-Type': 'image/png' }, body: blob, credentials: 'same-origin' });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-    fxLogo = j.logo; fxBuild(); toast('Logo 已上传，大屏照片右上角会显示');
+    fxLogo = j.logo; fxBuild(); toast('Logo 已上传，大屏照片右上角和画面左上角会显示');
     log(`上传学校 Logo（${cv.width}×${cv.height}）`);
   } catch (e) { toast('上传 Logo 失败：' + e.message, true); }
 }

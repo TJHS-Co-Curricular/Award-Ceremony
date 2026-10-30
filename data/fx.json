@@ -5,8 +5,8 @@
     "gySpeed": 0.12,
     "gyDensity": 1,
     "gySize": 1,
-    "gyX": 0.5,
-    "gyY": 0.6,
+    "gyX": null,
+    "gyY": null,
     "gyTilt": 0.36,
     "grBright": 2,
     "grDensity": 1,
@@ -21,10 +21,20 @@
     "renewMin": 3,
     "renewReveals": 5,
     "logoOn": true,
-    "logoSize": 0.3,
+    "logoSize": 0.25,
     "logoMargin": 0,
     "logoOpacity": 1,
+    "sLogoOn": true,
+    "sLogoSize": 0.28,
+    "sLogoMargin": 0.025,
+    "sLogoOpacity": 1,
     "photoUp": 0.25
   },
-  "screens": {}
+  "screens": {
+    "副屏": {
+      "sLogoSize": 0.12,
+      "sLogoMargin": 0.02,
+      "sLogoOpacity": 0.55
+    }
+  }
 }

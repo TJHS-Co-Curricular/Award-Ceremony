@@ -69,7 +69,7 @@ async function drawPhoto(cv, box, url) {
     cv.classList.add('ok');
   } catch { box.classList.add('nopic'); }
 }
-/* 学校 Logo：叠在每张照片右上角。整个页面只有一个 Logo 网址，浏览器只解码一份，不像学生照片那样要画进 canvas。
+/* 学校 Logo：叠在每张照片右上角，另外画面左上角也有一个（#slogo）。整个页面只有一个 Logo 网址，浏览器只解码一份，不像学生照片那样要画进 canvas。
  * 大小在 CSS：一个正方形框（边长 = 照片宽 × --logo-k），Logo 按原比例缩进框里、贴右上角（object-fit: contain），不会变形。 */
 let LOGO = '';
 function logoImg() { const im = document.createElement('img'); im.className = 'logo'; im.alt = ''; im.src = LOGO + '&k=' + encodeURIComponent(KEY); return im; }
@@ -79,6 +79,10 @@ function logoSet(url) {
   LOGO = url;
   for (const im of document.querySelectorAll('img.logo')) im.remove();   // 换了 / 移除：已经在画面上的照片一起更新
   if (LOGO) for (const cv of document.querySelectorAll('#grid canvas.ph')) cv.after(logoImg());
+  const sl = $('slogo');   // 画面左上角：载入好才淡入（CSS .ok）；没有 Logo 就清掉
+  sl.classList.remove('ok');
+  sl.onload = () => sl.classList.add('ok');
+  if (LOGO) sl.src = LOGO + '&k=' + encodeURIComponent(KEY); else sl.removeAttribute('src');
 }
 function fillCard(card, w, animate) {
   card.className = 'card' + (animate ? ' pop' : '') + (w.type === 'team' ? ' team' : '');

@@ -7,12 +7,19 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const CLIENT_VERSION = '1.39';
+const CLIENT_VERSION = '1.41';
 let V = null;          // 最新控制端视图
 let sel = null;        // 选中的奖项 id
 let draft = null;      // 编辑草稿
 let dirty = false;
 let es = null;          // 实时连接（EventSource）
+// 预览框（/display?preview=1 的 iframe）用控制端这条连线收到的公开视图，不自己开连线（session.js 收、输出页 main.js 的 pvFeed 用）
+let pvRaw = null;       // 最新一份公开视图（JSON 原文）
+// ⚠ 要用 function 宣告（挂在 window 上，预览框里用 parent.pvLatest() 叫得到）
+function pvLatest() { return pvRaw; }
+function pvSend(raw) {   // raw = null：控制端断线了，预览框显示断线标记
+  for (const f of document.querySelectorAll('iframe')) { try { f.contentWindow?.pvFeed?.(raw); } catch {} }
+}
 
 /* ---------- 小工具 ---------- */
 function toast(t, err) {

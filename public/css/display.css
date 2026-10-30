@@ -114,6 +114,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   opacity:0;transition:opacity .45s ease;pointer-events:none}
 .card .ph.ok ~ .logo{opacity:var(--logo-o,1)}
 .nologo .card .logo{display:none}
+/* 学校 Logo（画面左上角，主屏 / 副屏都有）：正方形框 = 画面高 × --slogo-k，按原比例缩进框里贴左上角；在画面之上、闪光和黑屏之下 */
+#slogo{position:absolute;z-index:15;left:calc(var(--sh,1080px) * var(--slogo-m,.025));top:calc(var(--sh,1080px) * var(--slogo-m,.025));
+  width:calc(var(--sh,1080px) * var(--slogo-k,.15));height:calc(var(--sh,1080px) * var(--slogo-k,.15));object-fit:contain;object-position:left top;
+  opacity:0;transition:opacity .45s ease;pointer-events:none}
+#slogo.ok{opacity:var(--slogo-o,1)}
+#slogo:not([src]),.noslogo #slogo{display:none}
 .card .shade{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,6,12,.72) 0%,rgba(8,6,12,.5) 30%,rgba(8,6,12,.18) 48%,transparent 58%)}
 .card.nopic{background:linear-gradient(90deg,#55535a 0%,#7c7a80 51%,#a57a22 52%,#c79530 100%)}   /* 没有照片：模拟灰 / 金幕布 */
 #grid.photo .card .tx{position:absolute;z-index:2;left:6%;top:0;bottom:0;width:41%;justify-content:center;align-items:flex-start;text-align:left}

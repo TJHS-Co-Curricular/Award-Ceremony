@@ -115,7 +115,7 @@ README.md                 用户文档（中文）
 - **新增接口**：在 `lib/routes/control.js` 的 `API` 表加一行 `'方法 路径': handler`（已自动做登录和 CSRF 检查）；不需要登录的页面接口放到对应的 routes 文件里。
 - **自动播放**：在服务端计时（`auto`、`scheduleAuto()`），控制端关掉也继续跑。除 `next` 和自动播放、嘉宾相关动作外，任何手动操作都会 `stopAuto()`。
 - **嘉宾揭晓**：`guest.armed` 只对当前奖项有效，揭晓完或换奖项时自动收回；嘉宾按键限流 1 秒。
-- **推送**：用 SSE（不用 WebSocket，避免依赖）。客户端类型：`display` / `preview` / `guest` / `control`。`send()` 按类型选择 `publicView()` 或 `controlView()`。
+- **推送**：用 SSE（不用 WebSocket，避免依赖）。客户端类型：`display` / `preview` / `guest` / `control`。`send()` 按类型选择 `publicView()` 或 `controlView()`；控制端每次还多收一个 `public` 事件（= `publicView()`），控制端页面里的预览框（`preview=1` 的 iframe：LIVE 预览、效果预览、导出影片）用 `parent.pvLatest()` / `pvFeed()` 拿它，不自己开连线（浏览器对同一网址最多 6 条连线，满了预览框会排队、只显示普通背景）；3 秒内没收到才自己连 `/api/display/stream`。
 - **安全**：
   - IP 白名单（`allowedNetworks`），控制端可再限定 IP（`controlAllowedIps`）。
   - 登录失败 5 次锁 5 分钟；会话绑定登录 IP，Cookie 为 HttpOnly + SameSite=Strict。

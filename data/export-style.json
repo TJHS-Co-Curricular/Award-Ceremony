@@ -2,7 +2,7 @@
   "elems": {
     "top": {
       "show": true,
-      "size": 48,
+      "size": 24,
       "color": "#eaea0c",
       "bold": true,
       "italic": false,
@@ -11,7 +11,7 @@
     },
     "topEn": {
       "show": true,
-      "size": 24,
+      "size": 13,
       "color": "#eaea0c",
       "bold": true,
       "italic": false,
@@ -82,12 +82,12 @@
       "font": ""
     }
   },
-  "shade": 28,
-  "shadow": 22,
-  "textX": 23,
-  "nameY": 24,
+  "shade": 0,
+  "shadow": 72,
+  "textX": 25,
+  "nameY": 36.7,
   "teamBg": "#07060c",
-  "teamFrame": "#d9b25f",
+  "teamFrame": "#ffffff",
   "teamGlow": true,
   "logoOn": true,
   "logoSize": 16,
