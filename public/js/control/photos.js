@@ -84,19 +84,37 @@ $("bMissCsv").onclick = async () => {
   } catch (e) {
     return toast("检查照片失败：" + e.message, true);
   }
-  const out = rows
-    .filter((r) => !r.w.photo || missing.has(r.w.photo))
-    .map(({ a, w }) => [
-      a.group || "",
-      a.title || "",
+  const bad = rows.filter((r) => !r.w.photo || missing.has(r.w.photo));
+  // 去重复（默认勾选）：同一个人得了几个奖只列一行，奖项合并写在同一格。
+  // 认人：有学号按学号；没学号按 姓名 + 班级；团体按团体名。
+  const dedup = $("chkMissDedup").checked;
+  const keyOf = (w) =>
+    w.type === "team"
+      ? "T|" + w.name
+      : w.sid
+        ? "S|" + String(w.sid).replace(/\s/g, "")
+        : "N|" + String(w.name).replace(/\s/g, "") + "|" + String(w.cls || "").replace(/\s/g, "");
+  const groups = new Map();
+  bad.forEach((r, i) => {
+    const k = dedup ? keyOf(r.w) : i;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  });
+  const join = (list) => [...new Set(list.filter(Boolean))].join("、");
+  const out = [...groups.values()].map((g) => {
+    const w = g[0].w;
+    return [
+      join(g.map((r) => r.a.group)),
+      join(g.map((r) => r.a.title)),
       w.type === "team" ? "团体" : "个人",
       w.name,
       w.cls,
       w.sid,
       w.soc,
-      w.photo || "",
-      w.photo ? "照片文件找不到" : "没填照片文件名",
-    ]);
+      join(g.map((r) => r.w.photo)),
+      join(g.map((r) => (r.w.photo ? "照片文件找不到" : "没填照片文件名"))),
+    ];
+  });
   if (!out.length) return toast("所有得奖者都有照片");
   const head = ["分类", "奖项", "类型", "姓名", "班级", "学号", "学会", "照片文件名", "问题"];
   const csv =
@@ -110,8 +128,9 @@ $("bMissCsv").onclick = async () => {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
-  toast(`已导出 ${out.length} 位缺少照片的得奖者`);
-  log(`导出缺少照片名单（${out.length} 位）`);
+  const merged = bad.length - out.length;
+  toast(`已导出 ${out.length} 位缺少照片的得奖者${merged ? `（去掉重复 ${merged} 行）` : ""}`);
+  log(`导出缺少照片名单（${out.length} 位${merged ? `，去掉重复 ${merged} 行` : ""}）`);
 };
 $("bOpt").onclick = async () => {
   const todo = photos.filter(

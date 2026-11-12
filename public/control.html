@@ -318,7 +318,7 @@
         </details>
 
         <div class="ecard" id="optCard">
-          <div class="head"><b style="flex:1">照片优化</b><span id="optInfo" class="muted" style="font-size:12px">—</span><button id="bMissCsv" title="导出没填照片、或照片文件找不到的得奖者（CSV，可用 Excel 打开）">导出缺少照片名单</button><button id="bOpt">压缩照片</button></div>
+          <div class="head"><b style="flex:1">照片优化</b><span id="optInfo" class="muted" style="font-size:12px">—</span><label class="xchk" title="同一个人得了几个奖只列一行（有学号按学号认人，没学号按姓名 + 班级），奖项合并写在同一格" style="font-size:12px;white-space:nowrap"><input type="checkbox" id="chkMissDedup" checked style="width:auto"> 去重复</label><button id="bMissCsv" title="导出没填照片、或照片文件找不到的得奖者（CSV，可用 Excel 打开）">导出缺少照片名单</button><button id="bOpt">压缩照片</button></div>
           <p class="help" style="margin:0">把名单里的大照片缩小成长边 2560 像素的 JPEG，存到 <code>data/photos/_cache/</code>（原图不动）。大屏揭晓时下载更快、更省内存。换了原图会自动失效，需要再压缩一次。</p>
           <div class="autobar" style="margin-top:8px"><i id="optBar"></i></div>
         </div>
