@@ -43,6 +43,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #s-standby .line i{display:block;height:1.5px;width:min(560px,28vw);background:linear-gradient(90deg,transparent,rgba(247,226,166,.9))}
 #s-standby .line i:last-child{background:linear-gradient(270deg,transparent,rgba(247,226,166,.9))}
 #s-standby .line b{width:10px;height:10px;transform:rotate(45deg);border:1.5px solid var(--gold-hi)}
+/* 日期 / 时间 / 地点（宣传背景）：一行，中间用小菱形隔开；太宽由 standbyInfo() 缩小 */
+#s-standby .info{max-width:calc(100% - 220px);display:flex;align-items:center;justify-content:center;gap:0 34px;margin-top:46px;white-space:nowrap;font-family:var(--sans);font-weight:600;font-size:54px;letter-spacing:.08em;line-height:1.25;color:#f3dea4;text-shadow:0 3px 14px rgba(0,0,0,.7)}
+#s-standby .info s{display:block;width:12px;height:12px;transform:rotate(45deg);background:var(--gold-hi);opacity:.8;flex:none}
+#s-standby .note{max-width:calc(100% - 220px);margin-top:22px;white-space:nowrap;font-family:var(--sans);font-weight:500;font-size:38px;letter-spacing:.12em;padding-left:.12em;line-height:1.25;color:#d9c48f;text-shadow:0 3px 12px rgba(0,0,0,.7)}
+#s-standby .info:empty,#s-standby .note:empty,#s-standby.noinfo .info,#s-standby.noinfo .note{display:none}
 
 /* ===== 分类标题画面（进入新分类时） ===== */
 #s-group .kicker{margin-bottom:40px}
@@ -121,6 +126,13 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #slogo.ok{opacity:var(--slogo-o,1)}
 #slogo:not([src]),.noslogo #slogo{display:none}
 .card .shade{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,6,12,.72) 0%,rgba(8,6,12,.5) 30%,rgba(8,6,12,.18) 48%,transparent 58%)}
+/* 左边的金色闪光（exstyle.js 加在 .shade 里）：3 层光点图（shared/sparkle.js），一格 = 照片高 × 0.9，各层错开、轮流闪；右边 30% 淡出 */
+.card .shade .spks{position:absolute;inset:0;-webkit-mask-image:linear-gradient(90deg,#000 70%,transparent);mask-image:linear-gradient(90deg,#000 70%,transparent)}
+.card .shade .spk{position:absolute;inset:0;--t:calc(var(--ch,300px) * .9);background-size:var(--t) var(--t);opacity:.2;animation:spk 2.8s ease-in-out infinite}
+.card .shade .spk.s0{background-image:var(--spk0)}
+.card .shade .spk.s1{background-image:var(--spk1);background-position:calc(var(--t) * .37) calc(var(--t) * .61);animation-duration:3.7s;animation-delay:-1.2s}
+.card .shade .spk.s2{background-image:var(--spk2);background-position:calc(var(--t) * .71) calc(var(--t) * .23);animation-duration:4.6s;animation-delay:-2.9s}
+@keyframes spk{0%,100%{opacity:.2}50%{opacity:1}}
 .card.nopic{background:linear-gradient(90deg,#55535a 0%,#7c7a80 51%,#a57a22 52%,#c79530 100%)}   /* 没有照片：模拟灰 / 金幕布 */
 #grid.photo .card .tx{position:absolute;z-index:2;left:6%;top:0;bottom:0;width:41%;justify-content:center;align-items:flex-start;text-align:left}
 #grid.photo .card .nm{font-size:var(--name,72px);line-height:1.15;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.65),0 0 2px rgba(0,0,0,.5)}
@@ -138,12 +150,18 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #grid.photo.cap .card .rule{width:3em;margin:.28em 0 .32em;background:linear-gradient(90deg,transparent,var(--gold-hi),transparent)}
 #grid.photo.cap .card .lns{display:flex;flex-wrap:wrap;justify-content:center;gap:0 .9em;max-width:100%}
 #grid.photo.cap .card .ln{text-shadow:none}
+/* 套用图片导出设计的个人照片卡（exstyle.js）：每行绝对定位，基线对到导出图片的位置；字号、颜色、阴影由 JS 设 */
+#grid.photo .card .tx.ex{display:block;top:0;bottom:0}
+#grid.photo .card .tx.ex > [data-k]{position:absolute;left:0;right:0;line-height:1;text-align:center;white-space:nowrap;max-width:none;overflow:hidden}
+.card .tx i.bl{display:inline-block;width:0;height:0;vertical-align:baseline}
+#grid.photo .card .ln.socEn{font-size:calc(var(--detail,30px) * .8);letter-spacing:.04em}
 #grid.photo .card .ln.note{color:var(--muted);font-size:calc(var(--detail,30px) * .85)}
 #s-reveal.dense{padding-top:60px;padding-bottom:64px}
 #s-reveal.dense header{margin-bottom:18px;gap:4px}
 #s-reveal.dense header h3{font-size:60px}
 #s-reveal.dense header .sub{font-size:22px}
 .card .nm{font-family:var(--namef,inherit);font-weight:800;font-size:var(--name,72px);line-height:1.2;letter-spacing:.06em;color:var(--ink);white-space:nowrap;max-width:100%}
+.card .dt.soc{margin-top:.2em;color:var(--gold-hi)}
 .card .dt{font-size:var(--detail,30px);color:var(--muted);margin-top:.45em;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .card.hidden{border-style:dashed;border-color:rgba(217,178,95,.22);background:rgba(255,255,255,.015);box-shadow:none}
 .card.hidden .q{font-family:var(--serif);font-size:calc(var(--name,72px) * 1.1);color:rgba(217,178,95,.35);animation:pulse 2.4s ease-in-out infinite}

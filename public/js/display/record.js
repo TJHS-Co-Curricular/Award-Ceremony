@@ -3,14 +3,15 @@
  * 用虚拟时钟（clock.js）一格一格地推进特效，每一帧合成到一张画布，再用浏览器内建的 WebCodecs 编码成 H.264（不支持就用 VP9），
  * 最后 mp4.js 包成 .mp4。逐帧离线渲染：电脑慢只会导出得久一点，影片本身不会掉帧。
  * 内容：
- *   standby   待机画面（背景 + 副标题 + 活动名称 + 装饰线，名称有流光）
+ *   standby   待机画面 = 大会背景（背景 + 副标题 + 活动名称 + 装饰线，名称有流光）
+ *   promo     宣传背景（待机画面 + 下方的日期 / 时间 / 地点 / 其它一行）
  *   standbybg 待机背景（星系 / 光河，没有文字）
  *   base      底层背景（舞台渐层 + 浮尘 + 边框，其它画面后面那层）
  *   flash     揭晓闪光（黑底，叠加时用「滤色 / Screen」混合）
  * 循环：最后 fade 秒和开头交叉淡化，首尾接得上，播放器设「循环播放」就看不出接缝。
  * 文字是按网页实际排版逐字画到画布上的（位置、字体、渐层、阴影跟网页一样）。
  * opt.sink（服务器渲染、服务端有 NVENC 时由 lib/render.js 给）：每帧原始画面交给服务端的 ffmpeg 用显卡编码，不在浏览器编码（blob = null）。
- * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, size, codec, hw, width, height, speed }>、recCancel()
+ * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, size, codec, hw, width, height, speed }>、recStill(opt, fx) → Promise<{ blob, width, height }>（一张 PNG）、recCancel()
  * 需要：stage.js、clock.js、fxconf.js、mp4.js、fx/*、render.js、main.js（booted）
  */
 'use strict';
@@ -82,6 +83,20 @@ function recTextLayers(W, H) {
     const q = conv(dia.getBoundingClientRect()), s = dia.offsetWidth;
     gl.save(); gl.translate(q.x + q.w / 2, q.y + q.h / 2); gl.rotate(Math.PI / 4);
     gl.strokeStyle = '#f7e2a6'; gl.lineWidth = 1.5; gl.strokeRect(-s / 2 + .75, -s / 2 + .75, s - 1.5, s - 1.5); gl.restore();
+  }
+  // 日期 / 时间 / 地点 + 其它一行（宣传背景）：实色字 + 阴影 0 3px 14px rgba(0,0,0,.7)，中间的小菱形
+  for (const el of [$('evInfo'), $('evNote')]) {
+    if (!el.textContent.trim() || getComputedStyle(el).display === 'none') continue;
+    const cs = getComputedStyle(el), m = recCanvas(W, H), g = stageCtx(m); g.fillStyle = '#fff'; recDrawChars(g, el, conv);
+    gs.setTransform(1, 0, 0, 1, 0, 0);   // gs 和上面装饰线的 gl 是同一个 context，已被设成舞台坐标：贴整张图层前先还原
+    gs.drawImage(recShadow(m, 'rgba(0,0,0,.7)', 3 * K, 7 * K, W, H), 0, 0);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = cs.color; g.fillRect(0, 0, SW, SH);
+    gs.drawImage(m, 0, 0);
+    const gd = stageCtx(stat); gd.globalAlpha = .8; gd.fillStyle = '#f7e2a6';
+    for (const s of el.querySelectorAll('s')) {
+      const q = conv(s.getBoundingClientRect()), z = s.offsetWidth;
+      gd.save(); gd.translate(q.x + q.w / 2, q.y + q.h / 2); gd.rotate(Math.PI / 4); gd.fillRect(-z / 2, -z / 2, z, z); gd.restore();
+    }
   }
   // 活动名称：字形遮罩 + 两层阴影；流光每帧画（recTitle）
   const h1 = $('evTitle'), mask = recCanvas(W, H), gm = stageCtx(mask); gm.fillStyle = '#fff';
@@ -196,21 +211,42 @@ function recSink(sink, W, H) {
   };
 }
 
-async function recRun(opt, fx, onProgress, allowHw) {
-  if (typeof VideoEncoder === 'undefined' && !opt.sink) throw new Error(!isSecureContext
-    ? '浏览器只在安全连线下才给影片编码：现在是用 http://IP 打开控制端。请照控制端的说明让浏览器信任这个地址，或把「在哪里渲染」改成服务器'
-    : '这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge，或把「在哪里渲染」改成服务器');
+// 导出前的准备（影片、图片共用）：等连上、套效果设定、决定显不显示日期地点、先跑半秒
+async function recPrepare(opt, fx) {
   recStop = false;
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
   if (!booted) throw new Error('连不上服务端');
   fxPreviewSet(fx);
-  const content = opt.content, fps = opt.fps === 60 ? 60 : 30, sub = 60 / fps;
-  if (content === 'base' || content === 'flash') standbyFx(false, FXC.standby);   // 用不到待机背景：停掉省时间
+  if (opt.content === 'base' || opt.content === 'flash') standbyFx(false, FXC.standby);   // 用不到待机背景：停掉省时间
+  REC_INFO = opt.content === 'promo'; if (lastV) standbyInfo(lastV.event);   // 宣传背景才有日期 / 时间 / 地点
   $('s-standby').classList.remove('enter');   // 去掉进场动画，文字位置才是最终的
   for (let i = 0; i < 30; i++) recTick(1000 / 60);   // 先跑半秒：标题缩放、星系建好
   await document.fonts.ready;
+  for (let i = 0; i < 2; i++) recTick(1000 / 60);   // 字体载好后再缩放一次（标题、日期地点的 fitText 在下一帧）
+}
+const recHasText = c => c === 'standby' || c === 'promo';
+/* 一张静态图片（PNG）：宣传海报 / 投影片背景用。先跑 opt.seconds（默认 4）秒让星系转开，取那一帧 */
+async function recStill(opt, fx) {
+  await recPrepare(opt, fx);
+  const content = opt.content, gold = $('goldfx'), W = gold.width, H = gold.height;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
+  for (let i = 0; i < Math.round((opt.seconds || 4) * 60); i++) { if (recStop) throw new Error('已取消'); recTick(1000 / 60); if (i % 60 === 0) await recYield(); }
+  const out = recCanvas(W, H), o = out.getContext('2d');
+  if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
+  else { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
+  if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, .25); }   // 流光停在标题中间偏亮的位置
+  const blob = await new Promise(r => out.toBlob(r, 'image/png'));
+  return { blob, width: W, height: H };
+}
+
+async function recRun(opt, fx, onProgress, allowHw) {
+  if (typeof VideoEncoder === 'undefined' && !opt.sink) throw new Error(!isSecureContext
+    ? '浏览器只在安全连线下才给影片编码：现在是用 http://IP 打开控制端。请照控制端的说明让浏览器信任这个地址，或把「在哪里渲染」改成服务器'
+    : '这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge，或把「在哪里渲染」改成服务器');
+  await recPrepare(opt, fx);
+  const content = opt.content, fps = opt.fps === 60 ? 60 : 30, sub = 60 / fps;
   const gold = $('goldfx'), W = gold.width, H = gold.height;
-  const L = content === 'standby' ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
   const out = recCanvas(W, H), o = out.getContext('2d');
 
   const N = Math.round(opt.seconds * fps), loop = content !== 'flash' && opt.fade > 0, C = loop ? Math.min(Math.round(opt.fade * fps), Math.floor(N / 2)) : 0;
@@ -265,7 +301,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
       if (REC_SKIP) { if (i % 300 === 0) { onProgress(done / total, '快转到这一段'); await recYield(); } continue; }
       // 背景
       o.setTransform(1, 0, 0, 1, 0, 0); o.globalAlpha = 1; o.globalCompositeOperation = 'source-over'; o.filter = 'none';
-      if (content === 'standby' || content === 'standbybg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
+      if (recHasText(content) || content === 'standbybg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
       else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
       else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
       if (i < C) {

@@ -155,6 +155,7 @@
             <div class="ecard">
               <div class="head"><b style="flex:1">个人图</b></div>
               <label class="xr">左边加暗 <input type="range" id="exG_shade" min="0" max="100" step="1"><span id="exG_shadeV"></span></label>
+              <label class="xr">左边金色闪光 <input type="checkbox" id="exG_sparkle" style="width:auto"><span></span></label>
               <label class="xr">文字阴影 <input type="range" id="exG_shadow" min="0" max="100" step="1"><span id="exG_shadowV"></span></label>
               <label class="xr">文字横向位置 <input type="range" id="exG_textX" min="15" max="50" step="0.5"><span id="exG_textXV"></span></label>
               <label class="xr">姓名纵向位置 <input type="range" id="exG_nameY" min="15" max="70" step="0.5"><span id="exG_nameYV"></span></label>
@@ -164,6 +165,13 @@
               <label class="xr">背景颜色 <input type="color" id="exG_teamBg" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">相框 / 线条颜色 <input type="color" id="exG_teamFrame" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">背景金色光晕 <input type="checkbox" id="exG_teamGlow" style="width:auto"><span></span></label>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">奖项名用素材图片</b><span id="exMatInfo" class="muted" style="font-size:12px"></span></div>
+              <label class="xr">使用 <input type="checkbox" id="exG_matOn" style="width:auto"><span></span></label>
+              <label class="xr">上方大小（画面高度 %） <input type="range" id="exG_matTop" min="5" max="45" step="0.5"><span id="exG_matTopV"></span></label>
+              <label class="xr">下方大小（画面高度 %） <input type="range" id="exG_matAward" min="5" max="45" step="0.5"><span id="exG_matAwardV"></span></label>
+              <div id="exMatMiss" class="muted" style="font-size:12px;margin-top:4px"></div>
             </div>
             <div class="ecard">
               <div class="head"><b style="flex:1">照片右上角 Logo</b><span id="exLogoInfo" class="muted" style="font-size:12px"></span></div>
@@ -216,7 +224,8 @@
               <div class="head"><b style="flex:1">导出影片（MP4）</b><span class="muted" style="font-size:12px" id="recRes"></span></div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px;color:var(--muted)">
                 <label class="xl">内容 <select id="recContent" style="width:auto">
-                  <option value="standby">待机画面（背景 + 活动名称）</option>
+                  <option value="standby">大会背景（待机画面：背景 + 活动名称）</option>
+                  <option value="promo">宣传背景（背景 + 活动名称 + 日期 / 时间 / 地点）</option>
                   <option value="standbybg">待机背景（没有文字）</option>
                   <option value="base">底层背景（渐层 + 浮尘 + 边框）</option>
                   <option value="flash">揭晓闪光（黑底，用「滤色 / Screen」叠加）</option>
@@ -231,6 +240,7 @@
               <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
                 <button id="bRec" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700">开始导出</button>
                 <button id="bRecStop" class="hidden">取消</button>
+                <button id="bStill" title="同样的内容和屏幕尺寸，导出一张静态图片（宣传海报、投影片背景用）">导出图片（PNG）</button>
                 <span id="recState" class="muted" style="font-size:12px;flex:1"></span>
               </div>
               <div class="autobar" style="margin-top:8px"><i id="recBar"></i></div>
@@ -266,7 +276,12 @@
           <div class="grid2">
             <label class="f"><span>活动名称（待机画面大标题）</span><input id="evTitle" maxlength="120"></label>
             <label class="f"><span>副标题</span><input id="evSub" maxlength="160"></label>
+            <label class="f"><span>日期（例如：2026 年 11 月 20 日（星期五））</span><input id="evDate" maxlength="60"></label>
+            <label class="f"><span>时间（例如：上午 8:00 – 10:30）</span><input id="evTime" maxlength="60"></label>
+            <label class="f"><span>地点（例如：本校大礼堂）</span><input id="evVenue" maxlength="120"></label>
+            <label class="f"><span>其它一行（可不填，例如：主办单位）</span><input id="evNote" maxlength="160"></label>
           </div>
+          <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evInfoOn" style="width:auto"> 大屏待机画面显示日期 / 时间 / 地点（不勾 = 只显示活动名称；导出影片 / 图片另外选）</label>
           <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evGroupIntro" style="width:auto"> 进入新的分类时，先显示「分类标题」画面（列出该分类的奖项），再公布第一个奖项</label>
           <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13px;color:var(--muted);cursor:pointer"><input type="checkbox" id="evPhotoKicker" style="width:auto"> 合影画面显示上方的「合 影 留 念」小字</label>
           <div class="grid2" style="margin-top:12px">
@@ -285,7 +300,7 @@
 
         <details>
           <summary>从 Excel / Google Sheets 批量导入</summary>
-          <p class="help">在表格里选中并复制，直接粘贴到下面（也支持 CSV）。可选列（需要表头）：<code>分类</code> <code>分类英文</code> <code>副标题</code>；奖项名称、分类写成「中文English」会自动拆开。列顺序：<code>奖项名称</code> <code>姓名</code> <code>班级</code> <code>学号</code> <code>照片文件名</code> <code>备注</code> <code>类型</code> <code>得主</code>（姓名之后都可空；类型填「团体」即为团体大合照；得主列填「得主 / 是」的奖项自动设为入围揭晓）。第一行如果是表头（含「奖项」「姓名」），会按表头名称对应列，列顺序可以不同；同名奖项会合并。</p>
+          <p class="help">在表格里选中并复制，直接粘贴到下面（也支持 CSV）。可选列（需要表头）：<code>分类</code> <code>分类英文</code> <code>副标题</code>；奖项名称、分类写成「中文English」会自动拆开。列顺序：<code>奖项名称</code> <code>学会</code> <code>姓名</code> <code>班级</code> <code>学号</code> <code>照片文件名</code> <code>备注</code> <code>类型</code> <code>得主</code>（学会可空，写成「中文English」导出图片时分两行；姓名之后都可空；类型填「团体」即为团体大合照；得主列填「得主 / 是」的奖项自动设为入围揭晓）。第一行如果是表头（含「奖项」「姓名」），会按表头名称对应列，列顺序可以不同；同名奖项会合并。</p>
           <textarea id="importTxt" rows="7" placeholder="奖项	姓名	班级	学号	照片&#10;学业优异奖	陈小明	高一甲班	10001	001.jpg&#10;学业优异奖	林小华	高二乙班	10002	002.jpg&#10;最佳服务奖	王小美	高三丙班	10003"></textarea>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button id="bImportAppend">追加到现有奖项</button>
@@ -293,14 +308,23 @@
           </div>
         </details>
 
+        <details>
+          <summary>学会对照表（<span id="socCnt">0</span> 个）</summary>
+          <p class="help">从 Excel 复制三列直接粘贴：<code>学会编号</code> <code>学会名字(中)</code> <code>学会名字(英)</code>（第一行是表头会自动跳过；没分栏、写成一整串「A01 学长团 Prefectorial Board」也可以）。名单的「学会」栏写编号（或学会中文名），导出图片时自动换成中文、英文两行。编号、中文名都查不到的不印学会，奖项编辑里会标黄。清空后保存 = 不用对照表（照旧把「学会」栏的「中文English」拆两行）。</p>
+          <textarea id="socTxt" rows="7" placeholder="学会编号	学会名字(中)	学会名字(英)&#10;S01	学长团	Prefectorial Board&#10;S02	华乐团	Chinese Orchestra"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="bSocSave">保存对照表</button>
+          </div>
+        </details>
+
         <div class="ecard" id="optCard">
-          <div class="head"><b style="flex:1">照片优化</b><span id="optInfo" class="muted" style="font-size:12px">—</span><button id="bOpt">压缩照片</button></div>
+          <div class="head"><b style="flex:1">照片优化</b><span id="optInfo" class="muted" style="font-size:12px">—</span><button id="bMissCsv" title="导出没填照片、或照片文件找不到的得奖者（CSV，可用 Excel 打开）">导出缺少照片名单</button><button id="bOpt">压缩照片</button></div>
           <p class="help" style="margin:0">把名单里的大照片缩小成长边 2560 像素的 JPEG，存到 <code>data/photos/_cache/</code>（原图不动）。大屏揭晓时下载更快、更省内存。换了原图会自动失效，需要再压缩一次。</p>
           <div class="autobar" style="margin-top:8px"><i id="optBar"></i></div>
         </div>
 
         <div id="elist"></div>
-        <p class="help">获奖者每行一位，格式：<code>姓名 | 班级 | 学号 | 照片文件名 | 备注 | 类型 | 得主</code>（「入围揭晓」的奖项在得主那一行写 <code>得主</code>；姓名之后都可省略；照片按扩展名识别、类型写 <code>团体</code> 或 <code>个人</code>，都可放在任意位置）。个人照统一拍成 <b>3:2 横幅、人站在右边</b>，左边留给大屏叠字；<b>团体</b>（学会、社团的大合照）照片居中、名字在照片下面。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
+        <p class="help">获奖者每行一位，格式：<code>姓名 | 班级 | 学号 | 学会 | 照片文件名 | 备注 | 类型 | 得主</code>（「入围揭晓」的奖项在得主那一行写 <code>得主</code>；姓名之后都可省略；照片按扩展名识别、类型写 <code>团体</code> 或 <code>个人</code>，都可放在任意位置）。个人照统一拍成 <b>3:2 横幅、人站在右边</b>，左边留给大屏叠字；<b>团体</b>（学会、社团的大合照）照片居中、名字在照片下面。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
       </div>
     </div>
   </main>
@@ -311,6 +335,7 @@
 <script src="/assets/js/shared/fonts.js"></script>
 <script src="/assets/js/shared/qr.js"></script>
 <script src="/assets/js/shared/zip.js"></script>
+<script src="/assets/js/shared/sparkle.js"></script>
 <script src="/assets/js/control/core.js"></script>
 <script src="/assets/js/control/session.js"></script>
 <script src="/assets/js/control/live.js"></script>

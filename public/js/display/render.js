@@ -1,11 +1,26 @@
 /*
  * 大屏 · 渲染：按服务端推来的画面数据切换场景（待机 / 消息 / 分类标题 / 奖项标题 / 揭晓）。
- * 提供：render(view)、relayout()、show(sceneId)、renderPhoto(view)
+ * 提供：render(view)、relayout()、show(sceneId)、renderPhoto(view)、standbyInfo(event)、REC_INFO
  * 需要：stage.js、cards.js、nominee.js、firstall.js、fonts.js、fx/flash.js、fx/goldriver.js
  */
 'use strict';
 
 let cur = { mode: null, awardId: null, shown: 0, total: 0 };
+
+/* 待机画面下方的日期 / 时间 / 地点（一行，菱形隔开）+ 其它一行。event.infoOn 关掉就不显示（= 大会背景）。
+ * 导出影片 / 图片时由 record.js 设 REC_INFO（true = 宣传背景，false = 大会背景），不看 infoOn。 */
+let REC_INFO = null, infoKey = '';
+function standbyInfo(ev) {
+  const items = [ev?.date, ev?.time, ev?.venue].filter(Boolean), note = ev?.note || '';
+  $('s-standby').classList.toggle('noinfo', !(REC_INFO ?? ev?.infoOn !== false));
+  const key = JSON.stringify([items, note, SW]);
+  if (key === infoKey) return;
+  infoKey = key;
+  const box = $('evInfo'); box.textContent = ''; box.style.fontSize = '';
+  items.forEach((t, i) => { if (i) box.appendChild(document.createElement('s')); box.appendChild(document.createElement('span')).textContent = t; });
+  $('evNote').textContent = note; $('evNote').style.fontSize = '';
+  requestAnimationFrame(() => { fitText(box); fitText($('evNote')); });   // 太长就整行缩小
+}
 
 let gStop = 0;
 function show(id) {
@@ -21,7 +36,7 @@ function show(id) {
 }
 function relayout() {           // 屏幕比例变了：静默重排当前画面（不放动画）
   if (!lastV) return;
-  $('evTitle').dataset.w = '';   // 字体或尺寸变了：标题重新缩放
+  $('evTitle').dataset.w = ''; infoKey = '';   // 字体或尺寸变了：标题、日期地点重新缩放
   const b = booted; booted = false; cur = { mode: null }; render(lastV); booted = b;
 }
 function render(v) {
@@ -33,6 +48,7 @@ function render(v) {
     requestAnimationFrame(() => fitText(h));
   }
   $('evSub').textContent = v.event?.subtitle || '';
+  standbyInfo(v.event);
 
   if (v.mode === 'standby') { show('s-standby'); cur = { mode: 'standby' }; return; }
   if (v.mode === 'message') {

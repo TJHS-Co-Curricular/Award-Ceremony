@@ -34,7 +34,7 @@ function fxClose() { srvStop(); if ($('fxPv').src !== 'about:blank') $('fxPv').s
 /* ---------- 值：所有屏幕 / 单一屏幕 ---------- */
 const fxOver = k => !!(fxScope && fxData.screens[fxScope] && k in fxData.screens[fxScope]);
 const fxGet = k => fxOver(k) ? fxData.screens[fxScope][k] : fxData.all[k];
-const fxFor = name => ({ ...fxData.all, ...(fxData.screens[name] || {}) });   // 某个屏幕实际用的值
+const fxFor = name => (fxData ? { ...fxData.all, ...(fxData.screens[name] || {}) } : {});   // 某个屏幕实际用的值
 function fxSetVal(k, v) {
   if (!fxScope) fxData.all[k] = v; else (fxData.screens[fxScope] ||= {})[k] = v;
   fxChanged();
@@ -234,7 +234,7 @@ $('bRec').onclick = async () => {
       const left = p > .02 ? Math.round((Date.now() - t0) / p * (1 - p) / 1000) : null;
       $('recState').textContent = `${what} ${(p * 100).toFixed(0)}%` + (left != null ? `，大约还要 ${left >= 60 ? Math.floor(left / 60) + ' 分 ' : ''}${left % 60} 秒` : '');
     });
-    const name = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' }[opt.content];
+    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' }[opt.content];
     const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}-${opt.seconds}s-${opt.fps}fps.mp4` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     $('recState').textContent = `完成：${(r.blob.size / 1048576).toFixed(1)} MB · ${r.codec.startsWith('avc') ? 'H.264' : 'VP9'} · ${r.hw ? '显卡编码' : 'CPU 软件编码'} · 每秒算 ${r.speed.toFixed(1)} 帧 · 用了 ${Math.round((Date.now() - t0) / 1000)} 秒`;
@@ -245,11 +245,31 @@ $('bRec').onclick = async () => {
   $('bRec').disabled = false; $('bRecStop').classList.add('hidden');
 };
 $('bRecStop').onclick = () => { try { recFrame?.contentWindow?.recCancel(); } catch {} };
+// 导出一张静态图片（PNG）：同样的内容和屏幕尺寸，浏览器里画（不用编码器，http 打开也可以）
+$('bStill').onclick = async () => {
+  if (recBusy) return;
+  const sc = fxPvScreen(), content = $('recContent').value;
+  if (content === 'flash') { $('recState').textContent = '揭晓闪光是动画，不能导出成图片'; return; }
+  recBusy = true; $('bRec').disabled = $('bStill').disabled = true; $('recState').textContent = '正在画图片…';
+  recFrame = el('iframe', { style: 'position:fixed;left:-10000px;top:0;width:640px;height:360px;border:0' });
+  recFrame.src = `/display?k=${encodeURIComponent(V?.displayKey || '')}&preview=1&record=1&res=${sc.width}x${sc.height}` + (sc.name ? '&name=' + encodeURIComponent(sc.name) : '');
+  document.body.append(recFrame);
+  try {
+    await new Promise((ok, bad) => { recFrame.onload = ok; setTimeout(() => bad(new Error('输出页打不开')), 20000); });
+    const r = await recFrame.contentWindow.recStill({ content }, fxFor(sc.name));
+    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景' }[content];
+    const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}.png` });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    $('recState').textContent = `完成：${name}图片 ${r.width}×${r.height}（${(r.blob.size / 1048576).toFixed(1)} MB）`;
+  } catch (e) { $('recState').textContent = '没有导出：' + e.message; }
+  recFrame.remove(); recFrame = null; recBusy = false;
+  $('bRec').disabled = $('bStill').disabled = false;
+};
 
 /* ---------- 服务器渲染：交给服务端（lib/render.js）在那台电脑上渲染，这里只看进度、下载 ---------- */
 let srvPoll = 0, srvSig = '';
 const srvAutoDl = new Set();   // 由「开始导出」交给服务器的任务：完成后自动下载
-const SRV_NAME = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
+const SRV_NAME = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
 const srvMB = b => (b / 1048576).toFixed(1) + ' MB';
 function srvStart() { srvFill(); srvRefresh(); clearInterval(srvPoll); srvPoll = setInterval(srvRefresh, 1500); }
 function srvStop() { clearInterval(srvPoll); srvPoll = 0; }

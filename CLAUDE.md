@@ -53,6 +53,8 @@ lib/                      服务端，按功能分（只用 Node 内建模块）
   sse.js                  实时推送：sseOpen、broadcast、dropClients
   sessions.js             登录会话、密码错误次数限制
   http.js                 安全标头、sendJson / sendText / sendStatic、readBody、csrfOk、safeAsset
+  exstyle.js              exPublic()：图片导出设计（data/export-style.json）里名字卡要用的部分，经 publicView().exStyle 给大屏（默认值照控制端 EX_PRESET，改一边要改另一边）
+  societies.js            学会对照表（data/societies.json）：loadSoc / saveSoc、socOf(w) → [中文, 英文]（publicView 的 socZh / socEn 用它；控制端 js/control/import.js 有同规则的 socOf）
   media.js                照片（压缩版优先、ETag）、字体文件、学校 Logo（data/logo.png，/media/logo 要输出页 / 嘉宾密钥或已登录）
   obs.js                  OBS 场景集合
   render.js               服务器渲染影片：零依赖 CDP（Node 22 fetch / WebSocket）开无头 Chrome（自动试 Vulkan / EGL 显卡参数）跑 display.html?record=1 的 recStart()；有 ffmpeg 时 opt.sink 让每帧 RGBA POST 到每支影片专属的本机端口（sinkCreate() 开一个 worker_threads 收画面、直接写进 ffmpeg，一次性密钥；record=1 本机页面的 CSP 放行 127.0.0.1:*）由 ffmpeg h264_nvenc → libx264 编码，否则浏览器编码分块取回；存 Result/影片/。排队 enqueue / cancel / state（控制端 /api/control/render*；有 ffmpeg 时一支影片按 planSegs() 切段，每段 opt.seg = { from, to } 一个分页，concatSegs() 用 ffmpeg concat 接起来——⚠ 靠导出时固定种子的 Math.random 和 REC_SKIP 快转，特效脚本新增随机或有状态的东西时，要在 REC_SKIP 时照样推进状态）；命令行 tools/render-video.js 是这个队列的客户端（用 config.json 密码登录）
@@ -67,9 +69,9 @@ public/                   网页（只有程序和样式，没有数据）
   css/fonts.css           ⚠ 默认字体（大屏和图片导出共用的唯一一份 --font-serif / --font-sans）
   css/display.css / control.css / guest.css
   img/icon.svg            网页图标（= build/icon/icon-small.svg）
-  js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）
+  js/shared/              几个页面共用：fonts.js（sysFont、fontFamily）、qr.js（二维码）、zip.js（makeZip）、sparkle.js（照片左边的金色闪光光点 sparkleTile()，大屏 CSS 背景会闪、导出图片静态画同一份）
   js/fx/                  大屏特效（host.js 决定在后台线程 worker.js 或主线程跑；react.js 两边共用）：dust.js（背景浮尘）、flash.js（揭晓闪光 burst）、galaxy.js（待机旋涡星系，默认）+ galaxy-gl.js（星系的 WebGL 画法，默认用；`&gl=0` / 导出影片 / 不支持时用 galaxy.js 的 canvas 2D）、goldriver.js（待机金色光河，原本）、standby.js（切换）
-  js/display/             大屏（record.js + mp4.js = 导出影片）：stage.js（参数、舞台自适应）→ clock.js（导出影片的虚拟时钟）→ fxconf.js（效果设定 FXC）→ [js/fx/*] → fonts.js → cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
+  js/display/             大屏（record.js + mp4.js = 导出影片）：stage.js（参数、舞台自适应）→ clock.js（导出影片的虚拟时钟）→ fxconf.js（效果设定 FXC）→ [js/fx/*] → fonts.js → exstyle.js（照片卡套图片导出的设计：exDecorate）→ cards.js（名字卡排版）→ nominee.js（入围揭晓）→ render.js → main.js（连接）
   js/control/             控制端：core.js（共用状态和小工具）→ session.js → live.js / live-view.js（现场控制）→ guest.js → ui.js
                           → editor.js / import.js / photos.js / fonts.js（奖项编辑）→ export.js（图片导出）→ fx.js（效果控制）→ main.js（启动）
   js/guest/main.js        嘉宾揭晓页
@@ -85,7 +87,7 @@ start.bat                 启动源码版
 README.md                 用户文档（中文）
 ```
 
-运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/fx.json`（效果设定）、`data/logo.png`（照片右上角的学校 Logo）、`logs/audit.log`。
+运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/societies.json`（学会对照表：编号 → 中文、英文名，图片导出用；名单 `soc` 栏写编号，`socOf()` 在 `js/control/import.js`）、`data/fx.json`（效果设定）、`data/logo.png`（照片右上角的学校 Logo）、`data/material/`（或 `data/mterial/`，图片导出的奖项名素材图片：文件名 = 奖项英文名或中文名，`exMatFind()` 在 `js/control/export.js`，接口 `/api/control/materials`、`/api/control/material`）、`logs/audit.log`。
 
 ### 网页脚本的规则
 
@@ -98,7 +100,8 @@ README.md                 用户文档（中文）
 
 ## 服务端架构（lib/）
 
-- **名单字段**：每位获奖者 `{ name, cls（班级）, sid（学号）, detail（备注）, photo, type }`（`type` 只有 `'team'` 一种取值，表示团体；个人不写），`normalizeData()` 会去掉空字段。`publicView()` 只带出已揭晓者的这些字段。
+- **活动资料**（`event`）：`title`、`subtitle`、`date`、`time`、`venue`、`note`（待机画面装饰线下的日期 · 时间 · 地点一行 + 其它一行，`render.js` 的 `standbyInfo()`）、`infoOn`（大屏显不显示那几行）。导出时 `record.js` 设 `REC_INFO`：`promo`（宣传背景）显示、`standby`（大会背景）不显示，不看 `infoOn`；`recStill()` 导出一张 PNG。
+- **名单字段**：每位获奖者 `{ name, cls（班级）, sid（学号）, soc（学会：编号或名字，按学会对照表查成 socZh / socEn）, detail（备注）, photo, type }`（`type` 只有 `'team'` 一种取值，表示团体；个人不写），`normalizeData()` 会去掉空字段。`publicView()` 只带出已揭晓者的这些字段（学会只带查好的 `socZh` / `socEn`，不带对照表）。
 - **共享状态**：都在 `lib/runtime.js` 的 `rt` 上（`rt.cfg`、`rt.data`、`rt.state`…）。整体替换时写 `rt.state = …`，不要把 `rt.state` 存进模块级变量。
 - **状态**：`rt.state = { mode, awardId, revealed, phase, doneIds, blackout, message, seq }`
   - `revealMode`：`one` 逐一 / `firstall` 先一后全 / `all` 一次全部 / `nominee` 入围揭晓。
@@ -136,7 +139,7 @@ README.md                 用户文档（中文）
   - 窗口尺寸改变时 `relayout()` 静默重排，不放动画。
 - **排版**：
   - `planText()`（无照片）遍历列数按字号打分；`planPhoto()`（有照片）遍历列数，选让 3:2 卡片最大的行列，卡片宽小于 150 时退回纯文字。
-  - 照片卡：整张照片铺满（`PHOTO_AR = 3/2`，`object-fit: cover`），名字 / 班级 / 学号叠在左侧 41% 区域（拍法是人站右边、左边留空），字号按卡片宽度（`--name ≈ cw × 0.078`）。奖项里有团体（`award.hasTeams`）时整个网格加 `.cap`：照片完整在上（`.phbox` 3:2），名字 / 班级学号 / 备注在下居中，卡片比例 `1 / (1/1.5 + CAP_H)`。照片网格用 flex，最后一行居中。
+  - 照片卡：整张照片铺满（`PHOTO_AR = 3/2`，`object-fit: cover`），名字 / 班级 / 学号 / 学会叠在左边（拍法是人站右边、左边留空）。字号、颜色、阴影、加暗、位置由 `exstyle.js` 的 `exDecorate()` 按 `v.exStyle`（= 图片导出设计）算，公式同 `export.js` 的 `exRender()`（U = 卡片高，pt × U / 540；每行基线用 `<i class="bl">` 量出来对齐）；改了 `exRender()` 的个人图排版要同步改这里。奖项里有团体（`award.hasTeams`）时整个网格加 `.cap`：照片完整在上（`.phbox` 3:2），名字 / 班级学号 / 备注在下居中，卡片比例 `1 / (1/1.5 + CAP_H)`。照片网格用 flex，最后一行居中。
   - 人数超过 12 时，奖项标题区缩小（`.dense`）。
   - 入围揭晓：排版时高度 × 0.74 预留放大空间；`applyPhase()` 切换 `.suspense` / `.crowned`，`crown()` 用 offsetLeft/Top 算出把得主卡移到网格中央的 `--wx/--wy/--ws`。
 - **动画**：首次载入、刷新、撤销时，已揭晓的卡片直接显示，不放闪光（`booted` / `isUndo`）。

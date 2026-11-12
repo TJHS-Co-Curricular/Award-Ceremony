@@ -1,6 +1,6 @@
 /*
  * 控制端 · 照片优化：在浏览器里把大照片缩成长边 2560 的 JPEG，上传到 data/photos/_cache/（原图不动）。
- * 提供：refreshPhotos()
+ * 提供：refreshPhotos()；「导出缺少照片名单」按钮（POST /api/control/photo-check）
  */
 "use strict";
 
@@ -63,6 +63,56 @@ async function optimizeOne(name) {
       (await r.json().catch(() => ({}))).error || "HTTP " + r.status,
     );
 }
+// 导出缺少照片名单：用「奖项编辑」的草稿（含还没保存的修改），列出没填照片、或 data/photos/ 里找不到文件的得奖者
+const csvCell = (v) => {
+  v = String(v ?? "");
+  if (/^[=+\-@]/.test(v)) v = "'" + v; // 防 Excel 把内容当公式
+  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+};
+$("bMissCsv").onclick = async () => {
+  if (!draft) return toast("名单还没载入", true);
+  const rows = [];
+  draft.awards.forEach((a) =>
+    a.winners.forEach((w) => rows.push({ a, w })),
+  );
+  const names = [...new Set(rows.map((r) => r.w.photo).filter(Boolean))];
+  let missing;
+  try {
+    missing = new Set(
+      (await api("POST", "/api/control/photo-check", { names })).missing,
+    );
+  } catch (e) {
+    return toast("检查照片失败：" + e.message, true);
+  }
+  const out = rows
+    .filter((r) => !r.w.photo || missing.has(r.w.photo))
+    .map(({ a, w }) => [
+      a.group || "",
+      a.title || "",
+      w.type === "team" ? "团体" : "个人",
+      w.name,
+      w.cls,
+      w.sid,
+      w.soc,
+      w.photo || "",
+      w.photo ? "照片文件找不到" : "没填照片文件名",
+    ]);
+  if (!out.length) return toast("所有得奖者都有照片");
+  const head = ["分类", "奖项", "类型", "姓名", "班级", "学号", "学会", "照片文件名", "问题"];
+  const csv =
+    "﻿" + [head, ...out].map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
+  const d = new Date(),
+    p = (n) => String(n).padStart(2, "0");
+  const file = `缺少照片名单_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = el("a", { href: url, download: file, style: "display:none" });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast(`已导出 ${out.length} 位缺少照片的得奖者`);
+  log(`导出缺少照片名单（${out.length} 位）`);
+};
 $("bOpt").onclick = async () => {
   const todo = photos.filter(
     (x) => !x.missing && !x.optimized && x.size > OPT_MIN,

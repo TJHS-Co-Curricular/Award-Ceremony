@@ -27,10 +27,12 @@ const EX_PRESET = () => ({
     award: el0(36, '#ffffff', false, .1), awardEn: el0(21.6, '#ffffff', false)
   },
   shade: 50,        // 个人图左半边加暗（%）
+  sparkle: true,    // 个人图左边（加暗那一块）铺金色闪光小光点（shared/sparkle.js；大屏照片卡同一份设计，会闪）
   shadow: 60,       // 文字阴影强度（%）
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
+  matOn: true, matTop: 20, matAward: 22,   // 奖项名（中文 + 英文）换成 data/material/ 里同名的素材图片；大小 = 画面高度 %（个人图）
   logoOn: true, logoSize: 16, logoMargin: 2.5, logoOpacity: 100,   // 照片右上角的学校 Logo（「效果控制」上传）；大小、边距 = 照片宽度 %
   size: '1920x1080', fmt: 'jpg'
 });
@@ -44,9 +46,11 @@ function exClean(v) {
     o.elems[k] = { show: a.show !== false, size: num(a.size, 4, 150, b.size), color: col(a.color, b.color), bold: a.bold == null ? b.bold : !!a.bold,
       italic: !!a.italic, spacing: num(a.spacing, -.2, 2, b.spacing), font: String(a.font || '').slice(0, 120) };
   }
+  o.sparkle = v?.sparkle !== false;
   o.shade = num(v?.shade, 0, 100, d.shade); o.shadow = num(v?.shadow, 0, 100, d.shadow);
   o.textX = num(v?.textX, 15, 50, d.textX); o.nameY = num(v?.nameY, 15, 70, d.nameY);
   o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false;
+  o.matOn = v?.matOn !== false; o.matTop = num(v?.matTop, 5, 45, d.matTop); o.matAward = num(v?.matAward, 5, 45, d.matAward);
   o.logoOn = v?.logoOn !== false; o.logoSize = num(v?.logoSize, 4, 50, d.logoSize); o.logoMargin = num(v?.logoMargin, 0, 10, d.logoMargin); o.logoOpacity = num(v?.logoOpacity, 20, 100, d.logoOpacity);
   o.size = ['1920x1080', '3840x2160', 'photo'].includes(v?.size) ? v.size : d.size;
   o.fmt = v?.fmt === 'png' ? 'png' : 'jpg';
@@ -74,6 +78,44 @@ function exLoad(name) {
   if (!exImgCache.has(name)) exImgCache.set(name, loadImg('/api/control/photo?name=' + encodeURIComponent(name)).catch(() => null));
   return exImgCache.get(name);
 }
+/* 素材图片：data/material/（或 mterial/）里的图片，文件名 = 奖项英文名（或中文名）。
+ * 比对：只看字母、数字、汉字，不分大小写，结尾的 S 不算（AWARD = AWARDS）；英文写成「Gold」也认得「GOLD AWARD」；
+ * 文件名打错一两个字母（长名字）或一个字（中文名）也认得，但要只有一个最接近的才算。 */
+let exMats = [];   // [{ name, v, key }]
+const exMatKey = t => String(t || '').replace(/\.(png|jpe?g|webp|gif)$/i, '').toUpperCase().replace(/[^0-9A-Z\u3400-\u9fff]/g, '').replace(/S$/, '');
+async function exLoadMats() {
+  try { exMats = (await api('GET', '/api/control/materials')).list.map(m => ({ ...m, key: exMatKey(m.name) })); } catch { exMats = []; }
+}
+function exLev(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let p = [...Array(b.length + 1).keys()];
+  for (let i = 1; i <= a.length; i++) {
+    const c = [i];
+    for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    p = c;
+  }
+  return p[b.length];
+}
+// 中文 + 英文 → 素材（找不到返回 null）。以英文为准：英文（完全一样 → 打错一点点）都找不到，才用中文
+function exMatFind(zh, en) {
+  const keys = [exMatKey(en), en ? exMatKey(en + ' AWARD') : '', exMatKey(zh)].filter(Boolean);
+  for (const k of keys) {
+    const m = exMats.find(x => x.key === k); if (m) return m;
+    const lim = k.length >= 12 ? 2 : (k.length >= 4 && /[\u3400-\u9fff]/.test(k) ? 1 : 0); if (!lim) continue;
+    const near = exMats.map(m => [m, exLev(k, m.key)]).filter(([, d]) => d <= lim).sort((a, b) => a[1] - b[1]);
+    if (near.length && (near.length === 1 || near[0][1] < near[1][1])) return near[0][0];
+  }
+  return null;
+}
+const exMatCache = new Map();
+function exMatImg(m) {
+  if (!m) return Promise.resolve(null);
+  const id = m.name + '|' + m.v;
+  if (!exMatCache.has(id)) exMatCache.set(id, loadImg('/api/control/material?name=' + encodeURIComponent(m.name) + '&v=' + encodeURIComponent(m.v)).catch(() => null));
+  return exMatCache.get(id);
+}
+// 素材按原比例缩进 宽 maxW × 高 maxH 的框
+function exMatFit(img, maxW, maxH) { const r = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight); return { w: img.naturalWidth * r, h: img.naturalHeight * r }; }
 // 学校 Logo（V.logo = 版本标记，换了 Logo 就重新读）
 let exLogoImg = { ver: null, p: null };
 function exLoadLogo() {
@@ -115,6 +157,23 @@ function exText(g, text, st, fam, px, x, y, maxW) {
   return s;
 }
 
+// 左边的金色闪光小光点（静态）：3 层同大屏（shared/sparkle.js），一格 = 照片高 × 0.9；右边 30% 淡出
+let exSparkTiles = null;
+function exSparkle(g, P, H, U) {
+  if (P < 1) return;
+  exSparkTiles = exSparkTiles || SPARK_LAYERS.map(L => sparkleTile(L.seed, L.n));
+  const T = U * .9, off = document.createElement('canvas'); off.width = Math.ceil(P); off.height = H;
+  const o = off.getContext('2d');
+  SPARK_LAYERS.forEach((L, i) => {
+    o.globalAlpha = L.alpha;
+    for (let x = L.dx * T - T; x < P; x += T) for (let y = L.dy * T - T; y < H; y += T) o.drawImage(exSparkTiles[i], x, y, T, T);
+  });
+  o.globalAlpha = 1; o.globalCompositeOperation = 'destination-in';
+  const m = o.createLinearGradient(0, 0, P, 0); m.addColorStop(0, '#000'); m.addColorStop(.7, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  o.fillStyle = m; o.fillRect(0, 0, P, H);
+  g.drawImage(off, 0, 0);
+}
+
 async function exRender(award, w, fam) {
   const S = EXS, E = S.elems, img = await exLoad(w.photo), logo = img ? await exLoadLogo() : null;   // Logo 和大屏一样：有照片才加
   let W = S.size === 'photo' && img ? img.naturalWidth : +S.size.split('x')[0], H = S.size === 'photo' && img ? img.naturalHeight : +S.size.split('x')[1];
@@ -123,30 +182,37 @@ async function exRender(award, w, fam) {
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
   const team = w.type === 'team', U = Math.min(H, W / 1.5), k = U / 540;   // pt → 像素
   const shadow = on => { const a = S.shadow / 100; g.shadowColor = on && a ? `rgba(0,0,0,${Math.min(1, a * 1.25)})` : 'transparent'; g.shadowBlur = on ? U * .02 * a : 0; g.shadowOffsetX = g.shadowOffsetY = on ? U * .005 * a : 0; };
-  // 备注 = 学会，例如「学长团Prefectorial Board」：中文和英文分两行
-  const sm = String(w.detail || '').match(/^(.*[　-鿿＀-￯])\s*([A-Za-z].*)$/);
-  const soc = sm ? [sm[1].trim(), sm[2].trim()] : w.detail ? [w.detail] : [];
+  const soc = socOf(w);   // 学会 [中文, 英文]：有对照表时按编号查（import.js）
   // 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复
   const head = award.group ? [award.group, award.groupSub] : [award.title, award.subtitle];
   const headFam = award.group ? fam.top : fam.topAward;
   const tail = award.group ? [award.title, award.subtitle] : ['', ''];
+  // 素材图片：上方 / 下方的「中文 + 英文」找得到同名素材，就整组换成图片（中文和英文两项都隐藏时不画）
+  const headM = S.matOn && (E.top.show || E.topEn.show) && (head[0] || head[1]) ? exMatFind(head[0], head[1]) : null;
+  const tailM = S.matOn && (E.award.show || E.awardEn.show) && (tail[0] || tail[1]) ? exMatFind(tail[0], tail[1]) : null;
+  const headMat = await exMatImg(headM), tailMat = await exMatImg(tailM);
+  cv.mat = [headMat && headM.name, tailMat && tailM.name].filter(Boolean);
+  const drawMat = (im, cx, y, maxW, maxH) => { const d = exMatFit(im, maxW, maxH); g.save(); g.shadowColor = 'transparent'; g.drawImage(im, cx - d.w / 2, y, d.w, d.h); g.restore(); return d.h; };
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
 
   if (!team) {
     // ---- 个人：照片铺满，左边加暗，文字在左边居中
     if (img) exCover(g, img, 0, 0, W, H);
     else { const bg = g.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#55535a'); bg.addColorStop(.5, '#77757b'); bg.addColorStop(.5, '#a57a22'); bg.addColorStop(1, '#c79530'); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
-    const cx = W * S.textX / 100, maxW = W * Math.min(S.textX, 100 - S.textX) * 2 / 100 * .94, sw = W * Math.min(1, (S.textX * 2 + 6) / 100), a = S.shade / 100;
+    // 左边一块：宽 = 文字横向位置 × 2（文字在这一块正中间），加暗 + 金色闪光，右边缘淡出
+    const cx = W * S.textX / 100, maxW = W * Math.min(S.textX, 100 - S.textX) * 2 / 100 * .94, sw = W * Math.min(1, S.textX * 2 / 100), a = S.shade / 100;
     if (a > 0) {
       const sh = g.createLinearGradient(0, 0, sw, 0);
       sh.addColorStop(0, `rgba(0,0,0,${a})`); sh.addColorStop(.86, `rgba(0,0,0,${a * .84})`); sh.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = sh; g.fillRect(0, 0, sw, H);
     }
+    if (S.sparkle) exSparkle(g, sw, H, U);
     exLogo(g, logo, 0, 0, W);
     shadow(true);
     let y = H * .115;
-    if (E.top.show && head[0]) exText(g, head[0], E.top, headFam, E.top.size * k, cx, y, maxW);
-    if (E.topEn.show && head[1]) {
+    if (headMat) y = H * .04 + drawMat(headMat, cx, H * .04, maxW, H * S.matTop / 100) - E.name.size * k * .5;
+    else if (E.top.show && head[0]) exText(g, head[0], E.top, headFam, E.top.size * k, cx, y, maxW);
+    if (!headMat && E.topEn.show && head[1]) {
       const st = E.topEn, px = st.size * k; exFont(g, st, fam.topEn, px);
       const lines = exWrap(g, head[1].toUpperCase(), W * Math.min(S.textX, 100 - S.textX) * 2 / 100 * .99);
       for (const ln of lines) { y += px * 1.27; exText(g, ln, st, fam.topEn, px, cx, y, W); }
@@ -159,7 +225,8 @@ async function exRender(award, w, fam) {
       if (i) y += st.size * k * (st.size < big * .9 ? 1.32 : 1.2);
       exText(g, t, st, fam[key], st.size * k, cx, y, maxW);
     });
-    const bottom = [['award', tail[0]], ['awardEn', tail[1]]].filter(([key, t]) => t && E[key].show);
+    if (tailMat) drawMat(tailMat, cx, y + U * .06, maxW, H * S.matAward / 100);
+    const bottom = tailMat ? [] : [['award', tail[0]], ['awardEn', tail[1]]].filter(([key, t]) => t && E[key].show);
     bottom.forEach(([key, t], i) => {
       const st = E[key];
       y += st.size * k * (i ? 1.5 : 2.2);
@@ -176,13 +243,15 @@ async function exRender(award, w, fam) {
     const cx = W / 2, maxW = W * .86;
     shadow(true);
     let y = H * .04;
-    if (E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
-    if (E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
+    if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.matTop / 100);
+    if (!headMat && E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
+    if (!headMat && E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
     shadow(false);
     const top = y + U * .045;
     const zh = soc[0] === w.name ? '' : soc[0];   // 团体名就是学会名时，不重复写中文
-    const block = [['name', w.name, .9], ['soc', zh, .7], ['socEn', soc[1], .78], ['award', tail[0], .8], ['awardEn', tail[1], 1]].filter(([key, t]) => t && E[key].show);
-    const capH = block.reduce((t, [key, , m]) => t + E[key].size * k * m * 1.3, 0) + U * .05;
+    const block = [['name', w.name, .9], ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
+    const matD = tailMat && exMatFit(tailMat, maxW, H * S.matAward / 100 * .7);   // 团体图：合照为主，下方素材缩小一点
+    const capH = block.reduce((t, [key, , m]) => t + E[key].size * k * m * 1.3, 0) + U * .05 + (matD ? matD.h + U * .03 : 0);
     const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - capH - H * .05;
     let ph = Math.max(10, boxH), pw = ph * ar;
     if (pw > W * .84) { pw = W * .84; ph = pw / ar; }
@@ -205,6 +274,7 @@ async function exRender(award, w, fam) {
         shadow(true);
       }
     });
+    if (matD) drawMat(tailMat, cx, y + U * .02, maxW, matD.h);
   }
   shadow(false);
   return cv;
@@ -243,10 +313,11 @@ function exBuildUI() {
       el('td', {}, n('spacing', '0.02', 58)),
       el('td', {}, f)));
   }
-  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
-  $('exG_logoOn').checked = EXS.logoOn;
+  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
+  $('exG_logoOn').checked = EXS.logoOn; $('exG_matOn').checked = EXS.matOn;
+  exMatInfo();
   $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
-  $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow;
+  $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow; $('exG_sparkle').checked = EXS.sparkle;
   $('exSize').value = EXS.size; $('exFmt').value = EXS.fmt;
 }
 function exChanged(rebuild) {
@@ -261,11 +332,26 @@ async function exSave() {
   try { await api('PUT', '/api/control/export-style', EXS); $('exSaveState').textContent = '设计已保存'; $('exSaveState').className = 'muted'; }
   catch (e) { $('exSaveState').textContent = '保存失败：' + e.message; }
 }
-for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
+for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
 $('exG_teamBg').oninput = e => { EXS.teamBg = e.target.value; exChanged(); };
 $('exG_teamFrame').oninput = e => { EXS.teamFrame = e.target.value; exChanged(); };
 $('exG_teamGlow').onchange = e => { EXS.teamGlow = e.target.checked; exChanged(); };
+$('exG_sparkle').onchange = e => { EXS.sparkle = e.target.checked; exChanged(); };
 $('exG_logoOn').onchange = e => { EXS.logoOn = e.target.checked; exChanged(); };
+$('exG_matOn').onchange = e => { EXS.matOn = e.target.checked; exChanged(); };
+// 「奖项名用素材图片」卡片：有几张素材、哪些奖项名找不到对应素材（照旧印文字）
+function exMatInfo() {
+  const miss = [], seen = new Set();
+  for (const a of exAwards()) {
+    const pairs = a.group ? [[a.group, a.groupSub], [a.title, a.subtitle]] : [[a.title, a.subtitle]];
+    for (const [zh, en] of pairs) {
+      const t = `${zh || ''}${en ? ' ' + en : ''}`.trim();
+      if (t && !seen.has(t)) { seen.add(t); if (!exMatFind(zh, en)) miss.push(t); }
+    }
+  }
+  $('exMatInfo').textContent = exMats.length ? `素材 ${exMats.length} 张` : '没有素材（data/material/）';
+  $('exMatMiss').textContent = !exMats.length ? '' : miss.length ? '找不到素材、照旧印文字：' + miss.join('、') : '所有奖项名都找到素材';
+}
 $('exSize').onchange = () => { EXS.size = $('exSize').value; exChanged(); };
 $('exFmt').onchange = () => { EXS.fmt = $('exFmt').value; exChanged(); };
 $('exAward').onchange = () => { exFillWho(); exPreview().catch(e => toast(e.message, true)); };
@@ -274,6 +360,7 @@ $('bExPreset').onclick = () => { if (confirm('把所有设定恢复成 Picture3 
 async function exOpen() {   // 切到「图片导出」分页时
   if (!exLoaded) { try { EXS = exClean((await api('GET', '/api/control/export-style')).style); } catch { EXS = EX_PRESET(); } exLoaded = true; }
   try { fontFiles = (await api('GET', '/api/control/fonts')).fonts; } catch {}
+  await exLoadMats();
   $('exFontList').replaceChildren(...fontFiles.map(f => el('option', { value: 'file:' + f.name }, '📄 ' + f.name)));
   exFillSel(); exBuildUI(); exPreview().catch(e => toast(e.message, true));
 }
@@ -284,7 +371,7 @@ async function exPreview() {
   const cv = await exRender(a, w, fam);
   const pv = $('exPv'), PW = 1280; pv.width = PW; pv.height = Math.round(PW * cv.height / cv.width);
   pv.getContext('2d').drawImage(cv, 0, 0, pv.width, pv.height);
-  $('exPvCap').textContent = `预览：${a.title} · ${w.name}（输出 ${cv.width}×${cv.height}）`;
+  $('exPvCap').textContent = `预览：${a.title} · ${w.name}（输出 ${cv.width}×${cv.height}）${cv.mat.length ? ' · 素材：' + cv.mat.join('、') : ''}`;
 }
 async function exExport(all) {
   const list = exAwards(), awards = all ? list : [list[+$('exAward').value || 0]].filter(Boolean);

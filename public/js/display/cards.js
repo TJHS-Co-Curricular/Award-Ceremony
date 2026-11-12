@@ -102,12 +102,20 @@ function fillCard(card, w, animate) {
       if (LOGO) holder.appendChild(logoImg());   // 放在照片后面：CSS 让它等照片画好才出现
     } else holder.classList.add('nopic');
     if (!cap) card.appendChild(div('shade'));
-    if (w.cls || w.sid || w.detail) tx.appendChild(div('rule'));
-    const box = cap ? tx.appendChild(div('lns')) : tx;  // 名字在下：班级 / 学号 / 备注排成一行（可换行）
-    for (const [k, t] of [['cls', w.cls], ['sid', w.sid], ['note', w.detail]]) if (t) { const d = box.appendChild(div('ln ' + k, t)); if (!cap) fits.push(d); }
-  } else {                                              // 纯文字卡：班级 · 学号 · 备注 合成一行
+    const lines = [['cls', w.cls], ['sid', w.sid], ['soc', w.socZh === w.name ? '' : w.socZh], ['socEn', w.socEn], ['note', w.detail]].filter(([, t]) => t);   // 团体名就是学会名时，不重复写中文
+    if (cap && lines.length) tx.appendChild(div('rule'));   // 团体：名字下面一条线；个人照片卡和导出图片一样，没有线
+    const box = cap ? tx.appendChild(div('lns')) : tx;  // 名字在下：班级 / 学号 / 学会 / 备注排成一行（可换行）
+    nm.dataset.k = 'name';
+    for (const [k, t] of lines) box.appendChild(div('ln ' + k, t)).dataset.k = k;
+    // 照片卡的字号、颜色、阴影、位置交给 exDecorate()（exstyle.js：套图片导出的设计）
+    card.appendChild(tx);
+    requestAnimationFrame(() => exDecorate(card));
+    return;
+  } else {                                              // 纯文字卡：班级 · 学号 · 备注 合成一行，学会另起一行（太长时缩小字号，不截断）
     const info = [w.cls, w.sid, w.detail].filter(Boolean).join(' · ');
     if (info) tx.appendChild(div('dt', info));
+    const soc = [w.socZh === w.name ? '' : w.socZh, w.socEn].filter(Boolean).join(' ');
+    if (soc) fits.push(tx.appendChild(div('dt soc', soc)));
   }
   card.appendChild(tx);
   requestAnimationFrame(() => fits.forEach(fitText));

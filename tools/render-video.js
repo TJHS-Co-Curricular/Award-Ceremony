@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const CONTENT_NAME = { standby: '待机画面', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
+const CONTENT_NAME = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
 const die = msg => { console.error('\n✗ ' + msg); process.exit(1); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fmtTime = s => s >= 60 ? `${Math.floor(s / 60)} 分 ${Math.round(s % 60)} 秒` : `${Math.round(s)} 秒`;

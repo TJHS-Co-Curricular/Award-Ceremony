@@ -1,6 +1,6 @@
 /*
  * 控制端 · 奖项编辑：草稿、活动标题、每个奖项的卡片（分类、名称、揭晓方式、获奖者文字框）、保存。
- * 获奖者每行一位：姓名 | 班级 | 学号 | 照片 | 备注 | 类型 | 得主（照片、类型、得主可放任意位置）。
+ * 获奖者每行一位：姓名 | 班级 | 学号 | 学会 | 照片 | 备注 | 类型 | 得主（照片、类型、得主可放任意位置）。
  * 提供：loadDraft()、setDirty(d)、renderEditor()、makeWinner(...)
  */
 "use strict";
@@ -20,7 +20,7 @@ const WIN_MARK = /^(得主|winner|★|🏆)$/i,
   WIN_YES = /^(得主|winner|★|🏆|是|y|yes|1|✓|√|v)$/i;
 const TYPE_TEAM = /^(团体|團體|团队|團隊|社团|集体|teams?|group)$/i,
   TYPE_PERSON = /^(个人|個人|person|individual)$/i;
-// 把一行的各栏变成获奖者：照片按扩展名识别、类型按关键字（团体 / 个人）识别，都可放任意位置；其余依次是 班级、学号、备注
+// 把一行的各栏变成获奖者：照片按扩展名识别、类型按关键字（团体 / 个人）识别，都可放任意位置；其余依次是 班级、学号、学会、备注
 function makeWinner(name, rest, photo = "", type = "", win = "") {
   const r = [...rest];
   for (let k = r.length - 1; k >= 0; k--)
@@ -39,12 +39,13 @@ function makeWinner(name, rest, photo = "", type = "", win = "") {
   if (!photo) {
     const k = r.findIndex(IS_PHOTO);
     if (k >= 0) photo = r.splice(k, 1)[0];
-    else if (r.length >= 4) r.splice(2, 1); // 班级、学号之后是照片栏；留空时去掉这一栏，备注才不会错位
+    else if (r.length >= 5) r.splice(3, 1); // 班级、学号、学会之后是照片栏；留空时去掉这一栏，备注才不会错位
   }
-  const [cls = "", sid = "", detail = ""] = r;
+  const [cls = "", sid = "", soc = "", detail = ""] = r;
   const w = { name };
   if (cls) w.cls = cls;
   if (sid) w.sid = sid;
+  if (soc) w.soc = soc;
   if (detail) w.detail = detail;
   if (photo) w.photo = photo;
   if (TYPE_TEAM.test(type)) w.type = "team";
@@ -58,6 +59,7 @@ const winnersToText = (ws) =>
         w.name,
         w.cls || "",
         w.sid || "",
+        w.soc || "",
         w.photo || "",
         w.detail || "",
         w.type === "team" ? "团体" : "",
@@ -78,6 +80,8 @@ function renderEditor() {
   if (!draft) return;
   $("evTitle").value = draft.event.title;
   $("evSub").value = draft.event.subtitle || "";
+  for (const [id, k] of EV_INFO) $(id).value = draft.event[k] || "";
+  $("evInfoOn").checked = draft.event.infoOn !== false;
   $("evGroupIntro").checked = draft.event.groupIntro !== false;
   $("evPhotoKicker").checked = draft.event.photoKicker !== false;
   exFillSel();
@@ -101,11 +105,15 @@ function renderEditor() {
     const ta = el("textarea", {
       rows: Math.min(14, Math.max(3, a.winners.length + 1)),
       placeholder:
-        "姓名 | 班级 | 学号 | 照片.jpg | 备注 | 类型（团体 / 个人） | 得主",
+        "姓名 | 班级 | 学号 | 学会 | 照片.jpg | 备注 | 类型（团体 / 个人） | 得主",
       class: "secret",
     });
     ta.value = winnersToText(a.winners);
     const warn = el("span", {
+      class: "tag",
+      style: "border-color:var(--warn);color:#ffc98a",
+    });
+    const swarn = el("span", {
       class: "tag",
       style: "border-color:var(--warn);color:#ffc98a",
     });
@@ -119,6 +127,9 @@ function renderEditor() {
             ? `⚠ 标了 ${k} 位得主，只算第一位`
             : "";
       warn.classList.toggle("hidden", a.revealMode !== "nominee" || k === 1);
+      const miss = socMissing(a.winners);   // 学会对照表里查不到的编号（导出图片时不印学会）
+      swarn.textContent = miss.length ? `⚠ 学会查不到：${miss.join("、")}` : "";
+      swarn.classList.toggle("hidden", !miss.length);
     };
     ta.addEventListener("input", () => {
       a.winners = textToWinners(ta.value);
@@ -183,6 +194,7 @@ function renderEditor() {
           el("span", { class: "no" }, `#${i + 1}`),
           cnt,
           warn,
+          swarn,
           el("span", { class: "sp" }),
           el(
             "button",
@@ -297,6 +309,16 @@ $("evTitle").addEventListener("input", (e) => {
 });
 $("evSub").addEventListener("input", (e) => {
   draft.event.subtitle = e.target.value;
+  setDirty(true);
+});
+const EV_INFO = [["evDate", "date"], ["evTime", "time"], ["evVenue", "venue"], ["evNote", "note"]];   // 待机画面下方的活动资料
+for (const [id, k] of EV_INFO)
+  $(id).addEventListener("input", (e) => {
+    draft.event[k] = e.target.value;
+    setDirty(true);
+  });
+$("evInfoOn").addEventListener("change", (e) => {
+  draft.event.infoOn = e.target.checked;
   setDirty(true);
 });
 $("evGroupIntro").addEventListener("change", (e) => {

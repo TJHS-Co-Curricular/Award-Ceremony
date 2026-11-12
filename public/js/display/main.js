@@ -35,6 +35,7 @@ function onData(raw) {
   diagSet(v.diag);
   fxSet(v.fx);
   logoSet(v.logo);
+  exStyleSet(v.exStyle);
   render(v);
   renewMark(raw, v);
   booted = true;

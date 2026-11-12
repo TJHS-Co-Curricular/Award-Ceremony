@@ -44,6 +44,7 @@ async function boot() {
   setupPreview();
   fillObsHosts();
   loadDraft();
+  socLoad();
   render();
   connect();
 }

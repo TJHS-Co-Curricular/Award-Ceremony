@@ -7,7 +7,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const CLIENT_VERSION = '1.41';
+const CLIENT_VERSION = '1.45';
 let V = null;          // 最新控制端视图
 let sel = null;        // 选中的奖项 id
 let draft = null;      // 编辑草稿
@@ -49,7 +49,7 @@ function splitZhEn(t) {
   const en = m[2].trim().replace(/\s+/g, ' ');
   return en.length >= 6 && (/\s/.test(en) || en.length >= 8) ? [m[1].trim(), en] : null;
 }
-const infoLine = w => [w.cls, w.sid, w.detail].filter(Boolean).join(' · ');
+const infoLine = w => [w.cls, w.sid, w.soc, w.detail].filter(Boolean).join(' · ');
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 function log(t) {
   const d = new Date().toLocaleTimeString('zh-CN', { hour12: false });
