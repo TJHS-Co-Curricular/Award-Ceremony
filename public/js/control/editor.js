@@ -80,6 +80,8 @@ function renderEditor() {
   if (!draft) return;
   $("evTitle").value = draft.event.title;
   $("evSub").value = draft.event.subtitle || "";
+  $("evTitleSize").value = draft.event.titleSize || 100;
+  $("evSubSize").value = draft.event.subSize || 100;
   for (const [id, k] of EV_INFO) $(id).value = draft.event[k] || "";
   $("evInfoOn").checked = draft.event.infoOn !== false;
   $("evGroupIntro").checked = draft.event.groupIntro !== false;
@@ -315,6 +317,11 @@ const EV_INFO = [["evDate", "date"], ["evTime", "time"], ["evVenue", "venue"], [
 for (const [id, k] of EV_INFO)
   $(id).addEventListener("input", (e) => {
     draft.event[k] = e.target.value;
+    setDirty(true);
+  });
+for (const [id, k] of [["evTitleSize", "titleSize"], ["evSubSize", "subSize"]])   // 活动名称 / 副标题大小（%），服务端保存时限制在 50 ~ 200
+  $(id).addEventListener("input", (e) => {
+    draft.event[k] = +e.target.value || 100;
     setDirty(true);
   });
 $("evInfoOn").addEventListener("change", (e) => {

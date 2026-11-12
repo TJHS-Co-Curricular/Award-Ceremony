@@ -43,8 +43,11 @@ function render(v) {
   lastV = v;
   applyFonts(v.event);
   $('black').classList.toggle('on', !!v.blackout);
-  if ($('evTitle').textContent !== (v.event?.title || '') || $('evTitle').dataset.w !== String(SW)) {   // 标题太长就缩小，保持一行
-    const h = $('evTitle'); h.textContent = v.event?.title || ''; h.style.fontSize = ''; h.dataset.w = SW;
+  // 活动名称 / 副标题大小（控制端「奖项编辑」设，100 = 原本）
+  const tk = (v.event?.titleSize || 100) / 100, sk = (v.event?.subSize || 100) / 100, ss = $('s-standby').style;
+  ss.setProperty('--title-k', tk); ss.setProperty('--sub-k', sk);
+  if ($('evTitle').textContent !== (v.event?.title || '') || $('evTitle').dataset.w !== SW + '|' + tk) {   // 标题太长就缩小，保持一行
+    const h = $('evTitle'); h.textContent = v.event?.title || ''; h.style.fontSize = ''; h.dataset.w = SW + '|' + tk;
     requestAnimationFrame(() => fitText(h));
   }
   $('evSub').textContent = v.event?.subtitle || '';

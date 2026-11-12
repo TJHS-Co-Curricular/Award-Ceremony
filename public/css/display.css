@@ -34,10 +34,10 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #s-standby{justify-content:flex-start;padding-top:calc(var(--sh,1080px) * .13)}
 #goldfx{position:absolute;inset:0;z-index:0}
 #s-standby > :not(canvas){position:relative;z-index:1}
-#s-standby .en{font-family:var(--serif);font-weight:500;font-size:84px;letter-spacing:.42em;padding-left:.42em;line-height:1;text-transform:uppercase;text-align:center;max-width:calc(100% - 200px);
+#s-standby .en{font-family:var(--serif);font-weight:500;font-size:calc(84px * var(--sub-k, 1));letter-spacing:.42em;padding-left:.42em;line-height:1;text-transform:uppercase;text-align:center;max-width:calc(100% - 200px);
   background:linear-gradient(180deg,#fff6d8 0%,#e9c873 45%,#9a7330 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(0,0,0,.6))}
 #s-standby .en:empty{display:none}
-#s-standby h1{white-space:nowrap;font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.08em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:18px 0 24px;
+#s-standby h1{white-space:nowrap;font-family:var(--serif);font-weight:800;font-size:calc(150px * var(--title-k, 1));letter-spacing:.08em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:18px 0 24px;
   filter:drop-shadow(0 0 26px rgba(255,190,70,.35)) drop-shadow(0 6px 14px rgba(0,0,0,.65))}
 #s-standby .line{display:flex;align-items:center;gap:24px;color:var(--gold-hi);opacity:.85}
 #s-standby .line i{display:block;height:1.5px;width:min(560px,28vw);background:linear-gradient(90deg,transparent,rgba(247,226,166,.9))}
