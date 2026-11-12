@@ -32,7 +32,8 @@ const EX_PRESET = () => ({
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
-  matOn: true, matTop: 20, matAward: 22,   // 奖项名（中文 + 英文）换成 data/material/ 里同名的素材图片；大小 = 画面高度 %（个人图）
+  matOn: true, matTop: 20, matAward: 22, matTopX: 0, matTopY: 0, matAwardX: 0, matAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
+    // 奖项名（中文 + 英文）换成 data/material/ 里同名的素材图片；大小 = 画面高度 %（个人图）
   logoOn: true, logoSize: 16, logoMargin: 2.5, logoOpacity: 100,   // 照片右上角的学校 Logo（「效果控制」上传）；大小、边距 = 照片宽度 %
   size: '1920x1080', fmt: 'jpg'
 });
@@ -51,6 +52,7 @@ function exClean(v) {
   o.textX = num(v?.textX, 15, 50, d.textX); o.nameY = num(v?.nameY, 15, 70, d.nameY);
   o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false;
   o.matOn = v?.matOn !== false; o.matTop = num(v?.matTop, 5, 45, d.matTop); o.matAward = num(v?.matAward, 5, 45, d.matAward);
+  for (const id of ['matTopX', 'matTopY', 'matAwardX', 'matAwardY']) o[id] = num(v?.[id], -30, 30, 0);
   o.logoOn = v?.logoOn !== false; o.logoSize = num(v?.logoSize, 4, 50, d.logoSize); o.logoMargin = num(v?.logoMargin, 0, 10, d.logoMargin); o.logoOpacity = num(v?.logoOpacity, 20, 100, d.logoOpacity);
   o.size = ['1920x1080', '3840x2160', 'photo'].includes(v?.size) ? v.size : d.size;
   o.fmt = v?.fmt === 'png' ? 'png' : 'jpg';
@@ -192,7 +194,7 @@ async function exRender(award, w, fam) {
   const tailM = S.matOn && (E.award.show || E.awardEn.show) && (tail[0] || tail[1]) ? exMatFind(tail[0], tail[1]) : null;
   const headMat = await exMatImg(headM), tailMat = await exMatImg(tailM);
   cv.mat = [headMat && headM.name, tailMat && tailM.name].filter(Boolean);
-  const drawMat = (im, cx, y, maxW, maxH) => { const d = exMatFit(im, maxW, maxH); g.save(); g.shadowColor = 'transparent'; g.drawImage(im, cx - d.w / 2, y, d.w, d.h); g.restore(); return d.h; };
+  const drawMat = (im, cx, y, maxW, maxH, pos) => { const d = exMatFit(im, maxW, maxH), dx = W * S[pos + 'X'] / 100, dy = H * S[pos + 'Y'] / 100; g.save(); g.shadowColor = 'transparent'; g.drawImage(im, cx - d.w / 2 + dx, y + dy, d.w, d.h); g.restore(); return d.h; };
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
 
   if (!team) {
@@ -210,7 +212,7 @@ async function exRender(award, w, fam) {
     exLogo(g, logo, 0, 0, W);
     shadow(true);
     let y = H * .115;
-    if (headMat) y = H * .04 + drawMat(headMat, cx, H * .04, maxW, H * S.matTop / 100) - E.name.size * k * .5;
+    if (headMat) y = H * .04 + drawMat(headMat, cx, H * .04, maxW, H * S.matTop / 100, 'matTop') - E.name.size * k * .5;
     else if (E.top.show && head[0]) exText(g, head[0], E.top, headFam, E.top.size * k, cx, y, maxW);
     if (!headMat && E.topEn.show && head[1]) {
       const st = E.topEn, px = st.size * k; exFont(g, st, fam.topEn, px);
@@ -225,7 +227,7 @@ async function exRender(award, w, fam) {
       if (i) y += st.size * k * (st.size < big * .9 ? 1.32 : 1.2);
       exText(g, t, st, fam[key], st.size * k, cx, y, maxW);
     });
-    if (tailMat) drawMat(tailMat, cx, y + U * .06, maxW, H * S.matAward / 100);
+    if (tailMat) drawMat(tailMat, cx, y + U * .06, maxW, H * S.matAward / 100, 'matAward');
     const bottom = tailMat ? [] : [['award', tail[0]], ['awardEn', tail[1]]].filter(([key, t]) => t && E[key].show);
     bottom.forEach(([key, t], i) => {
       const st = E[key];
@@ -243,7 +245,7 @@ async function exRender(award, w, fam) {
     const cx = W / 2, maxW = W * .86;
     shadow(true);
     let y = H * .04;
-    if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.matTop / 100);
+    if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.matTop / 100, 'matTop');
     if (!headMat && E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
     if (!headMat && E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
     shadow(false);
@@ -274,7 +276,7 @@ async function exRender(award, w, fam) {
         shadow(true);
       }
     });
-    if (matD) drawMat(tailMat, cx, y + U * .02, maxW, matD.h);
+    if (matD) drawMat(tailMat, cx, y + U * .02, maxW, matD.h, 'matAward');
   }
   shadow(false);
   return cv;
@@ -313,7 +315,7 @@ function exBuildUI() {
       el('td', {}, n('spacing', '0.02', 58)),
       el('td', {}, f)));
   }
-  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
+  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
   $('exG_logoOn').checked = EXS.logoOn; $('exG_matOn').checked = EXS.matOn;
   exMatInfo();
   $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
@@ -332,7 +334,7 @@ async function exSave() {
   try { await api('PUT', '/api/control/export-style', EXS); $('exSaveState').textContent = '设计已保存'; $('exSaveState').className = 'muted'; }
   catch (e) { $('exSaveState').textContent = '保存失败：' + e.message; }
 }
-for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
+for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
 $('exG_teamBg').oninput = e => { EXS.teamBg = e.target.value; exChanged(); };
 $('exG_teamFrame').oninput = e => { EXS.teamFrame = e.target.value; exChanged(); };
 $('exG_teamGlow').onchange = e => { EXS.teamGlow = e.target.checked; exChanged(); };
