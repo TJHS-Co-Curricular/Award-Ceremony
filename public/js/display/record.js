@@ -6,6 +6,7 @@
  *   standby   待机画面 = 大会背景（背景 + 副标题 + 活动名称 + 装饰线，名称有流光）
  *   promo     宣传背景（待机画面 + 下方的日期 / 时间 / 地点 / 其它一行）
  *   standbybg 待机背景（星系 / 光河，没有文字）
+ *   greenbg   绿幕（待机背景的圈圈放在纯绿色 #00FF00 上，没有文字；后期抠掉绿色叠到别的影片上）
  *   base      底层背景（舞台渐层 + 浮尘 + 边框，其它画面后面那层）
  *   flash     揭晓闪光（黑底，叠加时用「滤色 / Screen」混合）
  * 循环：最后 fade 秒和开头交叉淡化，首尾接得上，播放器设「循环播放」就看不出接缝。
@@ -225,16 +226,31 @@ async function recPrepare(opt, fx) {
   for (let i = 0; i < 2; i++) recTick(1000 / 60);   // 字体载好后再缩放一次（标题、日期地点的 fitText 在下一帧）
 }
 const recHasText = c => c === 'standby' || c === 'promo';
+/* 绿幕：星系 / 光河是「发光的东西画在黑底上」，把亮度当成不透明度：
+ *   a = 最亮的颜色通道（太暗的当成全透明），颜色 = 原色 ÷ a，再叠到纯绿色上。
+ * 黑色部分变成纯绿，亮的地方保持原色，半透明的光晕按亮度混一点绿，抠像后光晕边缘也自然。 */
+const REC_GREEN_T = 8;   // 亮度（0–255）低于这个当成全透明（星系底色 #030201、暗角都会变成纯绿）
+function recGreen(o, W, H) {
+  const d = o.getImageData(0, 0, W, H), p = d.data, t = REC_GREEN_T, k = 255 / (255 - t);
+  for (let i = 0; i < p.length; i += 4) {
+    const r = p[i], g = p[i + 1], b = p[i + 2], m = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    if (m <= t) { p[i] = 0; p[i + 1] = 255; p[i + 2] = 0; p[i + 3] = 255; continue; }
+    const a = (m - t) * k / 255, s = a * 255 / m;   // s：原色 → 原色 ÷ 亮度 × a
+    p[i] = r * s; p[i + 1] = g * s + 255 * (1 - a); p[i + 2] = b * s; p[i + 3] = 255;
+  }
+  o.putImageData(d, 0, 0);
+}
 /* 一张静态图片（PNG）：宣传海报 / 投影片背景用。先跑 opt.seconds（默认 4）秒让星系转开，取那一帧 */
 async function recStill(opt, fx) {
   await recPrepare(opt, fx);
   const content = opt.content, gold = $('goldfx'), W = gold.width, H = gold.height;
   const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
   for (let i = 0; i < Math.round((opt.seconds || 4) * 60); i++) { if (recStop) throw new Error('已取消'); recTick(1000 / 60); if (i % 60 === 0) await recYield(); }
-  const out = recCanvas(W, H), o = out.getContext('2d');
+  const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });
   if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
   else { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
   if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, .25); }   // 流光停在标题中间偏亮的位置
+  if (content === 'greenbg') recGreen(o, W, H);
   const blob = await new Promise(r => out.toBlob(r, 'image/png'));
   return { blob, width: W, height: H };
 }
@@ -247,7 +263,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
   const content = opt.content, fps = opt.fps === 60 ? 60 : 30, sub = 60 / fps;
   const gold = $('goldfx'), W = gold.width, H = gold.height;
   const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
-  const out = recCanvas(W, H), o = out.getContext('2d');
+  const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });   // 绿幕每帧要读回像素
 
   const N = Math.round(opt.seconds * fps), loop = content !== 'flash' && opt.fade > 0, C = loop ? Math.min(Math.round(opt.fade * fps), Math.floor(N / 2)) : 0;
   const P = loop ? opt.seconds / Math.max(1, Math.round(opt.seconds / SHIMMER_P)) : SHIMMER_P;   // 流光周期：让影片长度刚好是整数个周期，循环时文字也接得上
@@ -301,7 +317,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
       if (REC_SKIP) { if (i % 300 === 0) { onProgress(done / total, '快转到这一段'); await recYield(); } continue; }
       // 背景
       o.setTransform(1, 0, 0, 1, 0, 0); o.globalAlpha = 1; o.globalCompositeOperation = 'source-over'; o.filter = 'none';
-      if (recHasText(content) || content === 'standbybg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
+      if (recHasText(content) || content === 'standbybg' || content === 'greenbg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
       else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
       else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
       if (i < C) {
@@ -321,6 +337,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
         o.globalAlpha = (i - N + .5) / C; o.drawImage(bm, 0, 0); o.globalAlpha = 1; bm.close();
       }
       if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, ((k / fps) / P) % 1); }
+      if (content === 'greenbg') recGreen(o, W, H);   // 循环淡化在黑底上做完再换绿底
       await E.push(out, k, o);
       onProgress(++done / total, '渲染中');
       if (i % 2 === 0) await recYield();

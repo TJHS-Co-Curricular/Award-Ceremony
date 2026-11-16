@@ -234,7 +234,7 @@ $('bRec').onclick = async () => {
       const left = p > .02 ? Math.round((Date.now() - t0) / p * (1 - p) / 1000) : null;
       $('recState').textContent = `${what} ${(p * 100).toFixed(0)}%` + (left != null ? `，大约还要 ${left >= 60 ? Math.floor(left / 60) + ' 分 ' : ''}${left % 60} 秒` : '');
     });
-    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' }[opt.content];
+    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', greenbg: '绿幕', base: '底层背景', flash: '揭晓闪光' }[opt.content];
     const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}-${opt.seconds}s-${opt.fps}fps.mp4` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     $('recState').textContent = `完成：${(r.blob.size / 1048576).toFixed(1)} MB · ${r.codec.startsWith('avc') ? 'H.264' : 'VP9'} · ${r.hw ? '显卡编码' : 'CPU 软件编码'} · 每秒算 ${r.speed.toFixed(1)} 帧 · 用了 ${Math.round((Date.now() - t0) / 1000)} 秒`;
@@ -257,7 +257,7 @@ $('bStill').onclick = async () => {
   try {
     await new Promise((ok, bad) => { recFrame.onload = ok; setTimeout(() => bad(new Error('输出页打不开')), 20000); });
     const r = await recFrame.contentWindow.recStill({ content }, fxFor(sc.name));
-    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景' }[content];
+    const name = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', greenbg: '绿幕', base: '底层背景' }[content];
     const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}.png` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     $('recState').textContent = `完成：${name}图片 ${r.width}×${r.height}（${(r.blob.size / 1048576).toFixed(1)} MB）`;
@@ -269,7 +269,7 @@ $('bStill').onclick = async () => {
 /* ---------- 服务器渲染：交给服务端（lib/render.js）在那台电脑上渲染，这里只看进度、下载 ---------- */
 let srvPoll = 0, srvSig = '';
 const srvAutoDl = new Set();   // 由「开始导出」交给服务器的任务：完成后自动下载
-const SRV_NAME = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', base: '底层背景', flash: '揭晓闪光' };
+const SRV_NAME = { standby: '大会背景', promo: '宣传背景', standbybg: '待机背景', greenbg: '绿幕', base: '底层背景', flash: '揭晓闪光' };
 const srvMB = b => (b / 1048576).toFixed(1) + ' MB';
 function srvStart() { srvFill(); srvRefresh(); clearInterval(srvPoll); srvPoll = setInterval(srvRefresh, 1500); }
 function srvStop() { clearInterval(srvPoll); srvPoll = 0; }

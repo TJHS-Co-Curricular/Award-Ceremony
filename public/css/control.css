@@ -68,6 +68,7 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:upperca
 .ghead button{padding:3px 8px;font-size:11px}
 .ghead.live{border-left-color:var(--bad);background:rgba(214,69,69,.12)}
 .aitem.ing{margin-left:10px}
+.ghead.shead{border-left-width:5px;background:rgba(217,178,95,.14)}.ghead.shead .gt{font-size:14px}   /* 大类（分类上面一层） */
 
 /* ===== 现场控制 · 中：预览、主按钮、消息 ===== */
 .preview{position:relative;width:100%;aspect-ratio:16/9;max-height:52vh;margin:0 auto;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}

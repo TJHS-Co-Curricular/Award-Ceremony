@@ -61,25 +61,14 @@ function render(v) {
     }
     show('s-message'); cur = { mode: 'message' }; return;
   }
-  if (v.mode === 'group' && v.group) {
-    const key = v.group.title + '|' + (v.group.noNum ? 1 : 0) + '|' + v.group.awards.map(x => x.title).join('|');
-    if (cur.mode === 'group' && cur.key !== key) $('s-group').classList.remove('active');   // 换了分类：重新进场
-    $('gTitle').textContent = v.group.title; $('gSub').textContent = v.group.sub || '';
-    const ol = $('gList'); ol.textContent = '';
-    v.group.awards.forEach((x, i) => {
-      const li = document.createElement('li');
-      li.innerHTML = '<b></b><span></span><small></small>';
-      li.children[0].textContent = String(i + 1).padStart(2, '0'); li.children[1].textContent = x.title; li.children[2].textContent = x.subtitle || '';
-      if (v.group.noNum) li.children[0].remove();   // 这一类设定为不显示编号
-      ol.appendChild(li);
-    });
-    $('s-group').classList.toggle('many', v.group.awards.length > 5);
-    $('s-group').classList.toggle('nonum', !!v.group.noNum);
-    show('s-group'); cur = { mode: 'group', key }; return;
-  }
+  // 大类画面（第 1 层）和分类标题画面（第 2 层）共用 #s-group：大字是名称，下面列出里面的分类 / 奖项。
+  // 分类标题画面上方的小字：属于某个大类时写大类名称，否则写「奖 项 类 别」
+  if (v.mode === 'section' && v.section) return renderList('section', '奖 项 类 别', v.section.title, v.section.sub, v.section.items, false);
+  if (v.mode === 'group' && v.group) return renderList('group', v.group.section || '奖 项 类 别', v.group.title, v.group.sub, v.group.awards, v.group.noNum);
   if (v.mode === 'photo' && v.photo) return renderPhoto(v);
   const gl = v.award?.group ? `${v.award.group}${v.award.groupTotal > 1 && !v.award.groupNoNum ? ' · 奖项 ' + String(v.award.groupIndex).padStart(2, '0') : ''}` : '';
   $('tGroup').textContent = gl; $('rGroup').textContent = gl;
+  $('tSec').textContent = $('rSec').textContent = v.award?.section || '';   // 大类：分类上面再一行小字
   if (v.mode === 'title') {
     $('tTitle').textContent = v.award.title; $('tSub').textContent = v.award.subtitle || '';
     $('tSoon').textContent = v.guestArmed ? '有 请 嘉 宾 揭 晓' : '即 将 揭 晓';
@@ -98,6 +87,7 @@ function render(v) {
     const cards = $('grid').children;
     const from = cur.shown, to = v.winners.length;
     const animate = booted && !isUndo;                            // 首次打开 / 刷新页面时不放动画
+    if (v.award.grow) growPlace(cards, from, to, animate);      // 逐一揭晓：中间出、左右收
     for (let i = from; i < to; i++) {   // 一次出现多张时错开 0.14 秒
       // 先抓住这张卡：延迟期间如果已经换了奖项（网格重建），旧卡不在画面上就跳过
       if (animate) { const card = cards[i], w = v.winners[i]; setTimeout(() => { if (card?.isConnected) fillCard(card, w, true); }, (i - from) * 140); }
@@ -115,6 +105,23 @@ function render(v) {
   }
 }
 
+function renderList(mode, kick, title, sub, items, noNum) {
+  const key = [mode, kick, title, noNum ? 1 : 0, ...items.map(x => x.title)].join('|');
+  if ((cur.mode === 'group' || cur.mode === 'section') && cur.key !== key) $('s-group').classList.remove('active');   // 换了大类 / 分类：重新进场
+  $('gKick').textContent = kick; $('gTitle').textContent = title; $('gSub').textContent = sub || '';
+  const ol = $('gList'); ol.textContent = '';
+  items.forEach((x, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<b></b><span></span><small></small>';
+    li.children[0].textContent = String(i + 1).padStart(2, '0'); li.children[1].textContent = x.title; li.children[2].textContent = x.subtitle || '';
+    if (noNum) li.children[0].remove();   // 这一类设定为不显示编号
+    ol.appendChild(li);
+  });
+  $('s-group').classList.toggle('many', items.length > 5);
+  $('s-group').classList.toggle('nonum', !!noNum);
+  show('s-group'); cur = { mode, key };
+}
+
 /* 合影画面：「分类 — 奖项名称」，一行放不下就分两行（分类小一点在上） */
 const PHOTO_TOP = 110;   // 顶端最少离上缘多少（舞台像素）；往上移多少在「效果控制」调（FXC.photoUp）
 function renderPhoto(v) {
@@ -124,7 +131,7 @@ function renderPhoto(v) {
   const sc = $('s-photo'), h = $('pTitle');
   $('pGroup').textContent = p.group; $('pAward').textContent = p.title;
   $('pGroup').style.display = p.group ? '' : 'none'; $('pSep').classList.toggle('hide', !p.group);
-  $('pSub').textContent = [p.groupSub, p.subtitle].filter(Boolean).join('  ·  ');
+  $('pSub').textContent = [p.section, p.groupSub, p.subtitle].filter(Boolean).join('  ·  ');   // 大类放在小字最前面
   sc.classList.remove('wrap'); sc.classList.toggle('nokick', !kick); h.style.fontSize = '';
   show('s-photo'); cur = { mode: 'photo', key };
   requestAnimationFrame(() => {   // 量一下：一行放不下 → 两行；还放不下 → 缩字

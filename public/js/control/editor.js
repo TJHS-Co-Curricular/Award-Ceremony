@@ -93,6 +93,9 @@ function renderEditor() {
     $("groupList") ||
     document.body.appendChild(el("datalist", { id: "groupList" }));
   dl.replaceChildren(...groups.map((g) => el("option", { value: g })));
+  const secs = [...new Set(draft.awards.map((a) => a.section).filter(Boolean))];
+  ($("sectionList") || document.body.appendChild(el("datalist", { id: "sectionList" })))
+    .replaceChildren(...secs.map((g) => el("option", { value: g })));
   const box = $("elist");
   box.textContent = "";
   draft.awards.forEach((a, i) => {
@@ -149,7 +152,7 @@ function renderEditor() {
         a[key] = x.value;
         setDirty(true);
       });
-      const pair = { title: "subtitle", group: "groupSub" }[key];
+      const pair = { title: "subtitle", group: "groupSub", section: "sectionSub" }[key];
       if (pair)
         x.addEventListener("change", () => {
           // 「团体网站比赛Societies' Website Competition」→ 自动拆成中文 + 英文
@@ -159,13 +162,13 @@ function renderEditor() {
             a[pair] = ins[pair].value = sp[1];
             setDirty(true);
           }
-          if (key === "group" && a.group && !a.groupSub) {
-            // 选了已有分类：带出它的英文
+          if ((key === "group" || key === "section") && a[key] && !a[pair]) {
+            // 选了已有分类 / 大类：带出它的英文
             const o = draft.awards.find(
-              (y) => y !== a && y.group === a.group && y.groupSub,
+              (y) => y !== a && y[key] === a[key] && y[pair],
             );
             if (o) {
-              a.groupSub = ins.groupSub.value = o.groupSub;
+              a[pair] = ins[pair].value = o[pair];
               setDirty(true);
             }
           }
@@ -221,6 +224,26 @@ function renderEditor() {
               style: "color:#ff9c9c",
             },
             "删除",
+          ),
+        ),
+        el(
+          "div",
+          { class: "grid2", style: "margin-bottom:10px" },
+          el(
+            "label",
+            { class: "f" },
+            el("span", {}, "大类（可空；分类上面一层，相邻且同名的归为一个大类）"),
+            (() => {
+              const x = inp("section", "例如：年终成果汇报竞赛奖", 60);
+              x.setAttribute("list", "sectionList");
+              return x;
+            })(),
+          ),
+          el(
+            "label",
+            { class: "f" },
+            el("span", {}, "大类英文（可空）"),
+            inp("sectionSub", "例如：YEAR-END REPORT COMPETITIONS", 120),
           ),
         ),
         el(
@@ -339,6 +362,8 @@ $("evPhotoKicker").addEventListener("change", (e) => {
 $("bAdd").onclick = () => {
   const last = draft.awards[draft.awards.length - 1] || {};
   draft.awards.push({
+    section: last.section || "",
+    sectionSub: last.sectionSub || "",
     group: last.group || "",
     groupSub: last.groupSub || "",
     title: "新奖项",

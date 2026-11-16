@@ -14,7 +14,8 @@ function render(v) {
   V = v;
   $("ev").textContent = v.event?.title || "";
   const onAward = (v.mode === "title" || v.mode === "reveal") && v.award;
-  const grp = v.mode === "group" && v.group,
+  const sec = v.mode === "section" && v.section,
+    grp = (v.mode === "group" && v.group) || (sec && { title: v.section.title, sub: v.section.sub }),
     pho = v.mode === "photo" && v.photo;
   $("k").textContent = onAward
     ? v.award.group

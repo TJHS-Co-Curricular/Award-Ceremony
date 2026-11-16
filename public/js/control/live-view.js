@@ -144,7 +144,44 @@ function render() {
   const list = $("alist");
   list.textContent = "";
   V.awards.forEach((a, i) => {
-    if (a.group && (i === 0 || V.awards[i - 1].group !== a.group)) {
+    if (a.section && (i === 0 || V.awards[i - 1].section !== a.section)) {
+      // 大类标题行（分类上面一层）
+      let e = i;
+      while (e + 1 < V.awards.length && V.awards[e + 1].section === a.section) e++;
+      const run = V.awards.slice(i, e + 1),
+        sLive = s.mode === "section" && run.some((x) => x.id === s.awardId);
+      const first = run.find((x) => !s.doneIds.includes(x.id)) || a;
+      list.append(
+        el(
+          "div",
+          { class: "ghead shead" + (sLive ? " live" : "") },
+          el(
+            "span",
+            { class: "gt" },
+            a.section,
+            run.find((x) => x.sectionSub)
+              ? el("small", {}, run.find((x) => x.sectionSub).sectionSub)
+              : null,
+          ),
+          sLive
+            ? el("span", { class: "tag live" }, "大类画面中")
+            : el(
+                "span",
+                { class: "tag" },
+                `${run.filter((x) => s.doneIds.includes(x.id)).length}/${run.length}`,
+              ),
+          el(
+            "button",
+            {
+              onclick: () => act("section", { awardId: first.id }),
+              title: "在大屏显示这个大类的画面（列出里面的分类）",
+            },
+            "大类画面",
+          ),
+        ),
+      );
+    }
+    if (a.group && (i === 0 || V.awards[i - 1].group !== a.group || V.awards[i - 1].section !== a.section)) {
       // 分类标题行
       let e = i;
       while (e + 1 < V.awards.length && V.awards[e + 1].group === a.group) e++;

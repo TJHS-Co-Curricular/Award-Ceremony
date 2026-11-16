@@ -108,12 +108,13 @@ README.md                 用户文档（中文）
   - 先一后全：每下 `revealed + 1`，大屏只显示第 `revealed` 位（`award.view.mode = 'solo'`）；`revealed` 到最后一位后，下一下 `phase = 'all'`、`page = 0`（全部出现，每页最多 `GALLERY_MAX = 20` 张，按 `award.cascade` 间隔逐张出现），再按就 `page + 1`。完成 = `phase === 'all'` 且到最后一页（`isComplete()`）。`commit()` 在 `phase !== 'all'` 时把 `page` 归零。
   - `phase` 只用于入围揭晓奖项（`revealMode: 'nominee'` 且有 `win` 标记，见 `isNominee()`）：`''` 介绍入围者 → `suspense` → `winner`。奖项是否完成统一用 `isComplete(a, st)` 判断。`commit()` 在非 reveal 模式下会清空 `phase`。
   - ⚠ `publicView()` 绝不能带出 `win`；`winnerIndex` 只在 `phase === 'winner'` 时给。
-  - `mode` 取值：`standby` / `group`（分类标题）/ `title` / `reveal` / `photo`（合影画面：分类 + 奖项名称，没有名单）/ `message`。`group` 模式下 `awardId` 指向该分类里下一个要公布的奖项；分类 = 相邻同名的 `award.group`（`groupRun()`）。整组设定（如 `groupNoNum` 不显示编号）存在组里每个奖项上，读取时「任一奖项设了就算」，控制端修改时整组一起写。
+  - 三层标题：`award.section`（大类，可空）→ `award.group`（分类）→ `award.title`（奖项）。大类 = 相邻同名的 `award.section`（`show.sectionRun()`，`items` = 里面的分类，没分类的奖项直接列奖项名）。`planNext()`：进入新的大类先 `mode: 'section'`（`awardId` 已指向下一个奖项），再分类标题，再奖项标题。大屏的大类画面和分类标题画面共用 `#s-group`（`render.js` 的 `renderList()`）。图片导出只用分类 + 奖项。
+  - `mode` 取值：`standby` / `section`（大类画面）/ `group`（分类标题）/ `title` / `reveal` / `photo`（合影画面：分类 + 奖项名称，没有名单）/ `message`。`group` 模式下 `awardId` 指向该分类里下一个要公布的奖项；分类 = 相邻同名的 `award.group`（`groupRun()`）。整组设定（如 `groupNoNum` 不显示编号）存在组里每个奖项上，读取时「任一奖项设了就算」，控制端修改时整组一起写。
   - 每次改动都走 `show.commit()`：推入 `rt.history`（供撤销）→ 存 `state.json` → `rt.hooks.afterChange()`（= `actions.js` 的 `afterChange()`，这样 `show.js` 不用反过来 require 推送模块）。
   - `afterChange()` 依次做：必要时收回嘉宾授权 → `scheduleAuto()` → `broadcast()`。
 - **「下一步」逻辑**：`planNext(state)` 返回 `{ st, desc }`。控制端的下一步提示、自动播放、嘉宾揭晓都用它，修改时三处会一起受影响。
 - **动作**：`POST /api/control/action`，参数 `{ action, ... }`。动作列表：
-  `next`、`standby`、`blackout`、`message`、`group`、`title`、`photo`、`diag`（输出页诊断框开关，`rt.diag`，不进历史）、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
+  `next`、`standby`、`blackout`、`message`、`section`、`group`、`title`、`photo`、`diag`（输出页诊断框开关，`rt.diag`，不进历史）、`revealAll`、`markPending`、`undo`、`resetProgress`、`autoStart`、`autoStop`、`guestArm`、`guestDisarm`、`rotateGuestKey`。
   - 新增动作时：在 `lib/actions.js` 的 `doAction()` switch 里加 case；如果它**不该**打断自动播放，加进 `KEEP_AUTO`；在控制端 `js/control/live.js` 的 `labelOf()` 里加中文名；递增版本号。
 - **新增接口**：在 `lib/routes/control.js` 的 `API` 表加一行 `'方法 路径': handler`（已自动做登录和 CSRF 检查）；不需要登录的页面接口放到对应的 routes 文件里。
 - **自动播放**：在服务端计时（`auto`、`scheduleAuto()`），控制端关掉也继续跑。除 `next` 和自动播放、嘉宾相关动作外，任何手动操作都会 `stopAuto()`。

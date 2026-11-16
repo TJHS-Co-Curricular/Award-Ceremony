@@ -65,6 +65,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #s-group.nonum ol{align-items:center}#s-group.nonum li{justify-content:center}
 .gline{font-size:30px;letter-spacing:.35em;padding-left:.35em;color:var(--gold);opacity:.9}
 .gline:empty{display:none}
+.gline.sline{font-size:24px;color:var(--muted);opacity:1;margin-bottom:-2px}   /* 大类：分类上面一行，小一点、淡一点 */
+#s-title .gline.sline{font-size:28px;margin-bottom:10px}
 #s-title .gline{margin-bottom:26px;font-size:34px}
 
 /* ===== 奖项标题画面 ===== */
@@ -164,6 +166,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .card .nm{font-family:var(--namef,inherit);font-weight:800;font-size:var(--name,72px);line-height:1.2;letter-spacing:.06em;color:var(--ink);white-space:nowrap;max-width:100%}
 .card .dt.soc{margin-top:.2em;color:var(--gold-hi)}
 .card .dt{font-size:var(--detail,30px);color:var(--muted);margin-top:.45em;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 逐一揭晓（grow）：没揭晓的不占位置、每行居中；排列顺序由 growPlace() 用 order 决定 */
+#grid.grow{display:flex;flex-wrap:wrap;justify-content:center;align-content:center}
+#grid.grow:not(.photo) .card{flex:none;width:var(--cw);height:var(--ch)}
+#grid.grow .card.hidden{display:none}
+#grid.grow .card.wait{visibility:hidden}
 .card.hidden{border-style:dashed;border-color:rgba(217,178,95,.22);background:rgba(255,255,255,.015);box-shadow:none}
 .card.hidden .q{font-family:var(--serif);font-size:calc(var(--name,72px) * 1.1);color:rgba(217,178,95,.35);animation:pulse 2.4s ease-in-out infinite}
 .card.pop{animation:pop 1.1s cubic-bezier(.2,.8,.2,1) both}

@@ -1,19 +1,19 @@
 {
   "all": {
     "standby": "galaxy",
-    "gyBright": 0.5,
-    "gySpeed": 0.12,
-    "gyDensity": 1,
+    "gyBright": 2,
+    "gySpeed": 0.17,
+    "gyDensity": 1.75,
     "gySize": 1.05,
     "gyX": 0.77,
     "gyY": 0.86,
-    "gyTilt": 0.25,
+    "gyTilt": 0.32,
     "grBright": 2,
-    "grDensity": 1,
+    "grDensity": 2,
     "dustOn": true,
-    "dustAmount": 1,
+    "dustAmount": 3,
     "flashOn": true,
-    "flashPeak": 0.42,
+    "flashPeak": 0.36,
     "flashAmount": 1,
     "cascadeMs": 600,
     "bgFps": "60",
@@ -25,10 +25,10 @@
     "logoMargin": 0,
     "logoOpacity": 1,
     "sLogoOn": true,
-    "sLogoSize": 0.28,
+    "sLogoSize": 0.26,
     "sLogoMargin": 0.025,
     "sLogoOpacity": 1,
-    "photoUp": 0.25
+    "photoUp": 0.45
   },
   "screens": {
     "副屏": {
