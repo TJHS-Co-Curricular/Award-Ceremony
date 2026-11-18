@@ -260,7 +260,7 @@ function render() {
       el(
         "div",
         { class: "m" },
-        `${a.winners.length} 位 · ${a.revealMode === "nominee" ? "入围揭晓" : a.revealMode === "firstall" ? "先一后全" : MODE_NAME[a.revealMode] || "逐一揭晓"}`,
+        `${a.winners.length} 位 · ${a.revealMode === "nominee" ? "入围揭晓" : a.revealMode === "firstall" ? "先一后全" + (a.chunk ? `（每 ${a.chunk} 位一组）` : "") : MODE_NAME[a.revealMode] || "逐一揭晓"}`,
       ),
     );
     if (sel === a.id) {

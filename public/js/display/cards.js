@@ -1,7 +1,7 @@
 /*
  * 大屏 · 揭晓画面的名字卡：按人数排版（纯文字 / 照片卡 / 团体照片在上）、填入得奖者、自动缩字。
- * 提供：buildGrid(view)、fillCard(card, winner, animate)、fitText(el)、div(cls, text)、logoSet(url)
- * 需要：stage.js（$、SW、SH、KEY）
+ * 提供：buildGrid(view)、fillCard(card, winner, animate)、fitText(el)、fitNote(box)、div(cls, text)、logoSet(url)
+ * 需要：stage.js（$、SW、SH、KEY）、shared/idphoto.js（drawIdPhoto）
  */
 'use strict';
 
@@ -36,7 +36,10 @@ function layout(n, photos) {
 /* 有照片时：每人一张 3:2 照片卡（照片铺满，文字叠在左侧），按人数选出让卡片最大的行列数 */
 const PHOTO_AR = 3 / 2;   // 照片比例（宽 / 高）；原图比例不同会居中裁切
 const CAP_H = .27;        // 「名字在照片下面」版式里，文字区高度 = 卡片宽 × CAP_H
-function planPhoto(n, W, H, AR = PHOTO_AR, oneRow = false) {
+const NOTE_K = .8;
+const NOTE_PIC_H = .86;    // 备注是图片时：16:9 图框高 = 卡片高 × NOTE_PIC_H（左右各留卡片高 × .06）        // 有备注的奖项：照片右边的备注框宽 = 照片部分宽 × NOTE_K（整张卡 = 照片 + 备注框）
+// pk = 照片部分占卡片宽的比例（有备注框时 < 1）：「排成一行」「太小退回纯文字」都按照片部分的宽来判断
+function planPhoto(n, W, H, AR = PHOTO_AR, oneRow = false, pk = 1) {
   let best = null, row = null;
   for (let cols = 1; cols <= Math.min(n, 16); cols++) {
     const rows = Math.ceil(n / cols);
@@ -45,19 +48,28 @@ function planPhoto(n, W, H, AR = PHOTO_AR, oneRow = false) {
     if (!best || cw > best.cw + .5) best = { cols, rows, gap, cw, ch: cw / AR };
     if (cols === n) row = { cols, rows, gap, cw, ch: cw / AR };
   }
-  if (oneRow && row && row.cw >= 280) best = row;   // 同 planText 的 oneRow：照片卡宽 280 px 以上就排成一行
-  return best && best.cw >= 150 ? best : null;   // 太小就退回纯文字
+  if (oneRow && row && row.cw * pk >= 280) best = row;   // 同 planText 的 oneRow：照片宽 280 px 以上就排成一行
+  return best && best.cw * pk >= 150 ? best : null;   // 太小就退回纯文字
 }
 function fitText(el) {
   let size = parseFloat(getComputedStyle(el).fontSize);
   let guard = 40;
   while (el.scrollWidth > el.clientWidth + 1 && size > 12 && guard--) { size *= .92; el.style.fontSize = size + 'px'; }
 }
+// 备注框：字太多就缩小（只缩字，框不变），最小 12 px
+function fitNote(box) {
+  const t = box.firstChild;
+  if (!t || !box.isConnected || !box.clientHeight) return;   // 还没排版（看不见）就先不量
+  t.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(t).fontSize), guard = 60;
+  while ((t.scrollHeight > box.clientHeight * .9 || t.scrollWidth > t.clientWidth + 1) && size > 12 && guard--) { size *= .93; t.style.fontSize = size + 'px'; }
+}
 const div = (cls, text) => { const d = document.createElement('div'); d.className = cls; if (text != null) d.textContent = text; return d; };
 /* 照片画进刚好卡片大小的 canvas（不用 <img>）：
  * <img> 会把原图整张解码并放进显卡（4000×3000 一张约 48 MB），OBS 内置浏览器 + 内置显卡时会越揭晓越多、把内存吃光。
  * 这里解码后马上缩成卡片的实际像素再丢掉原图，显卡里每张只剩几 MB，换画面时随卡片一起释放。 */
-async function drawPhoto(cv, box, url) {
+// idLeft：学生证照片（不裁切，见 shared/idphoto.js）左边留给文字的宽度比例；null = 一般照片（铺满裁切）；'fit' = 备注图片（完整缩进框里，不裁切）
+async function drawPhoto(cv, box, url, idLeft = null) {
   try {
     const blob = await (await fetch(url)).blob();
     if (!cv.isConnected) return;
@@ -67,9 +79,15 @@ async function drawPhoto(cv, box, url) {
     s = Math.min(s, bm.width / Math.max(1, box.offsetWidth), bm.height / Math.max(1, box.offsetHeight));
     const W = Math.max(1, Math.round(box.offsetWidth * s)), H = Math.max(1, Math.round(box.offsetHeight * s));
     cv.width = W; cv.height = H;
-    const k = Math.max(W / bm.width, H / bm.height), sw = W / k, sh = H / k;   // object-fit: cover，置中
     const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
-    g.drawImage(bm, (bm.width - sw) / 2, (bm.height - sh) / 2, sw, sh, 0, 0, W, H);
+    if (idLeft === 'fit') {   // 备注图片：完整显示，置中
+      const k = Math.min(W / bm.width, H / bm.height), dw = bm.width * k, dh = bm.height * k;
+      g.drawImage(bm, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } else if (idLeft != null) drawIdPhoto(g, bm, bm.width, bm.height, W, H, idLeft);   // 学生证：完整显示
+    else {
+      const k = Math.max(W / bm.width, H / bm.height), sw = W / k, sh = H / k;   // object-fit: cover，置中
+      g.drawImage(bm, (bm.width - sw) / 2, (bm.height - sh) / 2, sw, sh, 0, 0, W, H);
+    }
     bm.close();
     cv.classList.add('ok');
   } catch { box.classList.add('nopic'); }
@@ -98,23 +116,34 @@ function fillCard(card, w, animate) {
   const grid = $('grid');
   if (grid.classList.contains('photo')) {
     const cap = grid.classList.contains('cap');         // cap：照片在上、名字在下；否则照片铺满、左侧叠字
-    const holder = cap ? card.appendChild(div('phbox')) : card;
+    // 有备注的奖项（.notes）：卡片左边 .pic = 原本的照片卡（照片 + 名字），右边 .nbox = 备注框；这位没写备注就只有照片、居中
+    const notes = grid.classList.contains('notes');
+    const pic = notes ? card.appendChild(div('pic')) : card;
+    if (notes && !w.detail && !w.notePic) card.classList.add('nonote');
+    const holder = cap ? pic.appendChild(div('phbox')) : pic;
     if (w.photo) {
       const cv = document.createElement('canvas');
       cv.className = 'ph';
       holder.appendChild(cv);
-      drawPhoto(cv, holder, w.photo + '&k=' + encodeURIComponent(KEY));
+      // 学生证（文件名 -ID）：完整显示（有学生证的奖项一定是 .cap 版式：照片在上、名字在下）
+      drawPhoto(cv, holder, w.photo + '&k=' + encodeURIComponent(KEY), w.idCard ? 0 : null);
       if (LOGO) holder.appendChild(logoImg());   // 放在照片后面：CSS 让它等照片画好才出现
     } else holder.classList.add('nopic');
-    if (!cap) card.appendChild(div('shade'));
-    const lines = [['cls', w.cls], ['sid', w.sid], ['soc', w.socZh === w.name ? '' : w.socZh], ['socEn', w.socEn], ['note', w.detail]].filter(([, t]) => t);   // 团体名就是学会名时，不重复写中文
+    if (!cap) pic.appendChild(div('shade'));
+    const lines = [['cls', w.cls], ['sid', w.sid], ['soc', w.socZh === w.name ? '' : w.socZh], ['socEn', w.socEn], ['note', notes ? '' : w.detail]].filter(([, t]) => t);   // 团体名就是学会名时，不重复写中文；有备注框时备注放框里
     if (cap && lines.length) tx.appendChild(div('rule'));   // 团体：名字下面一条线；个人照片卡和导出图片一样，没有线
     const box = cap ? tx.appendChild(div('lns')) : tx;  // 名字在下：班级 / 学号 / 学会 / 备注排成一行（可换行）
     nm.dataset.k = 'name';
     for (const [k, t] of lines) box.appendChild(div('ln ' + k, t)).dataset.k = k;
     // 照片卡的字号、颜色、阴影、位置交给 exDecorate()（exstyle.js：套图片导出的设计）
-    card.appendChild(tx);
-    requestAnimationFrame(() => exDecorate(card));
+    pic.appendChild(tx);
+    let nb = null;
+    if (notes && w.notePic) {   // 备注是图片：16:9 图框
+      const pb = card.appendChild(div('nbox npic'));
+      const cv = document.createElement('canvas'); cv.className = 'ph'; pb.appendChild(cv);
+      requestAnimationFrame(() => drawPhoto(cv, pb, w.notePic + '&k=' + encodeURIComponent(KEY), 'fit'));
+    } else if (notes && w.detail) { nb = card.appendChild(div('nbox')); nb.appendChild(div('nt', w.detail)); }
+    requestAnimationFrame(() => { exDecorate(pic); if (nb) fitNote(nb); });
     return;
   } else {                                              // 纯文字卡：班级 · 学号 · 备注 合成一行，学会另起一行（太长时缩小字号，不截断）
     const info = [w.cls, w.sid, w.detail].filter(Boolean).join(' · ');
@@ -135,7 +164,7 @@ function buildGrid(v) {
   $('s-reveal').classList.remove('dense');
   const shrink = v.award.nominee && n > 1 ? .74 : 1;   // 入围：卡片先小一点，得主揭晓时才有放大的空间
   grid.classList.toggle('grow', !!v.award.grow);
-  if (v.award.hasPhotos && buildPhotoGrid(grid, n, !!v.award.hasTeams, shrink, !!v.award.grow)) return;
+  if (v.award.hasPhotos && buildPhotoGrid(grid, n, !!(v.award.hasTeams || v.award.hasIds), shrink, !!v.award.grow, v.award.notePic ? 'pic' : !!v.award.hasNotes)) return;
   const T = planText(n, grid.clientWidth || SW - 220, (grid.clientHeight || SH - 300) * shrink, !!v.award.grow);
   grid.dataset.cols = T.cols;
   grid.style.setProperty('--name', Math.floor(T.name) + 'px');
@@ -185,17 +214,24 @@ function growPlace(cards, from, to, animate) {
       { duration: 1200, easing: 'cubic-bezier(.2,.7,.2,1)' });
   }
 }
-function buildPhotoGrid(grid, n, cap, shrink = 1, oneRow = false) {
+function buildPhotoGrid(grid, n, cap, shrink = 1, oneRow = false, notes = false) {
   const scene = $('s-reveal');
   scene.classList.toggle('dense', n > 12);
   const W = grid.clientWidth || SW - 220, H = (grid.clientHeight || SH - 300) * shrink;
-  const P = planPhoto(n, W, H, cap ? 1 / (1 / PHOTO_AR + CAP_H) : PHOTO_AR, oneRow);
-  if (!P) { scene.classList.remove('dense'); return false; }   // 人数实在太多：只显示名字
+  const AR = cap ? 1 / (1 / PHOTO_AR + CAP_H) : PHOTO_AR;    // 照片部分的宽高比
+  // 照片部分占卡片宽的比例：文字备注框 = 照片宽 × NOTE_K；图片备注框 = 16:9 图（高 = 卡片高 × NOTE_PIC_H）+ 左右留边
+  const pk = notes === 'pic' ? 1 / (1 + (NOTE_PIC_H * 16 / 9 + .12) / AR) : notes ? 1 / (1 + NOTE_K) : 1;
+  const P = planPhoto(n, W, H, AR / pk, oneRow, pk);
+  if (!P) { scene.classList.remove('dense'); return false; }   // 人数实在太多：只显示名字（备注照旧接在班级、学号后面）
   grid.classList.add('photo');   // 不能清掉 grow（buildGrid 刚设的）
   grid.dataset.cols = P.cols;
   if (cap) grid.classList.add('cap');                         // 奖项里有团体：全部改成「照片在上、名字在下」
+  if (notes) grid.classList.add('notes');                     // 有人写了备注：照片右边加备注框
   const s = grid.style;
-  const name = Math.max(16, Math.min(P.cw * (cap ? .07 : .078), 150));   // 字号跟着卡片宽度走
+  const pw = P.cw * pk;                                       // 照片部分的宽
+  s.setProperty('--pw', Math.floor(pw) + 'px');
+  s.setProperty('--note', Math.max(14, Math.floor(Math.min(pw * .075, P.ch * .12))) + 'px');   // 备注框的起始字号（太多字再由 fitNote 缩小）
+  const name = Math.max(16, Math.min(pw * (cap ? .07 : .078), 150));   // 字号跟着照片宽度走
   s.setProperty('--name', Math.floor(name) + 'px');
   s.setProperty('--detail', Math.max(12, Math.floor(name * .52)) + 'px');
   s.setProperty('--gap', P.gap + 'px');

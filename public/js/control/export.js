@@ -182,7 +182,8 @@ async function exRender(award, w, fam) {
   if (!W || !H) { W = 1920; H = 1080; }
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
-  const team = w.type === 'team', U = Math.min(H, W / 1.5), k = U / 540;   // pt → 像素
+  const idCard = w.type !== 'team' && isIdPhoto(w.photo);   // 学生证（文件名 -ID）：用团体图的版式（证件完整在上，姓名、班级、学号在下；用户定 2026-11-17）
+  const team = w.type === 'team' || idCard, U = Math.min(H, W / 1.5), k = U / 540;   // pt → 像素
   const shadow = on => { const a = S.shadow / 100; g.shadowColor = on && a ? `rgba(0,0,0,${Math.min(1, a * 1.25)})` : 'transparent'; g.shadowBlur = on ? U * .02 * a : 0; g.shadowOffsetX = g.shadowOffsetY = on ? U * .005 * a : 0; };
   const soc = socOf(w);   // 学会 [中文, 英文]：有对照表时按编号查（import.js）
   // 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复
@@ -251,23 +252,36 @@ async function exRender(award, w, fam) {
     shadow(false);
     const top = y + U * .045;
     const zh = soc[0] === w.name ? '' : soc[0];   // 团体名就是学会名时，不重复写中文
-    const block = [['name', w.name, .9], ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
+    const block = [['name', w.name, .9], ...(idCard ? [['cls', w.cls, .7], ['sid', w.sid, .7]] : []), ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
     const matD = tailMat && exMatFit(tailMat, maxW, H * S.matAward / 100 * .7);   // 团体图：合照为主，下方素材缩小一点
-    const capH = block.reduce((t, [key, , m]) => t + E[key].size * k * m * 1.3, 0) + U * .05 + (matD ? matD.h + U * .03 : 0);
-    const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - capH - H * .05;
+    const textH = block.reduce((t, [key, , m], i) => t + E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0), 0);
+    const pad = U * .03, below = (matD ? matD.h + U * .05 : U * .02);   // 卡片上下留边；卡片下面的素材图片
+    const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - (textH + pad * 2) - below - H * .02;   // 照片能用的高度（整张卡 + 素材都要放得下）
     let ph = Math.max(10, boxH), pw = ph * ar;
     if (pw > W * .84) { pw = W * .84; ph = pw / ar; }
-    const px0 = (W - pw) / 2, py = top + (boxH - ph) / 2;
-    g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = U * .03; g.shadowOffsetY = U * .01; g.fillStyle = '#000'; g.fillRect(px0, py, pw, ph); g.restore();
+    // 和大屏的团体卡一样（用户定 2026-11-18）：一张卡片包住合照 + 下面的文字，卡片四周一圈金边（相框颜色），照片和文字之间一条金线
+    const cw = pw;   // 卡片宽 = 照片宽（和大屏一样）；文字太长由 exText 自动缩小
+    const ch = ph + pad + textH + pad;
+    let py = top + (boxH - ph) / 2;
+    py = Math.max(top, Math.min(py, H - ch - below));   // 整张卡放得下
+    const cx0 = (W - cw) / 2, px0 = (W - pw) / 2, r = Math.max(4, U * .008), lw = Math.max(2, U * .003);
+    const card = () => { g.beginPath(); g.roundRect(cx0, py, cw, ch, r); };
+    g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = U * .05; g.shadowOffsetY = U * .015;   // 卡片底色 + 阴影
+    card(); g.fillStyle = S.teamBg; g.fill(); g.restore();
+    g.save(); card(); g.clip();
+    const cg = g.createLinearGradient(0, py, 0, py + ch); cg.addColorStop(0, 'rgba(255,255,255,.07)'); cg.addColorStop(1, 'rgba(255,255,255,.02)');
+    g.fillStyle = cg; g.fillRect(cx0, py, cw, ch);
     if (img) g.drawImage(img, px0, py, pw, ph);
     else { const gr = g.createRadialGradient(px0 + pw / 2, py + ph * .35, 0, px0 + pw / 2, py + ph * .35, pw * .7); gr.addColorStop(0, '#a9822f'); gr.addColorStop(1, '#3e3016'); g.fillStyle = gr; g.fillRect(px0, py, pw, ph); }
-    g.strokeStyle = S.teamFrame; g.lineWidth = Math.max(2, U * .003); g.strokeRect(px0, py, pw, ph);
+    g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(cx0, py + ph - lw / 2, cw, lw);   // 照片和文字之间的金线
+    g.restore();
+    g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
     exLogo(g, logo, px0, py, pw);
-    y = py + ph + U * .03;
+    y = py + ph + pad * .6;
     shadow(true);
     block.forEach(([key, t, m], i) => {
       const st = E[key], px = st.size * k * m;
-      y += px; exText(g, t, st, fam[key], px, cx, y, maxW); y += px * .3;
+      y += px; exText(g, t, st, fam[key], px, cx, y, cw - U * .05); y += px * .3;   // 文字不超出卡片
       if (i === 0 && block.length > 1) {   // 名字下面一条线（相框颜色）
         shadow(false);
         const lw = U * .16, ln = g.createLinearGradient(cx - lw / 2, 0, cx + lw / 2, 0);
@@ -276,7 +290,7 @@ async function exRender(award, w, fam) {
         shadow(true);
       }
     });
-    if (matD) drawMat(tailMat, cx, y + U * .02, maxW, matD.h, 'matAward');
+    if (matD) drawMat(tailMat, cx, py + ch + U * .025, maxW, matD.h, 'matAward');   // 素材放在卡片下面
   }
   shadow(false);
   return cv;

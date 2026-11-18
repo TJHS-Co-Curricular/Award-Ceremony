@@ -5,8 +5,8 @@
 "use strict";
 
 function parseRows(text) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  const tab = lines.some((l) => l.includes("\t"));
+  const tab = text.includes("\t");
+  const lines = joinRows(text.split(/\r?\n/), tab ? "\t" : ",", false);   // Excel 里有换行的格子（多行备注）复制出来是 "第一行⏎第二行"，先接回同一行
   const splitCsv = (l) => {
     const out = [];
     let cur = "",
@@ -29,7 +29,7 @@ function parseRows(text) {
     return out;
   };
   const rows = lines.map((l) =>
-    (tab ? l.split("\t") : splitCsv(l)).map((x) => x.trim()),
+    (tab ? l.split("\t").map(unquote) : splitCsv(l)).map((x) => x.trim()),
   );
   // 有表头：按表头名称对应列（列顺序可以随意）
   // 顺序就是优先级：「分类英文」要先于「分类」，「奖项英文 / 副标题」要先于「奖项」
@@ -38,6 +38,10 @@ function parseRows(text) {
   const H = [
     ["socName", /(学会|學會|society|club).*(名|name)/i],
     ["soc", SOC_HEAD],
+    // 三个显示设定（要先于「大类」「分类」「学号(编号)」）：值写 显示 / 不显示、列出 / 不列（1.59）
+    ["sectionNoList", /(大类|大類|section).*(列出|列表|list)/i],
+    ["sectionNoNum", /(大类|大類|section).*(编号|編號|number|\bnum)/i],
+    ["groupNoNum", /(分类|分類|类别|類別|group|category).*(编号|編號|number|\bnum)/i],
     ["sectionSub", /(大类|大類|section).*(英文|english|en\b)/i],
     ["section", /大类|大類|section/i],
     [
@@ -98,6 +102,7 @@ function parseRows(text) {
         type: g("type"),
         win: g("win"),
         mode: g("mode"),
+        flags: { sectionNoList: g("sectionNoList"), sectionNoNum: g("sectionNoNum"), groupNoNum: g("groupNoNum") },
       };
     })
     .forEach((r, i) => {
@@ -108,6 +113,12 @@ function parseRows(text) {
     });
   out.skipped = skipped;
   return out;
+}
+// 显示设定列：「不显示 / 不列 / 否 / no」→ true（= 关掉）；「显示 / 列出 / 是」→ false；空着 → null（不改）
+function flagOf(t) {
+  const s = String(t || "").replace(/\s+/g, "");
+  if (!s) return null;
+  return /不|否|关|關|^(no|off|false|0|×|x)$/i.test(s);
 }
 // 「揭晓方式」列的文字 → revealMode（不分大小写、忽略空格；看不懂返回 null）
 function modeOf(t) {
@@ -120,7 +131,7 @@ function modeOf(t) {
 }
 function doImport(replace) {
   const rows = parseRows($("importTxt").value);
-  const modeSet = new Map(), badMode = new Set();
+  const modeSet = new Map(), chunkSet = new Map(), badMode = new Set();
   let skip = rows.skipped.length
     ? `；跳过 ${rows.skipped.length} 行（没有奖项名称，或姓名和学会都空）：「${rows.skipped.slice(0, 3).join("」「")}」${rows.skipped.length > 3 ? "……" : ""}`
     : "";
@@ -146,15 +157,27 @@ function doImport(replace) {
     }
     a.winners.push(makeWinner(name, rest, photo, type, win));
     added++;
+    for (const [k, v] of Object.entries(r.flags || {})) {   // 分类编号 / 大类列出分类 / 大类编号：哪一行写都可以
+      const f = flagOf(v);
+      if (f === true) a[k] = true;
+      else if (f === false) delete a[k];
+    }
     // 「揭晓方式」列：同一奖项填一次就行（填在哪一行都可以）；写错的记下来提示
     if (r.mode) {
       const m = modeOf(r.mode);
       if (m) modeSet.set(a, m);
       else badMode.add(r.mode);
+      // 先一后全分组：「先一后全 每5位一组」「先一后全/5」都可以（2 ~ 20；没写数字 = 不分组）
+      const k = m === "firstall" ? +(String(r.mode).match(/\d+/) || [])[0] : 0;
+      if (k >= 2 && k <= 20) chunkSet.set(a, k);
     }
   }
   for (const a of awards) {
-    if (modeSet.has(a)) a.revealMode = modeSet.get(a);   // 表里指定了：照表
+    if (modeSet.has(a)) {   // 表里指定了：照表（分组也照表，没写数字就不分组）
+      a.revealMode = modeSet.get(a);
+      if (chunkSet.has(a)) a.chunk = chunkSet.get(a);
+      else delete a.chunk;
+    }
     else if (!a.id) {
       // 没指定的新奖项：标了得主 → 入围揭晓；人多 → 一次全部揭晓
       if (a.winners.some((w) => w.win)) a.revealMode = "nominee";

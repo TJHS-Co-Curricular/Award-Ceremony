@@ -63,7 +63,7 @@ function render(v) {
   }
   // 大类画面（第 1 层）和分类标题画面（第 2 层）共用 #s-group：大字是名称，下面列出里面的分类 / 奖项。
   // 分类标题画面上方的小字：属于某个大类时写大类名称，否则写「奖 项 类 别」
-  if (v.mode === 'section' && v.section) return renderList('section', '奖 项 类 别', v.section.title, v.section.sub, v.section.items, false);
+  if (v.mode === 'section' && v.section) return renderList('section', '奖 项 类 别', v.section.title, v.section.sub, v.section.items, v.section.noNum);
   if (v.mode === 'group' && v.group) return renderList('group', v.group.section || '奖 项 类 别', v.group.title, v.group.sub, v.group.awards, v.group.noNum);
   if (v.mode === 'photo' && v.photo) return renderPhoto(v);
   const gl = v.award?.group ? `${v.award.group}${v.award.groupTotal > 1 && !v.award.groupNoNum ? ' · 奖项 ' + String(v.award.groupIndex).padStart(2, '0') : ''}` : '';
@@ -79,14 +79,16 @@ function render(v) {
   if (v.mode === 'reveal') {
     const sameAward = cur.mode === 'reveal' && cur.awardId === v.award.id && cur.total === v.award.total;
     const isUndo = sameAward && v.winners.length < cur.shown;   // 撤销：静默回退
-    if (!sameAward || isUndo) {
+    // 已经出现的卡片内容改了（控制端改了名字 / 照片后保存）：静默重画，不放动画
+    const edited = sameAward && !isUndo && revealSig(v.award, v.winners.slice(0, cur.shown)) !== cur.sig;
+    if (!sameAward || isUndo || edited) {
       $('rTitle').textContent = v.award.title; $('rSub').textContent = v.award.subtitle || '';
       buildGrid(v);
       cur = { mode: 'reveal', awardId: v.award.id, shown: 0, total: v.award.total };
     }
     const cards = $('grid').children;
     const from = cur.shown, to = v.winners.length;
-    const animate = booted && !isUndo;                            // 首次打开 / 刷新页面时不放动画
+    const animate = booted && !isUndo && !edited;                       // 首次打开 / 刷新页面时不放动画
     if (v.award.grow) growPlace(cards, from, to, animate);      // 逐一揭晓：中间出、左右收
     for (let i = from; i < to; i++) {   // 一次出现多张时错开 0.14 秒
       // 先抓住这张卡：延迟期间如果已经换了奖项（网格重建），旧卡不在画面上就跳过
@@ -94,7 +96,7 @@ function render(v) {
       else fillCard(cards[i], v.winners[i], false);
     }
     if (to > from && animate) setTimeout(() => burst(to - from > 1 ? 260 : 180), 250);
-    cur.shown = to;
+    cur.shown = to; cur.sig = revealSig(v.award, v.winners.slice(0, to));
     show('s-reveal');
     const ph = v.award.nominee ? v.award.phase || '' : '';
     if (ph !== cur.phase || !sameAward || isUndo) {
@@ -119,6 +121,7 @@ function renderList(mode, kick, title, sub, items, noNum) {
   });
   $('s-group').classList.toggle('many', items.length > 5);
   $('s-group').classList.toggle('nonum', !!noNum);
+  ol.style.display = items.length ? '' : 'none';   // 大类设定为不列分类
   show('s-group'); cur = { mode, key };
 }
 

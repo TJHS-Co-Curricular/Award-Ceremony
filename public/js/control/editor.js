@@ -1,7 +1,7 @@
 /*
  * 控制端 · 奖项编辑：草稿、活动标题、每个奖项的卡片（分类、名称、揭晓方式、获奖者文字框）、保存。
  * 获奖者每行一位：姓名 | 班级 | 学号 | 学会 | 照片 | 备注 | 类型 | 得主（照片、类型、得主可放任意位置）。
- * 提供：loadDraft()、setDirty(d)、renderEditor()、makeWinner(...)
+ * 提供：loadDraft()、setDirty(d)、renderEditor()、makeWinner(...)、joinRows(lines, sep, guess)、unquote(cell)
  */
 "use strict";
 
@@ -37,7 +37,8 @@ function makeWinner(name, rest, photo = "", type = "", win = "") {
     }
   while (r.length && r[r.length - 1] === "") r.pop();
   if (!photo) {
-    const k = r.findIndex(IS_PHOTO);
+    let k = r.findIndex(IS_PHOTO);
+    if (k === 4) k = -1;   // 第 5 栏（照片栏之后）是备注：备注只写图片文件名 = 备注图片，不当照片（1.58）
     if (k >= 0) photo = r.splice(k, 1)[0];
     else if (r.length >= 5) r.splice(3, 1); // 班级、学号、学会之后是照片栏；留空时去掉这一栏，备注才不会错位
   }
@@ -52,6 +53,29 @@ function makeWinner(name, rest, photo = "", type = "", win = "") {
   if (WIN_YES.test(win)) w.win = true;
   return w;
 }
+/* 一格里有换行（多行备注）：
+ * 1. 用双引号包起来（和从 Excel 复制有换行的格子一样）："第一行
+ *    第二行"。引号里的 " 写成 ""。
+ * 2. 直接贴上、没有引号：下一行开头一段（第一个 | 之前）超过 30 个字，不像名字，就当成上一行备注的续行，
+ *    那一行后面的 | 栏位也接回上一行（例：「…文字 |  |  | 团体」的「团体」属于上一位）。
+ * 名字只有一行、短，所以不会被误接。 */
+const NOTE_CONT = 30;
+function joinRows(lines, sep = "|", guess = true) {   // guess = false：只认引号（批量导入：Excel 有换行的格子一定带引号）
+  const out = [];
+  let open = false;   // 上一行的引号还没关
+  for (const l of lines) {
+    const head = l.split(sep)[0].trim();
+    if (out.length && (open || (guess && head.length > NOTE_CONT && !l.trim().startsWith('"')))) out[out.length - 1] += "\n" + l;
+    else { if (!l.trim()) continue; out.push(l); }
+    open = out.length > 0 && (out[out.length - 1].match(/"/g) || []).length % 2 === 1;
+  }
+  return out;
+}
+// 去掉格子外面的双引号，"" 还原成 "
+const unquote = (c) => {
+  const t = c.trim();
+  return t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"' ? t.slice(1, -1).replace(/""/g, '"').trim() : t;
+};
 const winnersToText = (ws) =>
   ws
     .map((w) =>
@@ -61,7 +85,7 @@ const winnersToText = (ws) =>
         w.sid || "",
         w.soc || "",
         w.photo || "",
-        w.detail || "",
+        /\n/.test(w.detail || "") ? '"' + w.detail.replace(/"/g, '""') + '"' : w.detail || "",   // 多行备注用引号包起来，读回来才不会拆成好几位
         w.type === "team" ? "团体" : "",
         w.win ? "得主" : "",
       ]
@@ -70,9 +94,8 @@ const winnersToText = (ws) =>
     )
     .join("\n");
 function textToWinners(t) {
-  return t
-    .split(/\r?\n/)
-    .map((l) => l.split("|").map((x) => x.trim()))
+  return joinRows(t.split(/\r?\n/))
+    .map((l) => l.split("|").map(unquote))
     .filter((p) => p[0])
     .map(([name, ...rest]) => makeWinner(name, rest));
 }
@@ -183,8 +206,33 @@ function renderEditor() {
       ),
     );
     mode.value = a.revealMode;
+    // 先一后全：每几位一组（组里逐一出现 → 这一组的合集 → 下一组；用户定 2026-11-17）
+    const chunk = el(
+      "select",
+      { style: "width:auto" },
+      el("option", { value: "" }, "不分组（最后全部一起出现）"),
+      ...[3, 4, 5, 6, 8, 10].map((k) => el("option", { value: k }, `每 ${k} 位一组`)),
+    );
+    chunk.value = a.chunk || "";
+    chunk.onchange = () => {
+      if (+chunk.value) a.chunk = +chunk.value;
+      else delete a.chunk;
+      setDirty(true);
+    };
+    const chunkRow = el(
+      "label",
+      {
+        style:
+          "display:flex;gap:8px;align-items:center;margin:-2px 0 10px;font-size:13px;color:var(--muted)",
+      },
+      "先一后全分组：",
+      chunk,
+      el("span", {}, "（例：15 位、每 5 位一组 → 01–05 逐一出现 → 01–05 合集 → 06–10 逐一出现 → 06–10 合集 ……）"),
+    );
+    chunkRow.classList.toggle("hidden", a.revealMode !== "firstall");
     mode.onchange = () => {
       a.revealMode = mode.value;
+      chunkRow.classList.toggle("hidden", a.revealMode !== "firstall");
       check();
       setDirty(true);
     };
@@ -246,6 +294,35 @@ function renderEditor() {
             inp("sectionSub", "例如：YEAR-END REPORT COMPETITIONS", 120),
           ),
         ),
+        (() => {
+          // 大类画面的两个选项：整个大类一起改（相邻同名的奖项）
+          const box = (key, text, tip) => {
+            const x = el("input", { type: "checkbox", style: "width:auto" });
+            x.checked = !a[key];
+            x.disabled = !a.section;
+            x.onchange = () => {
+              const L = draft.awards;
+              let s = i,
+                e = i;
+              while (s > 0 && L[s - 1].section === a.section) s--;
+              while (e < L.length - 1 && L[e + 1].section === a.section) e++;
+              for (let k = s; k <= e; k++) {
+                if (x.checked) delete L[k][key];
+                else L[k][key] = true;
+              }
+              setDirty(true);
+              renderEditor();
+            };
+            return el("label", { style: "display:flex;gap:6px;align-items:center;cursor:pointer", title: tip }, x, text);
+          };
+          return el(
+            "div",
+            { style: "display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:-2px 0 10px;font-size:13px;color:var(--muted)" },
+            box("sectionNoList", "大类画面列出下面的分类", "大类画面上，大类名称下面列出里面的分类（或奖项）"),
+            a.sectionNoList ? null : box("sectionNoNum", "分类前显示编号（01 / 02 / 03）", "大类画面里，每个分类前面的 01 / 02 / 03"),
+            a.section ? null : el("span", {}, "（要先填大类）"),
+          );
+        })(),
         el(
           "div",
           { class: "grid2", style: "margin-bottom:10px" },
@@ -315,6 +392,7 @@ function renderEditor() {
           ),
           el("label", { class: "f" }, el("span", {}, "揭晓方式"), mode),
         ),
+        chunkRow,
         el("label", { class: "f" }, el("span", {}, "获奖者（每行一位）"), ta),
       ),
     );

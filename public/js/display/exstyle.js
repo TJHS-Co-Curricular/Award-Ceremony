@@ -2,7 +2,7 @@
  * 大屏 · 名字卡套用「图片导出」的设计（控制端「图片导出」分页调的，经公开视图 v.exStyle 推来）：
  *   个人照片卡：字号（pt，按卡片高度换算，和导出图片同一个公式）、颜色、粗体、斜体、字距、字体、阴影、左边加暗、文字横向位置、姓名纵向位置、行距；
  *   团体卡（名字在照片下面）：只套颜色、粗体、斜体、字距、字体、阴影，排版照旧。纯文字卡不变。
- * 卡片里不印分类和奖项名（大屏上方已经有）。备注不在导出图片里，大屏照旧放在最后一行。
+ * 卡片里不印分类和奖项名（大屏上方已经有）。备注不在导出图片里；大屏有备注的奖项把备注放在照片右边的框里（cards.js），exDecorate 只管左边的照片部分。
  * 提供：exStyleSet(st)、exDecorate(card)
  * 需要：stage.js（KEY、$）、shared/fonts.js（fontFamily）、shared/sparkle.js、cards.js（fitText，调用时才用）
  */
@@ -26,7 +26,7 @@ function exStyleSet(st) {
     exRestyle();
   });
 }
-function exRestyle() { for (const c of document.querySelectorAll('#grid.photo .card')) if (c.querySelector('.tx [data-k]')) exDecorate(c); }
+function exRestyle() { for (const c of document.querySelectorAll('#grid.photo .card')) if (c.querySelector('.tx [data-k]')) exDecorate(c.querySelector('.pic') || c); }   // 有备注框时套在左边的照片部分
 
 function exDecorate(card) {
   if (!card.isConnected) return;

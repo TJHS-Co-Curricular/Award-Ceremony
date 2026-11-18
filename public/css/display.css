@@ -159,6 +159,21 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .card .tx i.bl{display:inline-block;width:0;height:0;vertical-align:baseline}
 #grid.photo .card .ln.socEn{font-size:calc(var(--detail,30px) * .8);letter-spacing:.04em}
 #grid.photo .card .ln.note{color:var(--muted);font-size:calc(var(--detail,30px) * .85)}
+/* 有备注的奖项（.notes）：一张卡 = 左边照片卡（.pic，宽 --pw，里面和原本的照片卡一样）+ 右边备注框（.nbox）；这位没写备注（.nonote）就只有照片、居中 */
+#grid.photo.notes .card{flex-direction:row;align-items:stretch;justify-content:flex-start;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015)),#110e16}
+#grid.photo.notes .card.nonote{justify-content:center}
+#grid.notes .card .pic{position:relative;flex:none;width:var(--pw);height:100%;overflow:hidden}
+#grid.notes .card:not(.nonote) .pic{border-right:1px solid rgba(217,178,95,.45)}
+#grid.notes.cap .card .pic{display:flex;flex-direction:column;justify-content:flex-start;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+#grid.notes:not(.cap) .card .pic.nopic{background:linear-gradient(90deg,#55535a 0%,#7c7a80 51%,#a57a22 52%,#c79530 100%)}
+#grid.notes .card .logo{top:calc(var(--pw,300px) * var(--logo-m,.025));right:calc(var(--pw,300px) * var(--logo-m,.025));width:calc(var(--pw,300px) * var(--logo-k,.16));height:calc(var(--pw,300px) * var(--logo-k,.16))}
+#grid.notes .card .nbox{position:relative;flex:1;min-width:0;margin:calc(var(--ch,300px) * .07) calc(var(--ch,300px) * .06);display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(217,178,95,.4);border-radius:4px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 4px rgba(217,178,95,.06);overflow:hidden}
+/* 备注是图片（.npic）：16:9 图框，图片完整缩进去（cards.js drawPhoto 'fit'） */
+#grid.notes .card .nbox.npic{flex:none;height:calc(var(--ch,300px) * .86);aspect-ratio:16/9;margin:auto calc(var(--ch,300px) * .06);background:rgba(0,0,0,.25)}
+#grid.notes .card .nbox.npic canvas.ph{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .5s}
+#grid.notes .card .nbox.npic canvas.ph.ok{opacity:1}
+#grid.notes .card .nbox .nt{width:90%;max-height:100%;font-size:var(--note,30px);line-height:1.55;letter-spacing:.06em;color:var(--ink);text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
 #s-reveal.dense{padding-top:60px;padding-bottom:64px}
 #s-reveal.dense header{margin-bottom:18px;gap:4px}
 #s-reveal.dense header h3{font-size:60px}
