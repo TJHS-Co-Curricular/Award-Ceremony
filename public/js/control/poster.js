@@ -14,7 +14,7 @@
 const PO_SIZES = [['51x43', '51 × 43 英寸（最高成就）'], ['24x43', '24 × 43 英寸（杰出 / 优秀团体）'], ['11x43', '11 × 43 英寸（学会 / 执委）']];
 const PO_BG_EDGE = 8192;   // 背景图片长边上限（51 英寸 × 150 dpi ≈ 7650 像素）
 const PO_DEF = () => ({
-  dpi: 150, panelA: 35, headOn: true, titleOn: true, logoHead: true, logoCard: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
+  dpi: 150, panelA: 35, headOn: true, titleOn: true, logoHead: true, logoCard: true, idSide: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
   posters: [
     { name: '最高成就', w: 51, h: 43, ids: [], heads: {} },
     { name: '杰出 / 优秀团体', w: 24, h: 43, ids: [], heads: {} },
@@ -37,7 +37,7 @@ function poClean(v) {
   return {
     dpi: [100, 150, 200].includes(+v?.dpi) ? +v.dpi : d.dpi, panelA: num(v?.panelA, 0, 80, d.panelA),
     color: /^#[0-9a-f]{6}$/i.test(v?.color || '') ? v.color : d.color,
-    headOn: v?.headOn !== false, titleOn: v?.titleOn !== false, logoHead: v?.logoHead !== false, logoCard: v?.logoCard !== false,   // Logo 开关（维护者 2026-11-22）
+    headOn: v?.headOn !== false, titleOn: v?.titleOn !== false, logoHead: v?.logoHead !== false, logoCard: v?.logoCard !== false, idSide: v?.idSide !== false,   // Logo 开关（维护者 2026-11-22）
     titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
     cur: Math.min(posters.length - 1, Math.max(0, Math.floor(num(v?.cur, 0, 99, 0)))), posters
   };
@@ -63,6 +63,7 @@ const poWho = a => exWinners(a);   // export.js：入围揭晓只要得主
 
 /* ---- 表单 ---- */
 function poBuild() {
+  $('po_idSide').checked = PO.idSide;
   $('po_logoHead').checked = PO.logoHead; $('po_logoHead').disabled = !PO.headOn; $('po_logoCard').checked = PO.logoCard;
   $('po_headOn').checked = PO.headOn; $('po_titleOn').checked = PO.titleOn; $('po_titleK').disabled = !PO.titleOn;
   for (const id of ['po_color', 'po_font']) $(id).disabled = !PO.titleOn && !PO.headOn;   // 颜色、字体：活动抬头和奖项标题共用
@@ -114,6 +115,7 @@ function poChanged() {
 $('po_dpi').onchange = () => { PO.dpi = +$('po_dpi').value; poChanged(); };
 $('po_headOn').onchange = () => { PO.headOn = $('po_headOn').checked; poChanged(); poBuild(); };
 $('po_logoHead').onchange = () => { PO.logoHead = $('po_logoHead').checked; poChanged(); };
+$('po_idSide').onchange = () => { PO.idSide = $('po_idSide').checked; poChanged(); };
 $('po_logoCard').onchange = () => { PO.logoCard = $('po_logoCard').checked; poChanged(); };
 $('po_titleOn').onchange = () => { PO.titleOn = $('po_titleOn').checked; poChanged(); poBuild(); };
 $('po_color').oninput = () => { PO.color = $('po_color').value; poChanged(); };
@@ -315,7 +317,7 @@ async function poDraw(P, dpi, card, progress) {
 // 卡片：跟图片导出同一份设计，但固定 16:9，大小跟海报上的卡片差不多（太小不清楚、太大浪费）
 async function poCard(a, w, px, fam) {
   const rw = Math.max(640, Math.min(3840, Math.round(px))), keep = EXS;
-  EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard };   // 卡片 Logo：图片导出设计开着、海报也开着才画
+  EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard, idSide: PO.idSide };   // idSide：学生证照片横排（export.js 的 exIdSide）   // 卡片 Logo：图片导出设计开着、海报也开着才画
   try { return await exRender(exCardAward(a, w, true), w, fam); } finally { EXS = keep; }   // 海报上都是得主：奖项名去掉「候选人」
 }
 

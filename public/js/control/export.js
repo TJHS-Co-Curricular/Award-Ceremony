@@ -262,6 +262,9 @@ async function exRender(award, w, fam) {
     const matD = tailMat && exMatFit(tailMat, maxW, H * S.tmatAward / 100);   // 团体图自己的大小（默认比个人图小：合照为主）
     const textH = block.reduce((t, [key, , m], i) => t + E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0), 0);
     const pad = U * .03, below = (matD ? matD.h + U * .05 : U * .02);   // 卡片上下留边；卡片下面的素材图片
+    let cardBottom;
+    if (idCard && S.idSide) cardBottom = exIdSide(g, { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S });   // 学生证照片横排（海报导出）
+    else {
     const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - (textH + pad * 2) - below - H * .02;   // 照片能用的高度（整张卡 + 素材都要放得下）
     let ph = Math.max(10, boxH), pw = ph * ar;
     if (pw > W * .84) { pw = W * .84; ph = pw / ar; }
@@ -296,10 +299,60 @@ async function exRender(award, w, fam) {
         shadow(true);
       }
     });
-    if (matD) drawMat(tailMat, cx, py + ch + U * .025, maxW, matD.h, 'tmatAward');   // 素材放在卡片下面
+    cardBottom = py + ch;
+    }
+    if (matD) drawMat(tailMat, cx, cardBottom + U * .025, maxW, matD.h, 'tmatAward');   // 素材放在卡片下面
   }
   shadow(false);
   return cv;
+}
+
+/* 学生证照片横排（海报导出，维护者 2026-11-22）：直排是照片在上、文字在下，学生证照片是直的，卡片会又窄又长；
+ * 横排 = 左边照片（完整、不裁切）+ 右边名字 / 班级 / 学号 / 学会，中间一条金线，卡片金边、底色和直排一样。
+ * 只在 EXS.idSide 为真时用（poster.js 的 poCard() 按 PO.idSide 临时设），图片导出不受影响。返回卡片底边的 y。 */
+function exIdSide(g, o) {
+  const { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S } = o;
+  const ar = img ? img.naturalWidth / img.naturalHeight : .75;
+  const lineH = ([key, , m], i) => E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0);
+  const textH = block.reduce((t, b, i) => t + lineH(b, i), 0);
+  let textW = 0;   // 右边要多宽：每行照原本字号量一次
+  for (const [key, t, m] of block) { exFont(g, E[key], fam[key], E[key].size * k * m); textW = Math.max(textW, g.measureText(t).width); }
+  if ('letterSpacing' in g) g.letterSpacing = '0px';
+  const availH = Math.max(20, H - top - below - H * .02);
+  const tw = Math.min(W * .5, Math.max(W * .22, textW + pad * 3));
+  let ph = availH, pw = ph * ar;
+  if (pw > W * .9 - tw) { pw = W * .9 - tw; ph = pw / ar; }
+  const ch = Math.min(availH, Math.max(ph, textH + pad * 2)), cw = pw + tw;
+  const cx0 = (W - cw) / 2, py = top + (availH - ch) / 2, phY = py + (ch - ph) / 2;
+  const r = Math.max(4, U * .008), lw = Math.max(2, U * .003);
+  const card = () => { g.beginPath(); g.roundRect(cx0, py, cw, ch, r); };
+  g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = U * .05; g.shadowOffsetY = U * .015;   // 卡片底色 + 阴影
+  card(); g.fillStyle = S.teamBg; g.fill(); g.restore();
+  g.save(); card(); g.clip();
+  const cg = g.createLinearGradient(0, py, 0, py + ch); cg.addColorStop(0, 'rgba(255,255,255,.07)'); cg.addColorStop(1, 'rgba(255,255,255,.02)');
+  g.fillStyle = cg; g.fillRect(cx0, py, cw, ch);
+  if (img) g.drawImage(img, cx0, phY, pw, ph);
+  else { const gr = g.createRadialGradient(cx0 + pw / 2, phY + ph * .35, 0, cx0 + pw / 2, phY + ph * .35, pw * .7); gr.addColorStop(0, thC('#a9822f')); gr.addColorStop(1, thC('#3e3016')); g.fillStyle = gr; g.fillRect(cx0, phY, pw, ph); }
+  g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(cx0 + pw - lw / 2, py, lw, ch);   // 照片和文字之间的金线（直的）
+  g.restore();
+  g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
+  exLogo(g, logo, cx0, phY, pw);
+  const tcx = cx0 + pw + tw / 2;
+  let y = py + (ch - textH) / 2;
+  shadow(true);
+  block.forEach(([key, t, m], i) => {
+    const st = E[key], px = st.size * k * m;
+    y += px; exText(g, t, st, fam[key], px, tcx, y, tw - U * .05); y += px * .3;
+    if (i === 0 && block.length > 1) {   // 名字下面一条线（相框颜色）
+      shadow(false);
+      const ll = Math.min(U * .16, tw * .7), ln = g.createLinearGradient(tcx - ll / 2, 0, tcx + ll / 2, 0);
+      ln.addColorStop(0, S.teamFrame + '00'); ln.addColorStop(.5, S.teamFrame); ln.addColorStop(1, S.teamFrame + '00');
+      g.fillStyle = ln; g.fillRect(tcx - ll / 2, y, ll, Math.max(2, U * .003)); y += U * .012;
+      shadow(true);
+    }
+  });
+  shadow(false);
+  return py + ch;
 }
 
 const safeFile = t => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 60) || '未命名';
