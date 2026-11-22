@@ -15,7 +15,9 @@
 const EB_PW = 1654, EB_PH = 2339, EB_Q = .85;              // A4（210 × 297 mm）约 200 dpi；JPG 质量
 const EB_MX = 150, EB_MT = 160, EB_MB = 190;              // 左右、上、下边距（下面放页码）
 const EB_CW = EB_PW - EB_MX * 2, EB_AVAIL = EB_PH - EB_MT - EB_MB;
-const EB_C = { paper: '#fbf8f1', ink: '#2b241a', gold: '#a8823a', gold2: '#d2b067', muted: '#7d725c', line: '#e0d3b2', box: '#efe8d8' };
+const EB_C0 = { paper: '#fbf8f1', ink: '#2b241a', gold: '#a8823a', gold2: '#d2b067', muted: '#7d725c', line: '#e0d3b2', box: '#efe8d8' };
+const EB_C = { ...EB_C0 };   // 按主题颜色转过的 EB_C0（ebPrepare() 里 ebTheme() 更新；默认金色 = EB_C0）
+function ebTheme() { for (const k in EB_C0) EB_C[k] = thC(EB_C0[k]); }
 // 版面高度（像素）：分类标题、奖项标题、一排两位、只有一位的大卡
 const EB_GROUP_H = 230, EB_AWARD_H = 150, EB_GAP = 45;
 const EB_CELL_W = (EB_CW - 40) / 2, EB_CELL_PH = EB_CELL_W / 1.5, EB_CAP = 125;
@@ -223,7 +225,7 @@ function ebFrame(g) {   // 封面、分隔页、封底的金色双线框
 }
 function ebRule(g, cx, y, w) {   // 中间深、两头淡出的金线
   const ln = g.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
-  ln.addColorStop(0, 'rgba(168,130,58,0)'); ln.addColorStop(.5, EB_C.gold); ln.addColorStop(1, 'rgba(168,130,58,0)');
+  ln.addColorStop(0, thC('rgba(168,130,58,0)')); ln.addColorStop(.5, EB_C.gold); ln.addColorStop(1, thC('rgba(168,130,58,0)'));
   g.fillStyle = ln; g.fillRect(cx - w / 2, y, w, 3);
 }
 function ebFoot(g, n, ev) {   // 页脚：页码 + 活动名称
@@ -242,7 +244,7 @@ function ebLines(g, text, st, fam, px, cx, y, maxW, gap = 1.25) {   // 多行置
   return y;
 }
 function ebGoldText(g, y, h) {
-  const gr = g.createLinearGradient(0, y - h, 0, y); gr.addColorStop(0, '#c99d48'); gr.addColorStop(1, '#8c6a28'); return gr;
+  const gr = g.createLinearGradient(0, y - h, 0, y); gr.addColorStop(0, thC('#c99d48')); gr.addColorStop(1, thC('#8c6a28')); return gr;
 }
 // 照片画进圆角框：cover = 裁切铺满；contain = 完整显示（团体照、学生证）
 function ebPhoto(g, img, x, y, w, h, contain) {
@@ -418,7 +420,7 @@ function ebApxRows(blocks, f, W) {
       lines.forEach(ln => rows.push({ h: f * 2.1, note, draw: (g, X, y) => {
         for (const [t, cx, w] of ln) {
           g.save(); g.beginPath(); g.roundRect(X + x0 + cx, y + f * .2, w, f * 1.6, f * .8);
-          g.fillStyle = '#f3e9d2'; g.fill(); g.strokeStyle = EB_C.gold2; g.lineWidth = 2; g.stroke(); g.restore();
+          g.fillStyle = thC('#f3e9d2'); g.fill(); g.strokeStyle = EB_C.gold2; g.lineWidth = 2; g.stroke(); g.restore();
           g.textAlign = 'center'; exText(g, t, bold, EX_TEXT, f, X + x0 + cx + w / 2, y + f * 1.32, w);
         }
       } }));
@@ -476,7 +478,7 @@ function ebDrawAppendix(p, n, ev) {
     let yy = top, run = null; const boxes = [];
     for (const r of rows) { if (r.note && !r.gap) { if (!run) { run = [yy, yy]; boxes.push(run); } run[1] = yy + r.h; } else if (!r.gap) run = null; yy += r.h; }
     for (const [a, b] of boxes) {
-      g.save(); g.beginPath(); g.roundRect(X, a - f * .3, W, b - a + f * .7, 12); g.fillStyle = '#f4ecda'; g.fill(); g.restore();
+      g.save(); g.beginPath(); g.roundRect(X, a - f * .3, W, b - a + f * .7, 12); g.fillStyle = thC('#f4ecda'); g.fill(); g.restore();
       g.fillStyle = EB_C.gold2; g.fillRect(X, a - f * .3 + 12, 6, b - a + f * .7 - 24);
     }
     let y = top;
@@ -558,8 +560,8 @@ function ebDrawGallery(p, n, ev, imgs) {
 function ebPolaroid(g, it, cx, cy, fw, fh, ph, k, contain) {
   g.save(); g.translate(cx, cy); g.rotate(k * 1.2 * Math.PI / 180);
   const x0 = -fw / 2, y0 = -fh / 2, w = fw - EB_BTS_PAD * 2;
-  g.shadowColor = 'rgba(60,45,20,.22)'; g.shadowBlur = 22; g.shadowOffsetY = 8;
-  g.fillStyle = '#fffdf8'; g.fillRect(x0, y0, fw, fh);
+  g.shadowColor = thC('rgba(60,45,20,.22)'); g.shadowBlur = 22; g.shadowOffsetY = 8;
+  g.fillStyle = thC('#fffdf8'); g.fillRect(x0, y0, fw, fh);
   g.shadowColor = 'transparent';
   ebPhoto(g, it.img, x0 + EB_BTS_PAD, y0 + EB_BTS_PAD, w, ph, contain);
   if (it.cap) {   // 说明：一行放得下用 30px；放不下换 26px 排两行（再多就截掉，加「…」）
@@ -610,31 +612,31 @@ function ebDrawSection(p, n, ev) {
 // 胸花（奖章花结）：两条金色飘带 + 一圈褶边花瓣 + 金色内圈；label 空 = 圆心是金扣、不写字
 function ebRosette(g, cx, cy, r, label) {
   g.save();
-  g.shadowColor = 'rgba(60,40,10,.35)'; g.shadowBlur = r * .25; g.shadowOffsetY = r * .08;
+  g.shadowColor = thC('rgba(60,40,10,.35)'); g.shadowBlur = r * .25; g.shadowOffsetY = r * .08;
   for (const k of [-1, 1]) {   // 飘带：从圆心往左下 / 右下垂，末端剪成燕尾
     const a = k * .32, L = r * 1.95, W = r * .5;
     g.save(); g.translate(cx, cy); g.rotate(a);
-    const gr = g.createLinearGradient(-W / 2, 0, W / 2, 0); gr.addColorStop(0, '#8c6524'); gr.addColorStop(.5, '#c39a45'); gr.addColorStop(1, '#8c6524');
+    const gr = g.createLinearGradient(-W / 2, 0, W / 2, 0); gr.addColorStop(0, thC('#8c6524')); gr.addColorStop(.5, thC('#c39a45')); gr.addColorStop(1, thC('#8c6524'));
     g.fillStyle = gr; g.beginPath(); g.moveTo(-W / 2, 0); g.lineTo(W / 2, 0); g.lineTo(W / 2, L); g.lineTo(0, L - W * .45); g.lineTo(-W / 2, L); g.closePath(); g.fill();
     g.restore();
   }
   const N = 28, gp = g.createRadialGradient(cx - r * .3, cy - r * .35, r * .1, cx, cy, r);
-  gp.addColorStop(0, '#f3dc9a'); gp.addColorStop(.6, '#d2b067'); gp.addColorStop(1, '#a8823a');
+  gp.addColorStop(0, thC('#f3dc9a')); gp.addColorStop(.6, thC('#d2b067')); gp.addColorStop(1, thC('#a8823a'));
   g.fillStyle = gp; g.beginPath();   // 褶边：一圈小圆弧
   for (let i = 0; i < N; i++) { const t = i / N * Math.PI * 2; g.moveTo(cx + Math.cos(t) * r * .86 + r * .15, cy + Math.sin(t) * r * .86); g.arc(cx + Math.cos(t) * r * .86, cy + Math.sin(t) * r * .86, r * .15, 0, Math.PI * 2); }
   g.arc(cx, cy, r * .88, 0, Math.PI * 2); g.fill();
   g.shadowColor = 'transparent';
-  g.strokeStyle = 'rgba(120,85,30,.35)'; g.lineWidth = 1.5;   // 褶痕
+  g.strokeStyle = thC('rgba(120,85,30,.35)'); g.lineWidth = 1.5;   // 褶痕
   for (let i = 0; i < N; i++) { const t = (i + .5) / N * Math.PI * 2; g.beginPath(); g.moveTo(cx + Math.cos(t) * r * .62, cy + Math.sin(t) * r * .62); g.lineTo(cx + Math.cos(t) * r * .95, cy + Math.sin(t) * r * .95); g.stroke(); }
-  const gi = g.createLinearGradient(cx, cy - r * .6, cx, cy + r * .6); gi.addColorStop(0, '#b8903f'); gi.addColorStop(1, '#8c6524');
+  const gi = g.createLinearGradient(cx, cy - r * .6, cx, cy + r * .6); gi.addColorStop(0, thC('#b8903f')); gi.addColorStop(1, thC('#8c6524'));
   g.fillStyle = gi; g.beginPath(); g.arc(cx, cy, r * .6, 0, Math.PI * 2); g.fill();
-  if (label) { g.fillStyle = '#fffaf0'; g.beginPath(); g.arc(cx, cy, r * .5, 0, Math.PI * 2); g.fill(); }
+  if (label) { g.fillStyle = thC('#fffaf0'); g.beginPath(); g.arc(cx, cy, r * .5, 0, Math.PI * 2); g.fill(); }
   else {   // 不写字：圆心是有光泽的金扣
     const gc = g.createRadialGradient(cx - r * .18, cy - r * .2, r * .05, cx, cy, r * .5);
-    gc.addColorStop(0, '#fbecc0'); gc.addColorStop(.55, '#d9b765'); gc.addColorStop(1, '#a37b32');
+    gc.addColorStop(0, thC('#fbecc0')); gc.addColorStop(.55, thC('#d9b765')); gc.addColorStop(1, thC('#a37b32'));
     g.fillStyle = gc; g.beginPath(); g.arc(cx, cy, r * .5, 0, Math.PI * 2); g.fill();
   }
-  g.strokeStyle = label ? EB_C.gold2 : 'rgba(255,248,225,.75)'; g.lineWidth = r * .03; g.beginPath(); g.arc(cx, cy, r * .44, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = label ? EB_C.gold2 : thC('rgba(255,248,225,.75)'); g.lineWidth = r * .03; g.beginPath(); g.arc(cx, cy, r * .44, 0, Math.PI * 2); g.stroke();
   g.restore();
   if (label) { g.textAlign = 'center'; exText(g, label, ebSt(EB_C.gold, true, .05), EX_TITLE, r * .36, cx, cy + r * .13, r * .8); }
 }
@@ -721,7 +723,8 @@ function ebOrder(list) {
 }
 // 准备：字体、Logo、集锦照片（找不到的跳过）、排版计划
 async function ebPrepare() {
-  await exEnsure();
+  await exEnsure();   // 也读了主题颜色（thUse）
+  ebTheme();
   const list = ebOrder(exAwards());
   const fam = await exUseFonts();
   const gallery = (await Promise.all(EB.gallery.map(n => exLoad(n)))).filter(Boolean);
@@ -828,7 +831,7 @@ function ebHtml(book) {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(book.title)} · 纪念特刊</title>
 <style>
-:root{--bg:#2a2622;--bar:#1d1a17;--gold:#d2b067;--text:#efe6d2;--muted:#a59a83;--paper:#fbf8f1;--dur:.9s}
+:root{--bg:${thC('#2a2622')};--bar:${thC('#1d1a17')};--gold:${thC('#d2b067')};--text:${thC('#efe6d2')};--muted:${thC('#a59a83')};--paper:${thC('#fbf8f1')};--dur:.9s}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent}
 #stage{position:fixed;inset:0 0 56px 0;display:flex;align-items:center;justify-content:center}
@@ -846,16 +849,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .pg img,.face img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .far{display:none}
 #book.nt,#book.nt .pg,#book.nt .leaf{transition:none}
-#bar{position:fixed;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-left));background:var(--bar);border-top:1px solid rgba(210,176,103,.25)}
-#bar button{background:#2c2823;color:var(--text);border:1px solid rgba(210,176,103,.45);border-radius:8px;height:38px;min-width:42px;padding:0 12px;font-size:15px;cursor:pointer}
+#bar{position:fixed;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-left));background:var(--bar);border-top:1px solid ${thC('rgba(210,176,103,.25)')}}
+#bar button{background:${thC('#2c2823')};color:var(--text);border:1px solid ${thC('rgba(210,176,103,.45)')};border-radius:8px;height:38px;min-width:42px;padding:0 12px;font-size:15px;cursor:pointer}
 #bar button:disabled{opacity:.35;cursor:default}
 #cap{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:14px;text-align:center}
 #num{color:var(--gold);font-size:14px;white-space:nowrap}
-#toc{position:fixed;inset:0 0 56px 0;background:rgba(29,26,23,.97);overflow:auto;padding:24px max(16px,env(safe-area-inset-left));display:none}
+#toc{position:fixed;inset:0 0 56px 0;background:${thC('rgba(29,26,23,.97)')};overflow:auto;padding:24px max(16px,env(safe-area-inset-left));display:none}
 #toc.on{display:block}
 #toc h2{margin:0 0 14px;color:var(--gold);font-size:20px;text-align:center}
 #toc a{display:flex;gap:10px;padding:9px 12px;border-radius:6px;color:var(--text);text-decoration:none;max-width:760px;margin:0 auto}
-#toc a:hover{background:rgba(210,176,103,.12)}
+#toc a:hover{background:${thC('rgba(210,176,103,.12)')}}
 #toc a span{flex:1}
 #toc a i{font-style:normal;color:var(--muted);font-size:13px}
 #toc .l0{color:var(--gold);font-weight:700;font-size:18px;margin-top:12px}

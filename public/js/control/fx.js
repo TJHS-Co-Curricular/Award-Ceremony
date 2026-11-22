@@ -51,10 +51,39 @@ function fxFmt(s, v) {
   return s.label?.includes('倍') ? (+v).toFixed(d) + '×' : (+v).toFixed(d);
 }
 
-const fxThemeAuto = k => ({ thHi: '#f7e2a6', thLo: '#9a7330' })[k] || '#000000';   // 「自动」时颜色框先显示原本的金色（= shared/theme.js 的 TH_BASE）
-function fxThemeReset() {   // 主题颜色全部回到默认（金色）
-  for (const s of fxSchema) if (s.type === 'color') fxData.all[s.key] = s.def;
+// 「自动」时颜色框显示按主色算出来的颜色（shared/theme.js 的 thMap，和大屏同一个算法）
+const fxThemeAuto = k => {
+  const base = { thHi: TH_BASE.hi, thLo: TH_BASE.lo }[k]; if (!base) return '#000000';
+  return '#' + thMap(TH_BASE.main, fxData.all.thMain || TH_BASE.main)(thHex(base)).map(v => v.toString(16).padStart(2, '0')).join('');
+};
+function fxThemeSet(t) {   // 套用一组主题颜色（内置主题 / 导入的文件）；只改 thMain / thHi / thLo / thBg
+  for (const s of fxSchema) if (s.type === 'color') fxData.all[s.key] = s.key in t ? t[s.key] : s.def;
   fxChanged(); fxBuild();
+}
+function fxThemeReset() { fxThemeSet({}); }   // 主题颜色全部回到默认（金色）
+// 主题文件（给别的电脑、明年用）：中文字段，不含名单。读的时候也接受程序字段名（thMain…）
+const FX_TH_FIELDS = [['主色', 'thMain'], ['亮色', 'thHi'], ['暗色', 'thLo'], ['背景', 'thBg']];
+function fxThemeExport() {
+  const name = prompt('主题名称（会写进文件，例：2027 蓝色）', '') ?? null; if (name === null) return;
+  const o = { 类型: '颁奖系统主题', 名称: name.trim(), 使用说明: '控制端「效果控制 → 主题颜色 → 导入主题」选这个文件。亮色、暗色写 null = 自动跟着主色。' };
+  for (const [zh, k] of FX_TH_FIELDS) o[zh] = fxData.all[k] ?? null;
+  const a = el('a', { href: URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' })), download: `主题-${o.名称 || '未命名'}.json` });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+async function fxThemeImport(f) {
+  try {
+    const j = JSON.parse(await f.text()), t = {}, ok = v => v === null || (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v));
+    for (const [zh, k] of FX_TH_FIELDS) { const v = zh in j ? j[zh] : j[k]; if (v !== undefined) { if (!ok(v)) throw new Error(`「${zh}」不是颜色（要写成 #rrggbb）`); t[k] = v && v.toLowerCase(); } }
+    if (!t.thMain) throw new Error('文件里没有「主色」');
+    fxThemeSet(t); toast(`已套用主题${j.名称 ? '「' + j.名称 + '」' : ''}`); log('导入主题 ' + f.name);
+  } catch (e) { toast('导入主题失败：' + (e instanceof SyntaxError ? '文件格式不对（不是 JSON）' : e.message), true); }
+}
+function fxThemeRow() {
+  const file = el('input', { type: 'file', accept: '.json,application/json', class: 'hidden', onchange: e => { const f = e.target.files[0]; e.target.value = ''; if (f) fxThemeImport(f); } });
+  const sel = el('select', { style: 'width:auto', onchange: e => { const p = TH_PRESETS[+e.target.value]; if (p) fxThemeSet(p[1]); e.target.value = ''; } },
+    el('option', { value: '' }, '内置主题…'), ...TH_PRESETS.map(([n], i) => el('option', { value: i }, n)));
+  return el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap' }, sel, el('span', { style: 'flex:1' }),
+    el('button', { onclick: fxThemeExport }, '导出主题…'), el('button', { onclick: () => file.click() }, '导入主题…'), file);
 }
 
 /* ---------- 表单 ---------- */
@@ -66,8 +95,8 @@ function fxBuild() {
     const card = el('div', { class: 'ecard' }, el('div', { class: 'head' }, el('b', { style: 'flex:1' }, g)));
     for (const s of items) card.append(fxRow(s));
     if (items.some(s => s.key === 'logoOn')) card.append(fxLogoRow());
-    if (items.some(s => s.key === 'thMain')) card.append(el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' },
-      el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页、待机特效、闪光、导出影片的金色系跟着换（图片导出、电子书之后的版本再跟上）'),
+    if (items.some(s => s.key === 'thMain')) card.append(fxThemeRow(), el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' },
+      el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页、特效、导出影片、图片导出、电子书的金色系一起换（图片导出设计里自己选的字色、相框色不变）'),
       el('button', { onclick: fxThemeReset }, '回到默认金色')));
     form.append(card);
   }

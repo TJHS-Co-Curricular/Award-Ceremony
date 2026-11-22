@@ -7,13 +7,22 @@
  * 默认颜色在 CSS 里（display.css / guest.css 的 :root），第一次调用时读出来记住；这里只写变量属于哪个色系。
  * 特效（canvas、WebGL）用 thC(颜色字串) / thGl([r, g, b])：按 FXC.thMain 转「主色」色系；主色是默认金色时原样返回 = 画面不变。
  * 后台线程（fx/worker.js）也载入这个文件，所以最上层不能碰 document（只在 themeApply 里用）。
- * 提供：themeApply(fx)（fx = 效果设定，读 thMain / thHi / thLo / thBg）、thC(c)、thGl(v)、thFxKey()
- * 需要：无（themeApply 用 document；thC / thGl 读全局 FXC，没有就当默认）
+ * 控制端（图片导出、电子书）没有 FXC：先 thUse(效果设定.all)，thC 就按它转。
+ * 提供：themeApply(fx)（fx = 效果设定，读 thMain / thHi / thLo / thBg）、thC(c)、thGl(v)、thFxKey()、thUse(fx)、TH_PRESETS
+ * 需要：无（themeApply 用 document；thC / thGl 读全局 FXC，没有就读 thUse 设的）
  */
 'use strict';
 
 // 基准色 = lib/fx.js SCHEMA 里主题颜色的默认值（改一边要改另一边）
 const TH_BASE = { main: '#d9b25f', hi: '#f7e2a6', lo: '#9a7330', bg: '#07060c' };
+// 内置主题（控制端「主题颜色」下拉；第一个 = 默认金色 = TH_BASE）
+const TH_PRESETS = [
+  ['金色（默认）', { thMain: '#d9b25f', thHi: null, thLo: null, thBg: '#07060c' }],
+  ['银蓝', { thMain: '#8fb4e3', thHi: null, thLo: null, thBg: '#05080d' }],
+  ['宝石红', { thMain: '#d9566a', thHi: null, thLo: null, thBg: '#0c0507' }],
+  ['翡翠绿', { thMain: '#4fbf8f', thHi: null, thLo: null, thBg: '#040b08' }],
+  ['紫罗兰', { thMain: '#a98be0', thHi: null, thLo: null, thBg: '#08060d' }]
+];
 // CSS 变量 → 色系。名字以 -rgb 结尾的变量值是「r g b」（给 rgb(var(--x-rgb) / 透明度) 用），其余是 #rrggbb。
 // bgHue = 背景色系但只转色相和饱和度、不改亮度（没有照片时的灰色幕布）
 const TH_VARS = {
@@ -47,13 +56,17 @@ function thRgb([h, s, l]) {
   return [r, g, b].map(v => Math.round(Math.min(1, Math.max(0, v + m)) * 255));
 }
 // 基准色 from → 选的颜色 to：返回一个把任何颜色同样转一下的函数（from 本身会刚好变成 to）
+// 亮度：中间调跟着移，越接近纯黑 / 纯白移得越少（l·(1−l) 加权），所以黑底、白字不会变灰（2026-11-22 修正）
 function thMap(from, to, keepL) {
-  const [h0, s0, l0] = thHsl(thHex(from)), [h1, s1, l1] = thHsl(thHex(to));
+  const fr = thHex(from), tr = thHex(to);
+  const [h0, s0, l0] = thHsl(fr), [h1, s1, l1] = thHsl(tr);
+  const k = Math.max(-1, Math.min(1, l0 > 0 && l0 < 1 ? (l1 - l0) / (l0 * (1 - l0)) : 0));   // 限制在 ±1：亮度顺序不会颠倒
   return rgb => {
+    if (!keepL && rgb[0] === fr[0] && rgb[1] === fr[1] && rgb[2] === fr[2]) return tr.slice();   // 基准色本身：刚好是选的颜色
     let [h, s, l] = thHsl(rgb);
     h = ((h + h1 - h0) % 360 + 360) % 360;
     s = Math.min(1, s0 ? s * s1 / s0 : s1);
-    if (!keepL) l = l1 >= l0 ? l + (1 - l) * (l0 < 1 ? (l1 - l0) / (1 - l0) : 0) : l * (l0 ? l1 / l0 : 0);
+    if (!keepL) l = Math.min(1, Math.max(0, l + k * l * (1 - l)));
     return thRgb([h, s, l]);
   };
 }
@@ -62,8 +75,10 @@ function thMap(from, to, keepL) {
 let thCKey = '', thCFn = null;
 const thCCache = new Map();
 // 现在的主色；默认金色时返回 ''（= 不用转）。特效用它判断要不要重画预先画好的光点（key 变了才重画）
+let thCtl = null;   // 控制端没有 FXC：图片导出 / 电子书先 thUse(效果设定.all)
+function thUse(fx) { thCtl = fx || null; }
 function thFxKey() {
-  const m = (typeof FXC !== 'undefined' && FXC && FXC.thMain) || TH_BASE.main;
+  const m = (typeof FXC !== 'undefined' && FXC && FXC.thMain) || (thCtl && thCtl.thMain) || TH_BASE.main;
   return m === TH_BASE.main ? '' : m;
 }
 function thFxFn() {

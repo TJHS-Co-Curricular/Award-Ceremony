@@ -2,7 +2,7 @@
  * 控制端 · 图片导出分页：每位得奖者一张成品图（canvas 绘制），打包成 ZIP；全部在浏览器里完成，离线可用。
  * 设计存在服务端 data/export-style.json。默认字体读 css/fonts.css（和大屏同一份）。
  * 提供：exOpen()、exFillSel()、HTML_FONT
- * 需要：shared/zip.js（makeZip）、shared/fonts.js、fonts.js（fontPrefix、fontFiles）
+ * 需要：shared/zip.js（makeZip）、shared/fonts.js、shared/theme.js（thC、thUse：主题颜色只换写死的金色；设计里自己选的颜色不动）、fonts.js（fontPrefix、fontFiles）
  */
 'use strict';
 
@@ -164,10 +164,10 @@ function exText(g, text, st, fam, px, x, y, maxW) {
 }
 
 // 左边的金色闪光小光点（静态）：3 层同大屏（shared/sparkle.js），一格 = 照片高 × 0.9；右边 30% 淡出
-let exSparkTiles = null;
+let exSparkTiles = null, exSparkKey = null;
 function exSparkle(g, P, H, U) {
   if (P < 1) return;
-  exSparkTiles = exSparkTiles || SPARK_LAYERS.map(L => sparkleTile(L.seed, L.n));
+  if (exSparkKey !== thFxKey()) { exSparkKey = thFxKey(); exSparkTiles = SPARK_LAYERS.map(L => sparkleTile(L.seed, L.n)); }   // 主题颜色变了才重画
   const T = U * .9, off = document.createElement('canvas'); off.width = Math.ceil(P); off.height = H;
   const o = off.getContext('2d');
   SPARK_LAYERS.forEach((L, i) => {
@@ -205,7 +205,7 @@ async function exRender(award, w, fam) {
   if (!team) {
     // ---- 个人：照片铺满，左边加暗，文字在左边居中
     if (img) exCover(g, img, 0, 0, W, H);
-    else { const bg = g.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#55535a'); bg.addColorStop(.5, '#77757b'); bg.addColorStop(.5, '#a57a22'); bg.addColorStop(1, '#c79530'); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+    else { const bg = g.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#55535a'); bg.addColorStop(.5, '#77757b'); bg.addColorStop(.5, thC('#a57a22')); bg.addColorStop(1, thC('#c79530')); g.fillStyle = bg; g.fillRect(0, 0, W, H); }
     // 左边一块：宽 = 文字横向位置 × 2（文字在这一块正中间），加暗 + 金色闪光，右边缘淡出
     const cx = W * S.textX / 100, maxW = W * Math.min(S.textX, 100 - S.textX) * 2 / 100 * .94, sw = W * Math.min(1, S.textX * 2 / 100), a = S.shade / 100;
     if (a > 0) {
@@ -244,7 +244,7 @@ async function exRender(award, w, fam) {
     g.fillStyle = S.teamBg; g.fillRect(0, 0, W, H);
     if (S.teamGlow) {
       const glow = g.createRadialGradient(W / 2, H * .42, 0, W / 2, H * .42, Math.max(W, H) * .6);
-      glow.addColorStop(0, 'rgba(217,178,95,.16)'); glow.addColorStop(1, 'rgba(217,178,95,0)');
+      glow.addColorStop(0, thC('rgba(217,178,95,.16)')); glow.addColorStop(1, thC('rgba(217,178,95,0)'));
       g.fillStyle = glow; g.fillRect(0, 0, W, H);
     }
     const cx = W / 2, maxW = W * .86;
@@ -276,7 +276,7 @@ async function exRender(award, w, fam) {
     const cg = g.createLinearGradient(0, py, 0, py + ch); cg.addColorStop(0, 'rgba(255,255,255,.07)'); cg.addColorStop(1, 'rgba(255,255,255,.02)');
     g.fillStyle = cg; g.fillRect(cx0, py, cw, ch);
     if (img) g.drawImage(img, px0, py, pw, ph);
-    else { const gr = g.createRadialGradient(px0 + pw / 2, py + ph * .35, 0, px0 + pw / 2, py + ph * .35, pw * .7); gr.addColorStop(0, '#a9822f'); gr.addColorStop(1, '#3e3016'); g.fillStyle = gr; g.fillRect(px0, py, pw, ph); }
+    else { const gr = g.createRadialGradient(px0 + pw / 2, py + ph * .35, 0, px0 + pw / 2, py + ph * .35, pw * .7); gr.addColorStop(0, thC('#a9822f')); gr.addColorStop(1, thC('#3e3016')); g.fillStyle = gr; g.fillRect(px0, py, pw, ph); }
     g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(cx0, py + ph - lw / 2, cw, lw);   // 照片和文字之间的金线
     g.restore();
     g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
@@ -380,6 +380,7 @@ $('bExPreset').onclick = () => { if (confirm('把所有设定恢复成 Picture3 
 async function exEnsure() {   // 读图片导出设计和字体清单（「电子书」分页也要用：字体跟这里一样）
   if (!exLoaded) { try { EXS = exClean((await api('GET', '/api/control/export-style')).style); } catch { EXS = EX_PRESET(); } exLoaded = true; }
   try { fontFiles = (await api('GET', '/api/control/fonts')).fonts; } catch {}
+  try { thUse((await api('GET', '/api/control/fx')).fx.all); } catch {}   // 主题颜色（shared/theme.js 的 thC 按它转）
 }
 async function exOpen() {   // 切到「图片导出」分页时
   await exEnsure();
