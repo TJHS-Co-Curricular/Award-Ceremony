@@ -6,7 +6,8 @@
  *   就在旧画面后面载入一份新的。新的一样连着服务端、跟着现场走（揭晓也会跟着动）；
  *   等到两份显示同一个画面、而且都「停好」了（动画、闪光、照片都画完），新的移到最上面淡入 1.2 秒，旧的再整个丢掉（见 swap()）。
  *   所以「先一后全」一位一位揭晓时，也会在两位之间悄悄换掉，观众看不出来，不会黑屏、不会闪。
- * 需要：display.html 里的 renewOk / renewKey / renewCount / renewMinutes / renewEvery（js/display/main.js）
+ * 大会背景 = 透明时（bgClearOn()，js/display/bgimg.js）外壳也透明；后面载入中的新画面先设成完全透明，免得透过上面那份看到两层字。
+ * 需要：display.html 里的 renewOk / renewKey / renewCount / renewMinutes / renewEvery（js/display/main.js）、bgClearOn（bgimg.js）
  */
 'use strict';
 
@@ -27,6 +28,9 @@
   const call = (f, fn) => { try { return f.contentWindow?.[fn]?.(); } catch { return undefined; } };
 
   setInterval(() => {
+    const clear = call(cur, 'bgClearOn') === true;
+    document.documentElement.classList.toggle('clear', clear);
+    if (next && clear && next.style.zIndex === '1') next.style.opacity = '0';
     if (next) {
       const same = call(next, 'renewKey') && call(next, 'renewKey') === call(cur, 'renewKey');
       if (same && call(cur, 'renewOk') && call(next, 'renewOk')) swap();

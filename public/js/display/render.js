@@ -27,7 +27,8 @@ function show(id) {
   // 待机画面的金色光河：显示时运行，离开后等淡出完再停（省电）
   clearTimeout(gStop);
   const kind = FXC.standby;   // 待机背景：旋涡星系（默认）或金色光河（fx/standby.js，「效果控制」里选）
-  if (id === 's-standby') standbyFx(true, kind); else gStop = setTimeout(() => standbyFx(false, kind), 1200);
+  // bgFxOn()：大会背景是图片 / 透明时不跑（display/bgimg.js）
+  if (id === 's-standby') standbyFx(bgFxOn(), kind); else gStop = setTimeout(() => standbyFx(false, kind), 1200);
   for (const s of document.querySelectorAll('.scene')) {
     const on = s.id === id;
     if (on && !s.classList.contains('active')) { s.classList.remove('enter'); void s.offsetWidth; s.classList.add('enter'); }

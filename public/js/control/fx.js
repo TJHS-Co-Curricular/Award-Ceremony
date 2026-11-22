@@ -4,6 +4,7 @@
  * 「设定给」= 所有屏幕，或某一个屏幕（只记录改过的项目，其余跟随所有屏幕）。
  * 「即时套用到大屏」开：改了约 0.3 秒后自动保存并推送；关：只改右边预览（fxPreviewSet），按「套用到大屏」才推送。
  * 「照片右上角 Logo」那一组多一行上传 / 移除学校 Logo（浏览器先缩成长边 ≤ 1024 的 PNG，存 data/logo.png）。
+ * 「大会背景」那一组多一行上传 / 移除背景图片（按「设定给」：所有屏幕一张，或某个屏幕单独一张；浏览器先缩成长边 ≤ 4096 的 JPEG，存 data/backgrounds/）。
  * 下方「导出影片」：开一个隐藏的输出页（record=1，display/record.js）逐帧渲染成 .mp4 下载；
  *   「在服务器渲染」：交给服务端（lib/render.js，/api/control/render）在那台电脑上渲染，这里每 1.5 秒看一次进度、提供下载。
  * 提供：fxOpen()、fxClose()、fxDirty
@@ -11,13 +12,13 @@
  */
 'use strict';
 
-let fxSchema = null, fxSaved = null, fxData = null, fxDirty = false, fxScope = '', fxSaveT = 0, fxBusy = false, fxLogo = '';
+let fxSchema = null, fxSaved = null, fxData = null, fxDirty = false, fxScope = '', fxSaveT = 0, fxBusy = false, fxLogo = '', fxBg = null;
 const fxClone = o => JSON.parse(JSON.stringify(o));
 const fxScreens = () => V?.screens?.length ? V.screens : [{ name: '', width: 1920, height: 1080 }];
 
 async function fxOpen() {
   if (!fxDirty) {
-    try { const j = await api('GET', '/api/control/fx'); fxSchema = j.schema; fxSaved = j.fx; fxData = fxClone(j.fx); fxLogo = j.logo || ''; }
+    try { const j = await api('GET', '/api/control/fx'); fxSchema = j.schema; fxSaved = j.fx; fxData = fxClone(j.fx); fxLogo = j.logo || ''; fxBg = j.bg || null; }
     catch (e) { toast('读取效果设定失败：' + e.message, true); return; }
   }
   $('fxLive').checked = store.get('ac_fxlive') !== '0';
@@ -95,6 +96,7 @@ function fxBuild() {
     const card = el('div', { class: 'ecard' }, el('div', { class: 'head' }, el('b', { style: 'flex:1' }, g)));
     for (const s of items) card.append(fxRow(s));
     if (items.some(s => s.key === 'logoOn')) card.append(fxLogoRow());
+    if (items.some(s => s.key === 'bgMode')) card.append(fxBgRow());
     if (items.some(s => s.key === 'thMain')) card.append(fxThemeRow(), el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' },
       el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页、特效、导出影片、图片导出、电子书的金色系一起换（图片导出设计里自己选的字色、相框色不变）'),
       el('button', { onclick: fxThemeReset }, '回到默认金色')));
@@ -169,6 +171,42 @@ async function fxLogoUp(f) {
 async function fxLogoDel() {
   if (!confirm('移除学校 Logo？大屏照片上的 Logo 会马上消失。')) return;
   try { await api('POST', '/api/control/logo/delete', {}); fxLogo = ''; fxBuild(); toast('已移除 Logo'); log('移除学校 Logo'); }
+  catch (e) { toast('移除失败：' + e.message, true); }
+}
+/* ---------- 大会背景图片（效果「大会背景 = 背景图片」时用）---------- */
+const BG_EDGE = 4096;   // 上传前缩到长边 4096（主屏 4096×1280 够用），存 JPEG
+function fxBgRow() {
+  const v = fxScope ? fxBg?.screens?.[fxScope] : fxBg?.all, who = fxScope ? `「${fxScope}」` : '所有屏幕';
+  const file = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'hidden', onchange: e => { const f = e.target.files[0]; e.target.value = ''; if (f) fxBgUp(f); } });
+  const pic = v
+    ? el('img', { src: '/media/bg?v=' + v + (fxScope ? '&s=' + encodeURIComponent(fxScope) : ''), alt: '', style: 'height:44px;max-width:160px;object-fit:cover;border-radius:4px' })
+    : el('span', { class: 'muted' }, fxScope ? (fxBg?.all ? '没有单独的图片（用所有屏幕那张）' : '还没有背景图片') : '还没有背景图片');
+  return el('div', { style: 'margin-top:6px' },
+    el('div', { style: 'display:flex;gap:8px;align-items:center' }, pic, el('span', { style: 'flex:1' }),
+      el('button', { onclick: () => file.click() }, (v ? '换一张…' : '上传图片…')),
+      ...(v ? [el('button', { onclick: fxBgDel }, '移除')] : []), file),
+    el('div', { class: 'muted', style: 'margin-top:4px' }, `这一张给${who}。图片最好和屏幕同比例（会铺满、多出来的裁掉）；「透明」要在 OBS 里把影片放在输出页下面（导出 OBS 场景时会预留一个媒体来源）。`));
+}
+async function fxBgUp(f) {
+  try {
+    const src = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(new Error('读不到文件')); r.readAsDataURL(f); });
+    const im = await loadImg(src);
+    if (!im.naturalWidth || !im.naturalHeight) throw new Error('读不出图片尺寸');
+    const k = Math.min(1, BG_EDGE / Math.max(im.naturalWidth, im.naturalHeight));
+    const cv = el('canvas'); cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k));
+    const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .9));
+    const r = await fetch('/api/control/bg?s=' + encodeURIComponent(fxScope), { method: 'POST', headers: { 'X-AC': '1', 'Content-Type': 'image/jpeg' }, body: blob, credentials: 'same-origin' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    fxBg = j.bg || null; fxBuild();
+    toast(fxGet('bgMode') === 'image' ? '背景图片已上传' : '背景图片已上传；把上面的「大会背景」选成「背景图片」才会用它');
+    log(`上传大会背景图片：${fxScope || '所有屏幕'}（${cv.width}×${cv.height}）`);
+  } catch (e) { toast('上传背景图片失败：' + e.message, true); }
+}
+async function fxBgDel() {
+  if (!confirm(`移除${fxScope ? `「${fxScope}」的` : '所有屏幕的'}背景图片？`)) return;
+  try { const j = await api('POST', '/api/control/bg/delete', { s: fxScope }); fxBg = j.bg || null; fxBuild(); toast('已移除背景图片'); log('移除大会背景图片：' + (fxScope || '所有屏幕')); }
   catch (e) { toast('移除失败：' + e.message, true); }
 }
 const fxMark = row => row.classList.toggle('over', !!fxScope);

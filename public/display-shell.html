@@ -10,6 +10,8 @@
 <style>
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
   iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#000}
+  /* 大会背景 = 透明（OBS 里垫影片）：外壳也要透明（shell.js 照 iframe 里的 bgClearOn() 切换） */
+  html.clear,html.clear body,html.clear iframe{background:transparent}
 </style>
 </head>
 <body>

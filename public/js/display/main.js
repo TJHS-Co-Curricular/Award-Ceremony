@@ -19,7 +19,7 @@ function renewMark(raw, v) {
 }
 const renewPhotosDone = () => [...document.querySelectorAll('canvas.ph')].every(c => c.classList.contains('ok') || c.parentElement.classList.contains('nopic'))
   && [...document.querySelectorAll('img.logo')].every(im => im.complete);
-function renewOk() { return booted && performance.now() - renewSince > renewSettle && document.fonts.status === 'loaded' && renewPhotosDone(); }
+function renewOk() { return booted && performance.now() - renewSince > renewSettle && document.fonts.status === 'loaded' && renewPhotosDone() && bgImgOk(); }
 function renewKey() { return renewState; }
 function renewCount() { return renewReveals; }
 function renewMinutes() { return FXC.renewMin; }
@@ -30,11 +30,12 @@ function onData(raw) {
   $('conn').classList.remove('show');
   if (RECORD) {   // 导出影片：只要第一份数据（活动名称、字体、效果），固定在待机画面，之后不再跟现场变
     if (booted) return;
-    fxSet(v.fx); logoSet(v.logo); render({ ...v, mode: 'standby', blackout: false }); booted = true; return;   // logoSet：左上角 Logo 画进影片（record.js 的 recLogoLayer）
+    fxSet(v.fx); logoSet(v.logo); bgImgSet(v.bg); render({ ...v, mode: 'standby', blackout: false }); booted = true; return;   // logoSet：左上角 Logo 画进影片（record.js 的 recLogoLayer）
   }
   diagSet(v.diag);
   fxSet(v.fx);
   logoSet(v.logo);
+  bgImgSet(v.bg);
   exStyleSet(v.exStyle);
   render(v);
   renewMark(raw, v);

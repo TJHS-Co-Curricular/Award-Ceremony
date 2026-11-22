@@ -54,7 +54,7 @@ function printBanner(created) {
 }
 
 async function main() {
-  for (const d of [env.DATA_DIR, env.PHOTO_DIR, env.CACHE_DIR, env.FONT_DIR, env.LOG_DIR]) fs.mkdirSync(d, { recursive: true });
+  for (const d of [env.DATA_DIR, env.PHOTO_DIR, env.CACHE_DIR, env.FONT_DIR, env.BG_DIR, env.LOG_DIR]) fs.mkdirSync(d, { recursive: true });
   if (process.platform === 'win32') process.title = '表扬大会 · 颁奖公布系统';
   const cmd = process.argv[2];   // exe 时 argv[1] 也是 exe 本身，参数同样从 argv[2] 开始
   if (cmd === 'encrypt') return encryptCmd();

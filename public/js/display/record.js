@@ -237,7 +237,9 @@ async function recPrepare(opt, fx) {
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
   if (!booted) throw new Error('连不上服务端');
   fxPreviewSet(fx);
+  await bgImgReady(); bgDraw();   // 大会背景图片（display/bgimg.js）：等载好、按影片像素画好
   if (opt.content === 'base' || opt.content === 'flash') standbyFx(false, FXC.standby);   // 用不到待机背景：停掉省时间
+  else standbyFx(opt.content === 'greenbg' || bgFxOn(), FXC.standby);   // 绿幕一定用星系 / 光河；背景图片 / 透明时其它内容不用
   REC_INFO = opt.content === 'promo'; if (lastV) standbyInfo(lastV.event);   // 宣传背景才有日期 / 时间 / 地点
   $('s-standby').classList.remove('enter');   // 去掉进场动画，文字位置才是最终的
   for (let i = 0; i < 30; i++) recTick(1000 / 60);   // 先跑半秒：标题缩放、星系建好
@@ -245,6 +247,20 @@ async function recPrepare(opt, fx) {
   for (let i = 0; i < 2; i++) recTick(1000 / 60);   // 字体载好后再缩放一次（标题、日期地点的 fitText 在下一帧）
 }
 const recHasText = c => c === 'standby' || c === 'promo';
+/* 背景那一层（影片、图片共用）。绿幕、闪光不受「大会背景」影响。
+ * 大会背景 = 背景图片：图片 + 浮尘（和现场一样，没有渐层、边框）；= 透明：黑底 + 浮尘（「透明」在影片里没有意义）；
+ * = 程序画的：原本的做法（待机 = 星系 / 光河；base = 渐层 + 浮尘 + 边框）。 */
+function recBgLayer(o, content, B, W, H) {
+  const gold = $('goldfx'), r = document.documentElement.classList;
+  if (content !== 'greenbg' && content !== 'flash' && (r.contains('bg-image') || r.contains('bg-clear'))) {
+    if (r.contains('bg-image')) o.drawImage($('bgimg'), 0, 0, W, H); else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); }
+    o.drawImage($('bg'), 0, 0);
+    return;
+  }
+  if (recHasText(content) || content === 'standbybg' || content === 'greenbg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
+  else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
+  else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
+}
 /* 绿幕：星系 / 光河是「发光的东西画在黑底上」，把亮度当成不透明度：
  *   a = 最亮的颜色通道（太暗的当成全透明），颜色 = 原色 ÷ a，再叠到纯绿色上。
  * 黑色部分变成纯绿，亮的地方保持原色，半透明的光晕按亮度混一点绿，抠像后光晕边缘也自然。 */
@@ -266,8 +282,8 @@ async function recStill(opt, fx) {
   const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
   for (let i = 0; i < Math.round((opt.seconds || 4) * 60); i++) { if (recStop) throw new Error('已取消'); recTick(1000 / 60); if (i % 60 === 0) await recYield(); }
   const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });
-  if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
-  else { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
+  if (content === 'flash') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }   // 原本的做法（闪光不出静态图）
+  else recBgLayer(o, content, B, W, H);
   if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, .25); }   // 流光停在标题中间偏亮的位置
   if (LG) o.drawImage(LG, 0, 0);
   if (content === 'greenbg') recGreen(o, W, H);
@@ -337,9 +353,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
       if (REC_SKIP) { if (i % 300 === 0) { onProgress(done / total, '快转到这一段'); await recYield(); } continue; }
       // 背景
       o.setTransform(1, 0, 0, 1, 0, 0); o.globalAlpha = 1; o.globalCompositeOperation = 'source-over'; o.filter = 'none';
-      if (recHasText(content) || content === 'standbybg' || content === 'greenbg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
-      else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
-      else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
+      recBgLayer(o, content, B, W, H);
       if (i < C) {
         if (!needHead) continue;
         const t = Date.now();

@@ -9,6 +9,7 @@
 
 const FX_DEF = {
   thMain: '#d9b25f', thHi: null, thLo: null, thBg: '#07060c',   // 主题颜色（shared/theme.js；null = 跟着主色）
+  bgMode: 'fx',   // 大会背景：fx 程序画的 / image 背景图片 / clear 透明（display/bgimg.js）
   standby: 'galaxy',
   gyBright: .75, gySpeed: .12, gyDensity: 1, gySize: 1, gyX: null, gyY: null, gyTilt: .36,   // gyX / gyY：null = 自动
   grBright: 1, grDensity: 1,
@@ -51,6 +52,7 @@ function fxUpdate() {
   rs.setProperty('--slogo-k', next.sLogoSize); rs.setProperty('--slogo-m', next.sLogoMargin); rs.setProperty('--slogo-o', next.sLogoOpacity);
   document.documentElement.classList.toggle('noslogo', !next.sLogoOn);
   $('goldfx').style.filter = next.standby === 'goldriver' && next.grBright !== 1 ? `brightness(${next.grBright})` : '';
-  if (ch('standby') && $('s-standby').classList.contains('active')) standbyFx(true, next.standby);
+  if (ch('bgMode') && typeof bgApply === 'function') bgApply();   // 大会背景（display/bgimg.js），里面会按需要开 / 停待机背景
+  if (ch('standby') && $('s-standby').classList.contains('active')) standbyFx(bgFxOn(), next.standby);
   if (ch('photoUp') && cur.mode === 'photo') photoShift();
 }
