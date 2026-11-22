@@ -73,13 +73,15 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:upperca
 .aitem.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
 .aitem.live{border-color:var(--bad)}
 .aitem .t{display:flex;align-items:center;gap:8px;font-weight:600}
-.aitem .t span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aitem .t span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}   /* 名称完整显示（太长就换行），不截成「…」：截掉容易看错奖项（用户 2026-11-22） */
 .aitem .m{font-size:12px;color:var(--muted);margin-top:2px}
 .aitem .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .aitem .acts button{padding:4px 8px;font-size:12px}
-.ghead{display:flex;align-items:center;gap:8px;margin:10px 0 2px;padding:6px 8px;border-left:3px solid var(--gold);background:rgba(217,178,95,.07);border-radius:4px}
+.ghead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:10px 0 2px;padding:6px 8px;border-left:3px solid var(--gold);background:rgba(217,178,95,.07);border-radius:4px}
 .ghead:first-child{margin-top:0}
-.ghead .gt{flex:1;min-width:0;font-weight:700;color:var(--gold);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 大类 / 分类标题：名称占满第一行（完整显示、太长换行），进度和按钮排在下一行靠右 */
+.ghead .gt{flex:1 1 100%;min-width:0;font-weight:700;color:var(--gold);font-size:13px;overflow-wrap:anywhere}
+.ghead .gt+*{margin-left:auto}
 .ghead .gt small{display:block;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.06em}
 .ghead button{padding:3px 8px;font-size:11px}
 .ghead.live{border-left-color:var(--bad);background:rgba(214,69,69,.12)}
@@ -172,7 +174,6 @@ table.xt tr.off td:not(:first-child){opacity:.35}
 #emain{min-height:0;overflow:auto;padding:18px}
 #elist .ecard{scroll-margin-top:70px}   /* 目录跳过来时不被上面固定的保存列挡住 */
 /* 奖项编辑 · 左边目录（editor-nav.js）：样式同现场控制的奖项列表，名称可以换行（不截断） */
-#enav .ghead .gt,#enav .aitem .t span:first-child{white-space:normal;overflow:visible}
 #enav .ghead{cursor:pointer}
 #enav .aitem{padding:7px 10px}
 #enav .aitem .no{color:var(--gold);font-weight:700;margin-right:6px}
