@@ -256,6 +256,7 @@ code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius
 #poAwards .poa{border-top:1px solid var(--line);padding:5px 0;font-size:13px}
 #poAwards .poa label{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
 #poAwards .poa label input{width:auto}
+#poAwards .poa label.pohd{margin:3px 0 0 22px;font-size:12px;gap:4px}
 #poAwards .poa.on label{color:var(--ink)}
 #poAwards .poa b{color:var(--ink)}
 #poAwards .poa textarea{margin:4px 0 2px 22px;width:calc(100% - 22px);font-size:13px;resize:vertical}

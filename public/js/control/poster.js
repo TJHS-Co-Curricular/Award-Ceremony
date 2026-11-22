@@ -29,6 +29,8 @@ function poClean(v) {
     w: num(p?.w, 4, 120, 24), h: num(p?.h, 4, 120, 43),
     ids: (Array.isArray(p?.ids) ? p.ids : []).map(String).slice(0, 200),
     style: ['grid', 'panel'].includes(p?.style) ? p.style : 'auto',
+    title: String(p?.title || '').slice(0, 200),   // 这张海报的抬头标题（空 = 活动名称）
+    noHead: (Array.isArray(p?.noHead) ? p.noHead : []).map(String).slice(0, 200),   // 不要标题的奖项（id）
     heads: Object.fromEntries(Object.entries(p?.heads && typeof p.heads === 'object' ? p.heads : {}).map(([k, t]) => [String(k), String(t || '').slice(0, 200)]).filter(([, t]) => t.trim()))
   }));
   if (!posters.length) posters.push(d.posters[0]);
@@ -67,7 +69,7 @@ function poBuild() {
   $('poPick').replaceChildren(...PO.posters.map((p, i) => el('option', { value: String(i) }, `${i + 1}. ${p.name}（${p.w}×${p.h}）`)));
   $('poPick').value = String(PO.cur);
   const P = poCur();
-  $('po_name').value = P.name;
+  $('po_name').value = P.name; $('po_title').value = P.title; $('po_title').placeholder = '留空 = 活动名称（' + (poEvTitle().join(' ') || '没写') + '）；一行一行写';
   const key = `${P.w}x${P.h}`;
   $('po_size').value = PO_SIZES.some(s => s[0] === key) ? key : 'custom';
   $('po_w').value = P.w; $('po_h').value = P.h;
@@ -79,14 +81,21 @@ function poBuild() {
     const row = el('div', { class: 'poa' + (on ? ' on' : '') },
       el('label', {}, el('input', { type: 'checkbox', ...(on ? { checked: '' } : {}), onchange: e => poToggle(a.id, e.target.checked) }),
         el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, poWho(a).length < a.winners.length ? `（得主 ${poWho(a).length} / 入围 ${a.winners.length}）` : `（${a.winners.length}）`)));
-    if (on && PO.titleOn) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
+    const hon = !P.noHead.includes(a.id);
+    if (on && PO.titleOn) row.append(el('label', { class: 'pohd', title: '这个奖项上面要不要大标题（卡片上已经有奖项名）' }, el('input', { type: 'checkbox', ...(hon ? { checked: '' } : {}), onchange: e => poHeadToggle(a.id, e.target.checked) }), '这个奖项要标题'));
+    if (on && PO.titleOn && hon) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
     return row;
   }) : [el('p', { class: 'muted' }, '还没有得奖者')]));
+}
+function poHeadToggle(id, on) {   // 每个奖项自己的标题开关（维护者 2026-11-22）
+  const P = poCur();
+  P.noHead = P.noHead.filter(x => x !== id); if (!on) P.noHead.push(id);
+  poChanged(); poBuild();
 }
 function poToggle(id, on) {
   const P = poCur();
   if (on && !P.ids.includes(id)) P.ids.push(id);
-  if (!on) { P.ids = P.ids.filter(x => x !== id); delete P.heads[id]; }
+  if (!on) { P.ids = P.ids.filter(x => x !== id); delete P.heads[id]; P.noHead = P.noHead.filter(x => x !== id); }
   const order = poAwards().map(a => a.id);   // 段落顺序 = 奖项编辑里的顺序
   P.ids.sort((a, b) => order.indexOf(a) - order.indexOf(b));
   poChanged(); poBuild();
@@ -107,6 +116,7 @@ $('po_color').oninput = () => { PO.color = $('po_color').value; poChanged(); };
 $('po_titleK').oninput = () => { PO.titleK = +$('po_titleK').value; $('po_titleKV').textContent = PO.titleK + '%'; poChanged(); };
 $('po_font').onchange = () => { PO.font = $('po_font').value.trim(); poChanged(); };
 $('po_name').oninput = () => { poCur().name = $('po_name').value || '海报'; poChanged(); $('poPick').options[PO.cur].textContent = `${PO.cur + 1}. ${poCur().name}（${poCur().w}×${poCur().h}）`; };
+$('po_title').oninput = () => { poCur().title = $('po_title').value; poChanged(); };
 $('po_size').onchange = () => { const v = $('po_size').value; if (v !== 'custom') { const [w, h] = v.split('x').map(Number); Object.assign(poCur(), { w, h }); } poChanged(); poBuild(); };
 for (const id of ['po_w', 'po_h']) $(id).onchange = () => { Object.assign(poCur(), { w: +$('po_w').value, h: +$('po_h').value }); poChanged(); poBuild(); };
 $('po_style').onchange = () => { poCur().style = $('po_style').value; poChanged(); poBuild(); };
@@ -158,16 +168,20 @@ const poHead = (P, secs, i) => (P.heads[secs[i].id] || poAutoHead(secs, i)).spli
 // 版式：grid = 紧凑网格（像 2025 最高成就那张）；panel = 分段（上面活动抬头、每个奖项一个底框 + 英文名、下面日期地点）。
 // auto：宽的海报用 grid，直的（宽 < 高 × 0.8，例：24×43、11×43）用 panel（维护者 2026-11-22：直幅可以自己优化，例子只供参考）
 const poStyle = P => (P.style === 'grid' || P.style === 'panel' ? P.style : P.w < P.h * .8 ? 'panel' : 'grid');
+// 抬头的大字：这张海报写了自定义标题就用它（一行一行），否则用活动名称（开头是年份就分两行）
+const poHeadLines = P => (P?.title?.trim() ? P.title.split(/\r?\n/).map(t => t.trim()).filter(Boolean) : poEvTitle());
 const poEvTitle = () => { const t = String(draft?.event?.title || '').trim(), m = t.match(/^(\d{4})\s*年?\s*(.+)$/); return m ? [m[1], m[2]] : t ? [t] : []; };
 const poFoot = () => [draft?.event?.date, draft?.event?.time, draft?.event?.venue].map(x => String(x || '').trim()).filter(Boolean).join(' · ');
 // 卡片由大到小试：每段 = 标题 + ceil(人数 / 列数) 排卡片，全部放得下的最大卡片就是答案；列数所有段一样
 function poLayout(P, secs, fam) {
   const panel = poStyle(P) === 'panel', g = el('canvas').getContext('2d');
-  const heads = secs.map((_, i) => (PO.titleOn ? poHead(P, secs, i) : []));   // 不要标题（图片导出的卡片上已经有奖项名）：每段只有卡片
-  const ens = secs.map(a => (panel && PO.titleOn && !P.heads[a.id] && a.subtitle ? String(a.subtitle) : ''));   // 分段版式：自动标题下面加英文名
+  const hon = a => PO.titleOn && !P.noHead.includes(a.id);   // 全部的开关 + 每个奖项自己的开关
+  const heads = secs.map((a, i) => (hon(a) ? poHead(P, secs, i) : []));   // 不要标题（图片导出的卡片上已经有奖项名）：每段只有卡片
+  const ens = secs.map(a => (panel && hon(a) && !P.heads[a.id] && a.subtitle ? String(a.subtitle) : ''));   // 分段版式：自动标题下面加英文名
   const widest = heads.map(ls => Math.max(1, ...ls.map(t => { g.font = `700 100px ${fam}`; return g.measureText(t).width / 100; })));   // 每 1 单位字号的宽度
   // 抬头、页脚的高度只看海报尺寸，不跟卡片变
-  const hh = panel && PO.headOn ? Math.min(P.w * .45, P.h * .16) : 0,   // 活动抬头可以单独关掉（维护者 2026-11-22：大标题和奖项标题分开）
+  const hh = PO.headOn && (panel || P.title.trim()) ? Math.min(P.w * .45, P.h * .16) : 0,   // 紧凑网格只有写了自定义标题才加抬头
+      // 活动抬头可以单独关掉（维护者 2026-11-22：大标题和奖项标题分开）
     foot = panel ? poFoot() : '', hf = foot ? Math.min(P.w * .055, P.h * .03) : 0;
   for (let cw = Math.min(P.w, P.h * 1.6); cw > 0.4; cw *= 0.99) {
     const ch = cw * 9 / 16, gx = cw * .1, gy = cw * .065, m = cw * .09, sg = cw * .14, inner = P.w - 2 * m;
@@ -241,9 +255,10 @@ async function poDraw(P, dpi, card, progress) {
 
   // 抬头（分段版式、没关掉时）：学校 Logo + 活动名称（开头是年份就分两行）+ 英文名 + 分隔线，在抬头的高度里置中
   if (L.hh) {
-    const hh = L.hh, logo = await exLoadLogo(), tl = poEvTitle(), sub = String(draft?.event?.subtitle || '').trim();
-    const lh = logo?.naturalWidth ? hh * .34 : 0, tfs = hh * .17, efs = hh * .055;
-    const used = lh + (lh ? hh * .06 : 0) + tl.length * tfs * 1.12 + (sub ? efs * 2 : 0) + hh * .08;
+    const hh = L.hh, logo = await exLoadLogo(), tl = poHeadLines(P), sub = P.title.trim() ? '' : String(draft?.event?.subtitle || '').trim();   // 自定义标题不加英文名
+    let lh = logo?.naturalWidth ? hh * .34 : 0, tfs = hh * .17, efs = hh * .055;
+    let used = lh + (lh ? hh * .06 : 0) + tl.length * tfs * 1.12 + (sub ? efs * 2 : 0) + hh * .08;
+    if (used > hh * .96) { const k = hh * .96 / used; lh *= k; tfs *= k; efs *= k; used *= k; }   // 标题行数多：整块缩小放进抬头
     let hy = y + Math.max(0, (hh - used) / 2);
     if (lh) { const lw = lh * logo.naturalWidth / logo.naturalHeight; g.drawImage(logo, cx - D(lw) / 2, D(hy), D(lw), D(lh)); hy += lh + hh * .06; }
     tl.forEach(t => { poBigText(g, t, cx, D(hy + tfs * .92), D(tfs), tfam, D(inner * .96)); hy += tfs * 1.12; });
