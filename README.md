@@ -548,3 +548,13 @@ data/societies.json      学会对照表（不含名字）
 data/fx.json             效果控制的设定（不含名单）
 logs/audit.log           登录、操作、可疑访问记录
 ```
+
+`data/` 整个不进 Git，每年从空的 `data/` 开始。
+
+### 新的一年怎么开始
+
+1. 关掉程序（黑色窗口）。
+2. 把整个 `data/`、`Result/` 和 `config.json` 备份到别处（或把 `data/` 改名成 `data-2026/`）。
+3. 重新启动：程序会自动建一个新的空 `data/`，里面是示例名单，可以先试操作。
+4. 在控制端导入新的 Excel 名单、上传照片，重新调图片导出设计、效果、电子书。
+5. 想沿用去年的某样设置：从备份里把那一个文件抄回 `data/`，例如 `export-style.json`（图片导出设计）、`fx.json`（效果）、`societies.json`（学会对照表）、`logo.png`、`fonts/`。

@@ -1,10 +1,7 @@
 # ⚠ 防泄露：名单、密码、照片、日志、结果一律不进 Git
 config.json
-data/*
-# 例外：这几项不含名单，可以提交（注意字体的授权，太大的字体文件 GitHub 会拒收）
-!data/fonts/
-!data/export-style.json
-!data/fx.json
+# data/ 整个不进 Git：每年从空的 data/ 重新开始（维护者定 2026-11-22），没有例外
+data/
 logs/
 .render-server.pid
 Result/

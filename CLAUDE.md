@@ -15,7 +15,7 @@
    - 照片文件名会出现在控制端，所以提示用户用编号命名（`001.jpg`）。
 2. **SEA 打包合并代码。** 代码按功能分在 `lib/` 里（见下面「代码结构」）；SEA 里 `require` 只能加载内建模块，所以 `build-exe.js` 会先把 `server.js` + `lib/**/*.js` 合并成一个文件（`bundle()`）。网页的 CSS / JS 都在 `public/` 里，经 `/assets/…` 由服务端提供（exe 里打包了一份）。
 3. **版本号成对修改。** 改了 API、动作或返回结构时，同时把 `lib/env.js` 的 `VERSION` 和 `public/js/control/core.js` 的 `CLIENT_VERSION` 改成同一个新值，并在 `CHANGELOG.md` 加一个新的 `## [x.y]`（build.bat 用它写 exe 的版本信息，三者不一致时编译会提示）。两边不一致时控制端会显示橙色警告横条。这个机制就是为了防止「新控制端 + 旧服务端」导致的「未知操作」问题，以前真实发生过。
-4. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/*`（名单、照片、进度；例外放行 `data/fonts/`、`data/export-style.json`、`data/fx.json`，这几项不含名字）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。
+4. **不提交敏感文件。** `.gitignore` 已排除 `config.json`（密码、密钥）、`data/` 整个（名单、照片、进度、导出设计、效果设定、字体，没有例外；每年从空的 `data/` 重新开始，维护者定 2026-11-22，见 `docs/template-plan.md`）、`logs/`、`Result/`、`dist/`、`/AwardCeremony*.exe`、主目录生成的 `加密名单.bat` / `解密名单.bat`、`obs/`（含输出页密钥）、主目录的 `Picture*.png` 设计参考图。
 
 ## 运行
 
