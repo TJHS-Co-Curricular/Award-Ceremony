@@ -170,14 +170,11 @@ function render() {
         el(
           "div",
           { class: "ghead shead" + (sLive || sPho ? " live" : "") },
-          el(
-            "span",
-            { class: "gt" },
-            a.section,
-            run.find((x) => x.sectionSub)
-              ? el("small", {}, run.find((x) => x.sectionSub).sectionSub)
-              : null,
-          ),
+          // 中文名占第一行（完整显示）；英文名和进度、按钮挤第二行，英文太长就截断，鼠标移上去看全文（用户定 2026-11-22）
+          el("span", { class: "gt" }, a.section),
+          run.find((x) => x.sectionSub)
+            ? el("span", { class: "gs", title: run.find((x) => x.sectionSub).sectionSub }, run.find((x) => x.sectionSub).sectionSub)
+            : null,
           sLive || sPho
             ? el("span", { class: "tag live" }, sPho ? "合影中" : "大类画面中")
             : el(
@@ -217,14 +214,11 @@ function render() {
         el(
           "div",
           { class: "ghead" + (gLive || gPho ? " live" : "") },
-          el(
-            "span",
-            { class: "gt" },
-            a.group,
-            run.find((x) => x.groupSub)
-              ? el("small", {}, run.find((x) => x.groupSub).groupSub)
-              : null,
-          ),
+          // 中文名占第一行（完整显示）；英文名和进度、按钮挤第二行，英文太长就截断，鼠标移上去看全文（用户定 2026-11-22）
+          el("span", { class: "gt" }, a.group),
+          run.find((x) => x.groupSub)
+            ? el("span", { class: "gs", title: run.find((x) => x.groupSub).groupSub }, run.find((x) => x.groupSub).groupSub)
+            : null,
           gLive || gPho
             ? el("span", { class: "tag live" }, gPho ? "合影中" : "分类标题中")
             : el(
@@ -255,6 +249,7 @@ function render() {
       (s.mode === "title" || s.mode === "reveal" || (s.mode === "photo" && !s.photoOf)) &&
       s.awardId === a.id;
     const done = s.doneIds.includes(a.id);
+    const meta = `${a.winners.length} 位 · ${a.revealMode === "nominee" ? "入围揭晓" : a.revealMode === "firstall" ? "先一后全" + (a.chunk ? `（每 ${a.chunk} 位一组）` : "") : MODE_NAME[a.revealMode] || "逐一揭晓"}`;
     const item = el(
       "div",
       {
@@ -271,7 +266,8 @@ function render() {
       el(
         "div",
         { class: "t" },
-        el("span", {}, `${i + 1}. ${a.title}`),
+        // 一行：奖项名（完整显示，太长换行）+ 人数 · 揭晓方式（小字，用户定 2026-11-22）
+        el("span", {}, `${i + 1}. ${a.title}`, el("small", { class: "mi" }, meta)),
         live && V.guest.armed
           ? el("span", { class: "tag guest" }, "🎤 嘉宾")
           : null,
@@ -289,11 +285,6 @@ function render() {
           : done
             ? el("span", { class: "tag done" }, "已公布")
             : el("span", { class: "tag" }, "待公布"),
-      ),
-      el(
-        "div",
-        { class: "m" },
-        `${a.winners.length} 位 · ${a.revealMode === "nominee" ? "入围揭晓" : a.revealMode === "firstall" ? "先一后全" + (a.chunk ? `（每 ${a.chunk} 位一组）` : "") : MODE_NAME[a.revealMode] || "逐一揭晓"}`,
       ),
     );
     if (sel === a.id) {

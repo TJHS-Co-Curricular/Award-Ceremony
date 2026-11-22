@@ -32,8 +32,8 @@ function enavRender() {
     if (a.group && (!p || p.group !== a.group || p.section !== a.section)) box.append(head('', a.group, a.groupSub, i));
     const w = enavWarn(a);
     box.append(el('div', { class: 'aitem' + (a.group ? ' ing' : ''), 'data-i': i, onclick: () => enavGo(i) },
-      el('div', { class: 't' }, el('span', {}, el('b', { class: 'no' }, `#${i + 1}`), a.title || '（未命名）')),
-      el('div', { class: 'm' }, `${a.winners.length} 位 · ${ENAV_MODE[a.revealMode] || ''}`, w ? el('span', { class: 'bad' }, ` · ⚠ ${w}`) : null)));
+      el('div', { class: 't' }, el('span', {}, el('b', { class: 'no' }, `#${i + 1}`), a.title || '（未命名）',
+        el('small', { class: 'mi' }, `${a.winners.length} 位 · ${ENAV_MODE[a.revealMode] || ''}`), w ? el('small', { class: 'mi bad' }, `⚠ ${w}`) : null))));
   });
   enavCur = -1; enavSpy();
 }
