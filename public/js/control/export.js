@@ -32,7 +32,7 @@ const EX_PRESET = () => ({
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
-  idSide: true,     // 学生证照片（-ID）横排：左照片右资料（exIdSide；维护者 2026-11-22，图片导出也照海报那样）
+  idSide: true,     // 学生证照片（-ID）横排：左资料右照片（exIdSide；维护者 2026-11-22，图片导出也照海报那样）
   matOn: true, matTop: 20, matAward: 22, matTopX: 0, matTopY: 0, matAwardX: 0, matAwardY: 0,
   // 团体图（含学生证照片）自己一套（用户定 2026-11-22：个人图文字在左边、要往右移的素材，团体图照片在中间，共用会歪）
   tmatTop: 20, tmatAward: 15.5, tmatTopX: 0, tmatTopY: 0, tmatAwardX: 0, tmatAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
@@ -309,7 +309,7 @@ async function exRender(award, w, fam) {
 }
 
 /* 学生证照片横排（海报导出，维护者 2026-11-22）：直排是照片在上、文字在下，学生证照片是直的，卡片会又窄又长；
- * 横排 = 左边照片（完整、不裁切）+ 右边名字 / 班级 / 学号 / 学会，中间一条金线，卡片金边、底色和直排一样。
+ * 横排 = 左边名字 / 班级 / 学号 / 学会 + 右边照片（完整、不裁切），中间一条金线（1.88 起左资料右照片，维护者 2026-11-22），卡片金边、底色和直排一样。
  * EXS.idSide 为真时用：图片导出「团体图 → 学生证横排」（默认打勾，1.87），海报导出的 poCard() 按 PO.idSide 临时盖掉它。返回卡片底边的 y。 */
 function exIdSide(g, o) {
   const { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S } = o;
@@ -324,7 +324,7 @@ function exIdSide(g, o) {
   let ph = availH, pw = ph * ar;
   if (pw > W * .9 - tw) { pw = W * .9 - tw; ph = pw / ar; }
   const ch = Math.min(availH, Math.max(ph, textH + pad * 2)), cw = pw + tw;
-  const cx0 = (W - cw) / 2, py = top + (availH - ch) / 2, phY = py + (ch - ph) / 2;
+  const cx0 = (W - cw) / 2, py = top + (availH - ch) / 2, phY = py + (ch - ph) / 2, phX = cx0 + tw;   // 照片在右边
   const r = Math.max(4, U * .008), lw = Math.max(2, U * .003);
   const card = () => { g.beginPath(); g.roundRect(cx0, py, cw, ch, r); };
   g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = U * .05; g.shadowOffsetY = U * .015;   // 卡片底色 + 阴影
@@ -332,13 +332,13 @@ function exIdSide(g, o) {
   g.save(); card(); g.clip();
   const cg = g.createLinearGradient(0, py, 0, py + ch); cg.addColorStop(0, 'rgba(255,255,255,.07)'); cg.addColorStop(1, 'rgba(255,255,255,.02)');
   g.fillStyle = cg; g.fillRect(cx0, py, cw, ch);
-  if (img) g.drawImage(img, cx0, phY, pw, ph);
-  else { const gr = g.createRadialGradient(cx0 + pw / 2, phY + ph * .35, 0, cx0 + pw / 2, phY + ph * .35, pw * .7); gr.addColorStop(0, thC('#a9822f')); gr.addColorStop(1, thC('#3e3016')); g.fillStyle = gr; g.fillRect(cx0, phY, pw, ph); }
-  g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(cx0 + pw - lw / 2, py, lw, ch);   // 照片和文字之间的金线（直的）
+  if (img) g.drawImage(img, phX, phY, pw, ph);
+  else { const gr = g.createRadialGradient(phX + pw / 2, phY + ph * .35, 0, phX + pw / 2, phY + ph * .35, pw * .7); gr.addColorStop(0, thC('#a9822f')); gr.addColorStop(1, thC('#3e3016')); g.fillStyle = gr; g.fillRect(phX, phY, pw, ph); }
+  g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(phX - lw / 2, py, lw, ch);   // 文字和照片之间的金线（直的）
   g.restore();
   g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
-  exLogo(g, logo, cx0, phY, pw);
-  const tcx = cx0 + pw + tw / 2;
+  exLogo(g, logo, phX, phY, pw);
+  const tcx = cx0 + tw / 2;   // 文字在左边
   let y = py + (ch - textH) / 2;
   shadow(true);
   block.forEach(([key, t, m], i) => {
