@@ -373,9 +373,12 @@ $('exFmt').onchange = () => { EXS.fmt = $('exFmt').value; exChanged(); };
 $('exAward').onchange = () => { exFillWho(); exPreview().catch(e => toast(e.message, true)); };
 $('exWho').onchange = () => exPreview().catch(e => toast(e.message, true));
 $('bExPreset').onclick = () => { if (confirm('把所有设定恢复成 Picture3 的预设？')) { const keep = { size: EXS.size, fmt: EXS.fmt }; EXS = { ...EX_PRESET(), ...keep }; exChanged(true); } };
-async function exOpen() {   // 切到「图片导出」分页时
+async function exEnsure() {   // 读图片导出设计和字体清单（「电子书」分页也要用：字体跟这里一样）
   if (!exLoaded) { try { EXS = exClean((await api('GET', '/api/control/export-style')).style); } catch { EXS = EX_PRESET(); } exLoaded = true; }
   try { fontFiles = (await api('GET', '/api/control/fonts')).fonts; } catch {}
+}
+async function exOpen() {   // 切到「图片导出」分页时
+  await exEnsure();
   await exLoadMats();
   $('exFontList').replaceChildren(...fontFiles.map(f => el('option', { value: 'file:' + f.name }, '📄 ' + f.name)));
   exFillSel(); exBuildUI(); exPreview().catch(e => toast(e.message, true));

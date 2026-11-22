@@ -11,6 +11,8 @@
  *   flash     揭晓闪光（黑底，叠加时用「滤色 / Screen」混合）
  * 循环：最后 fade 秒和开头交叉淡化，首尾接得上，播放器设「循环播放」就看不出接缝。
  * 文字是按网页实际排版逐字画到画布上的（位置、字体、渐层、阴影跟网页一样）。
+ * 学校 Logo（画面左上角 #slogo）：大会背景、宣传背景、待机背景、底层背景都画上去，大小 / 边距 / 不透明度照「效果控制 → 画面左上角 Logo」（用户定 2026-11-18）；
+ *   绿幕、揭晓闪光是叠加用的素材，不放 Logo。
  * opt.sink（服务器渲染、服务端有 NVENC 时由 lib/render.js 给）：每帧原始画面交给服务端的 ffmpeg 用显卡编码，不在浏览器编码（blob = null）。
  * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, size, codec, hw, width, height, speed }>、recStill(opt, fx) → Promise<{ blob, width, height }>（一张 PNG）、recCancel()
  * 需要：stage.js、clock.js、fxconf.js、mp4.js、fx/*、render.js、main.js（booted）
@@ -138,6 +140,20 @@ function recTitle(out, L, frac) {
   out.drawImage(T.tmp, T.px, T.py);
 }
 
+/* ---------- 学校 Logo（= 大屏左上角的 #slogo，CSS 见 display.css）：正方形框 = 画面高 × sLogoSize，按原比例缩进框里贴左上角 ---------- */
+const recHasLogo = c => c !== 'greenbg' && c !== 'flash';
+async function recLogoLayer(W, H, content) {
+  const im = $('slogo');
+  if (!recHasLogo(content) || !FXC.sLogoOn || !im.getAttribute('src')) return null;
+  try { await im.decode(); } catch { return null; }   // 载不到 Logo：影片照样导出，只是没有 Logo
+  if (!im.naturalWidth) return null;
+  const c = recCanvas(W, H), g = c.getContext('2d'); g.setTransform(W / SW, 0, 0, H / SH, 0, 0);
+  const box = SH * FXC.sLogoSize, m = SH * FXC.sLogoMargin, k = Math.min(box / im.naturalWidth, box / im.naturalHeight);
+  g.globalAlpha = FXC.sLogoOpacity;
+  g.drawImage(im, m, m, im.naturalWidth * k, im.naturalHeight * k);
+  return c;
+}
+
 /* ---------- 底层背景（= #stage 的 CSS 背景 + 边框） ---------- */
 function recBaseLayers(W, H) {
   const bgc = recCanvas(W, H), g = bgc.getContext('2d'); g.setTransform(W / SW, 0, 0, H / SH, 0, 0);
@@ -244,12 +260,13 @@ function recGreen(o, W, H) {
 async function recStill(opt, fx) {
   await recPrepare(opt, fx);
   const content = opt.content, gold = $('goldfx'), W = gold.width, H = gold.height;
-  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
   for (let i = 0; i < Math.round((opt.seconds || 4) * 60); i++) { if (recStop) throw new Error('已取消'); recTick(1000 / 60); if (i % 60 === 0) await recYield(); }
   const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });
   if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
   else { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
   if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, .25); }   // 流光停在标题中间偏亮的位置
+  if (LG) o.drawImage(LG, 0, 0);
   if (content === 'greenbg') recGreen(o, W, H);
   const blob = await new Promise(r => out.toBlob(r, 'image/png'));
   return { blob, width: W, height: H };
@@ -262,7 +279,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
   await recPrepare(opt, fx);
   const content = opt.content, fps = opt.fps === 60 ? 60 : 30, sub = 60 / fps;
   const gold = $('goldfx'), W = gold.width, H = gold.height;
-  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
   const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });   // 绿幕每帧要读回像素
 
   const N = Math.round(opt.seconds * fps), loop = content !== 'flash' && opt.fade > 0, C = loop ? Math.min(Math.round(opt.fade * fps), Math.floor(N / 2)) : 0;
@@ -337,6 +354,7 @@ async function recRun(opt, fx, onProgress, allowHw) {
         o.globalAlpha = (i - N + .5) / C; o.drawImage(bm, 0, 0); o.globalAlpha = 1; bm.close();
       }
       if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, ((k / fps) / P) % 1); }
+      if (LG) o.drawImage(LG, 0, 0);   // Logo 在最上面（循环淡化之后画，接缝时 Logo 不会闪）
       if (content === 'greenbg') recGreen(o, W, H);   // 循环淡化在黑底上做完再换绿底
       await E.push(out, k, o);
       onProgress(++done / total, '渲染中');

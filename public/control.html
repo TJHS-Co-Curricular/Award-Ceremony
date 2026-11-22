@@ -34,13 +34,17 @@
 
 <div id="app" class="hidden">
   <header class="top">
-    <h1 id="hTitle">颁奖控制台<small id="hSub"></small></h1>
-    <span><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
-    <span class="tag" id="dispCount">输出页 0</span>
-    <span class="tag" id="encTag"></span>
-    <div class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="fx">效果控制</button></div>
-    <button id="bPrivacy" title="名单模糊，鼠标悬停才显示">🙈 名单模糊：开</button>
-    <button id="bLogout">退出</button>
+    <div class="brand"><h1 id="hTitle">颁奖控制台</h1><small id="hSub"></small></div>
+    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="fx">效果控制</button></nav>
+    <div class="side">
+      <div class="status">
+        <span class="tag conn"><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
+        <span class="tag" id="dispCount">输出页 0</span>
+        <span class="tag" id="encTag"></span>
+      </div>
+      <button id="bPrivacy" title="名单模糊，鼠标悬停才显示">🙈 名单模糊：开</button>
+      <button id="bLogout" title="退出登录">退出</button>
+    </div>
   </header>
 
   <div id="verWarn" class="hidden" style="padding:10px 16px;background:#5a2a12;border-bottom:1px solid var(--warn);color:#ffd9b0;font-weight:600"></div>
@@ -190,6 +194,76 @@
             <canvas id="exPv" width="1280" height="720" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#000;display:block"></canvas>
             <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><span id="exPvCap" class="muted" style="font-size:12px;flex:1">—</span><span id="exProg" class="muted" style="font-size:12px"></span></div>
             <div class="autobar" style="margin-top:6px"><i id="exBar"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 电子书（A4 纪念特刊）：js/control/ebook.js -->
+    <div id="ebook" class="hidden">
+      <div class="xwrap">
+        <div class="ebar">
+          <b style="font-size:15px">电子书（A4 纪念特刊）</b>
+          <span id="ebSaveState" class="muted" style="font-size:12px"></span>
+          <span class="grow"></span>
+          <span id="ebProg" class="muted" style="font-size:12px"></span>
+          <button id="bExportBook" title="翻书网页：一个 .html 文件，双击用浏览器打开就能翻（电脑两页摊开、手机一页），也能打印成 A4">导出电子书（网页）</button>
+          <button id="bExportPdf" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700" title="同一本书直接存成 PDF（每页一张 A4）：可以上传到 Google Drive、放进 Google Sites，或交给印刷店">导出 PDF</button>
+        </div>
+        <div class="xgrid">
+          <div class="xside">
+            <div class="ecard">
+              <div class="head"><b style="flex:1">封面与排序</b></div>
+              <label class="xr">封面副标题 <input id="eb_coverSub" maxlength="40" placeholder="颁奖纪念特刊"><span></span></label>
+              <label class="xr" title="名称开头是年份时，年份自己一行：封面（2026 / 联课表扬大会）和大类分隔页（2026年 / 成果汇报竞赛奖）">年份单独一行 <input type="checkbox" id="eb_coverYear" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr">印学号 <input type="checkbox" id="eb_showSid" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="现场从低到高公布（第 3 名 → 第 1 名、铜 → 银 → 金）；勾选后电子书在同一分类里倒过来，最高的排前面">最高名次排前面 <input type="checkbox" id="eb_topFirst" style="width:auto;justify-self:start"><span></span></label>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">前言</b><span class="muted" style="font-size:12px">封面后面第一页；没填正文 = 没有前言</span></div>
+              <label class="xr">标题 <input id="eb_prefaceTitle" maxlength="30" placeholder="前言"><span></span></label>
+              <div class="ebl">正文（一行 = 一段，每段开头自动空两格）</div>
+              <textarea id="eb_preface" rows="6" style="width:100%"></textarea>
+              <label class="xr">署名 <input id="eb_prefaceBy" maxlength="60" placeholder="—— 编辑委员会"><span></span></label>
+              <label class="xr">照片（文件名，可空） <input id="eb_prefacePhoto" maxlength="120" placeholder="前言.jpg"><span></span></label>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">照片</b><span class="muted" style="font-size:12px">照片先放进 <code>data/photos/</code></span></div>
+              <label class="xr">集锦标题 <input id="eb_galleryTitle" maxlength="30" placeholder="活动剪影"><span></span></label>
+              <div class="ebl">活动照片集锦（目录后面；文件名一行一个）</div>
+              <textarea id="eb_gallery" rows="4" placeholder="集锦01.jpg&#10;集锦02.jpg" style="width:100%"></textarea>
+              <label class="xr">花絮标题 <input id="eb_btsTitle" maxlength="30" placeholder="幕后花絮"><span></span></label>
+              <div class="ebl">幕后花絮（奖项后面；一行一张：<code>文件名 | 说明</code>，说明可以不写）</div>
+              <textarea id="eb_bts" rows="4" placeholder="花絮01.jpg | 彩排到深夜的工作人员&#10;花絮02.jpg" style="width:100%"></textarea>
+              <div id="ebGalleryInfo" class="muted" style="font-size:12px;margin-top:6px"></div>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">编委与鸣谢</b><span class="muted" style="font-size:12px">都没填 = 没有这一页</span></div>
+              <div class="ebl">编辑委员会（一行一个，例：<code>顾问：某某老师</code>）</div>
+              <textarea id="eb_editors" rows="4" style="width:100%"></textarea>
+              <div class="ebl">鸣谢（一行一个）</div>
+              <textarea id="eb_thanks" rows="3" style="width:100%"></textarea>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">附录</b><span class="muted" style="font-size:12px">最后一页；没填正文 = 没有附录</span></div>
+              <label class="xr">标题 <input id="eb_appendixTitle" maxlength="60" placeholder="例：联课活动个人表现表扬办法"><span></span></label>
+              <label class="xr">副标题 <input id="eb_appendixSub" maxlength="120" placeholder="例：联-8 · Peraturan …"><span></span></label>
+              <div class="ebl">正文</div>
+              <textarea id="eb_appendix" rows="8" style="width:100%"></textarea>
+              <p class="help">按行首自动排版：<code>一、</code> 大标题；<code>（一）</code> 小标题；<code>1.</code> 条文；<code>(1)</code> 细项；<code>注：</code> 以下放进备注框；一行写好几个「1. 甲 2. 乙」排成一排标签。字会自动缩小放进一页，太长才分页。</p>
+            </div>
+            <p class="help">得奖者名单来自「奖项编辑」（含还没保存的修改），字体跟「图片导出」一样。设置自动保存在 <code>data/ebook.json</code>。⚠ 导出的电子书含学生名字和照片，发出去前请先确认可以公开。</p>
+          </div>
+          <div class="xmain">
+            <div class="ebnav">
+              <button id="ebPrev" title="上一页">◀</button>
+              <button id="bEbPreview" title="照现在的设置重新画这一页">第</button><input id="ebPage" type="number" min="1" value="1"><span>页</span>
+              <button id="ebNext" title="下一页">▶</button>
+              <span id="ebPages" class="muted" style="font-size:12px"></span>
+            </div>
+            <canvas id="ebPv" width="1280" height="1810" class="ebpv"></canvas>
+            <div id="ebPvCap" class="muted" style="font-size:12px;margin-top:8px;text-align:center">—</div>
+            <div class="autobar" style="margin-top:6px"><i id="ebBar"></i></div>
           </div>
         </div>
       </div>
@@ -357,6 +431,7 @@
 <script src="/assets/js/control/photos.js"></script>
 <script src="/assets/js/control/fonts.js"></script>
 <script src="/assets/js/control/export.js"></script>
+<script src="/assets/js/control/ebook.js"></script>
 <script src="/assets/js/control/fx.js"></script>
 <script src="/assets/js/control/main.js"></script>
 </body>

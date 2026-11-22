@@ -26,7 +26,7 @@ function renderFirstAll(v) {
   const animate = booted && forward && !edited;
 
   $('rTitle').textContent = v.award.title; $('rSub').textContent = v.award.subtitle || '';
-  $('rTag').textContent = solo || fv.pages <= 1 ? '' : fv.chunk ? `第 ${fv.from + 1} – ${fv.to} 位` : `第 ${fv.page + 1} / ${fv.pages} 页`;   // 分组：这一组的合集
+  $('rTag').textContent = solo || fv.pages <= 1 || fv.chunk ? '' : `第 ${fv.page + 1} / ${fv.pages} 页`;   // 分组的合集不写「第 1 – 5 位」（用户定 2026-11-18）
   $('s-reveal').classList.remove('suspense', 'crowned');
   buildGrid({ award: { ...v.award, total: list.length, nominee: false } });
   const cards = $('grid').children, step = list.length > 1 ? v.award.cascade || 600 : 0;

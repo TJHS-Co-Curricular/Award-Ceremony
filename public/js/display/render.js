@@ -62,9 +62,9 @@ function render(v) {
     show('s-message'); cur = { mode: 'message' }; return;
   }
   // 大类画面（第 1 层）和分类标题画面（第 2 层）共用 #s-group：大字是名称，下面列出里面的分类 / 奖项。
-  // 分类标题画面上方的小字：属于某个大类时写大类名称，否则写「奖 项 类 别」
-  if (v.mode === 'section' && v.section) return renderList('section', '奖 项 类 别', v.section.title, v.section.sub, v.section.items, v.section.noNum);
-  if (v.mode === 'group' && v.group) return renderList('group', v.group.section || '奖 项 类 别', v.group.title, v.group.sub, v.group.awards, v.group.noNum);
+  // 分类标题画面上方的小字：属于某个大类时写大类名称，否则不写（不再显示「奖 项 类 别」，用户定 2026-11-18）
+  if (v.mode === 'section' && v.section) return renderList('section', '', v.section.title, v.section.sub, v.section.items, v.section.noNum);
+  if (v.mode === 'group' && v.group) return renderList('group', v.group.section || '', v.group.title, v.group.sub, v.group.awards, v.group.noNum);
   if (v.mode === 'photo' && v.photo) return renderPhoto(v);
   const gl = v.award?.group ? `${v.award.group}${v.award.groupTotal > 1 && !v.award.groupNoNum ? ' · 奖项 ' + String(v.award.groupIndex).padStart(2, '0') : ''}` : '';
   $('tGroup').textContent = gl; $('rGroup').textContent = gl;
@@ -107,10 +107,57 @@ function render(v) {
   }
 }
 
+/* 大类 / 分类画面的大字（用户定 2026-11-18）：
+ *   1. 一行放得下就一行；放不下先缩小字号，最多缩到 GT_MIN（75%）；
+ *   2. 还放不下才分行：每行最多 GT_MAX 个字，几行的字数差不多（不会剩一个字在下一行），
+ *      优先在「-」「·」、空格后面断开；英文单词、连在一起的数字（2026）不拆开。分行后哪一行还太宽再缩小。 */
+const GT_MAX = 10, GT_MIN = .75;
+const gtLen = s => [...s].length;
+function titleLines(text, max) {
+  // 记号：英文单词 / 数字一组，其它每个字一个，空格单独一个（只当断点，不算字数）
+  const toks = String(text || '').trim().match(/[A-Za-z0-9.'’]+|\s+|./gu) || [];
+  const len = t => (/^\s+$/.test(t) ? 0 : gtLen(t));
+  const total = toks.reduce((n, t) => n + len(t), 0);
+  if (total <= max) return [toks.join('').trim()];
+  const rows = Math.max(2, Math.ceil(total / max)), goal = total / rows, N = toks.length;
+  const pre = [0]; toks.forEach((t, i) => pre.push(pre[i] + len(t)));
+  // 在第 j 个记号前面断开的好处：前一个是「-」「·」之类的符号，或这里是空格
+  const nice = j => j > 0 && j < N && (/^[\-–—·・:：,，、\/|]$/.test(toks[j - 1]) || /^\s+$/.test(toks[j]) || /^\s+$/.test(toks[j - 1]));
+  // dp[r][j]：前 j 个记号排成 r 行的最小代价（每行和平均字数差的平方，好断点减分）；每行不超过 max 个字
+  const dp = Array.from({ length: rows + 1 }, () => new Array(N + 1).fill(Infinity)), from = dp.map(r => r.map(() => -1));
+  dp[0][0] = 0;
+  for (let r = 1; r <= rows; r++) for (let j = 1; j <= N; j++) for (let i = 0; i < j; i++) {
+    const n = pre[j] - pre[i];
+    if (n === 0 || n > max || dp[r - 1][i] === Infinity) continue;
+    const c = dp[r - 1][i] + (n - goal) ** 2 - (j < N && nice(j) ? 2 : 0);
+    if (c < dp[r][j]) { dp[r][j] = c; from[r][j] = i; }
+  }
+  if (dp[rows][N] === Infinity) return [toks.join('').trim()];   // 一个英文单词就超过上限之类：不分行，交给缩字
+  const lines = [];
+  for (let r = rows, j = N; r > 0; r--) { const i = from[r][j]; lines.unshift(toks.slice(i, j).join('').trim()); j = i; }
+  return lines;
+}
+// 放进 #gTitle：先试一行（缩小到 GT_MIN 以内放得下就好），不行再分行
+function fitGroupTitle(h, title) {
+  const put = lines => { h.textContent = ''; lines.forEach((s, i) => { if (i) h.appendChild(document.createElement('br')); h.appendChild(document.createTextNode(s)); }); };
+  // 量的时候撑满可用宽度（CSS 的 max-width），一行不换行，看内容超出多少；字号用 px（em 会按外层算）
+  h.style.fontSize = ''; h.style.whiteSpace = 'nowrap'; h.style.width = '100%';
+  put([String(title || '').trim()]);
+  const base = parseFloat(getComputedStyle(h).fontSize), room = h.clientWidth, full = h.scrollWidth;
+  if (full > room + 1) {
+    if (room / full >= GT_MIN) h.style.fontSize = (base * room / full * .99) + 'px';
+    else {
+      put(titleLines(title, GT_MAX));
+      const w = h.scrollWidth; if (w > room + 1) h.style.fontSize = (base * room / w * .99) + 'px';   // 分行后还太宽（很窄的屏幕）：再缩小
+    }
+  }
+  h.style.whiteSpace = ''; h.style.width = '';
+}
 function renderList(mode, kick, title, sub, items, noNum) {
   const key = [mode, kick, title, noNum ? 1 : 0, ...items.map(x => x.title)].join('|');
   if ((cur.mode === 'group' || cur.mode === 'section') && cur.key !== key) $('s-group').classList.remove('active');   // 换了大类 / 分类：重新进场
-  $('gKick').textContent = kick; $('gTitle').textContent = title; $('gSub').textContent = sub || '';
+  $('gKick').textContent = kick; $('gSub').textContent = sub || '';
+  $('gTitle').textContent = title;   // 量好尺寸再排（fitGroupTitle，在 show 之后）
   const ol = $('gList'); ol.textContent = '';
   items.forEach((x, i) => {
     const li = document.createElement('li');
@@ -123,12 +170,13 @@ function renderList(mode, kick, title, sub, items, noNum) {
   $('s-group').classList.toggle('nonum', !!noNum);
   ol.style.display = items.length ? '' : 'none';   // 大类设定为不列分类
   show('s-group'); cur = { mode, key };
+  fitGroupTitle($('gTitle'), title);   // 字体载好 / 屏幕尺寸变了会经 relayout() 再排一次
 }
 
 /* 合影画面：「分类 — 奖项名称」，一行放不下就分两行（分类小一点在上） */
 const PHOTO_TOP = 110;   // 顶端最少离上缘多少（舞台像素）；往上移多少在「效果控制」调（FXC.photoUp）
 function renderPhoto(v) {
-  const p = v.photo, kick = v.event?.photoKicker !== false, key = 'photo|' + p.group + '|' + p.title + '|' + kick + '|' + SW;
+  const p = v.photo, kick = v.event?.photoKicker !== false, key = 'photo|' + (p.of || '') + '|' + p.group + '|' + p.title + '|' + kick + '|' + SW;
   if (cur.mode === 'photo' && cur.key === key) { show('s-photo'); return; }
   if (cur.mode === 'photo') $('s-photo').classList.remove('active');   // 换了奖项：重新进场
   const sc = $('s-photo'), h = $('pTitle');

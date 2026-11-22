@@ -37,11 +37,27 @@ textarea{resize:vertical;font-family:ui-monospace,Consolas,"Microsoft YaHei",mon
 
 /* ===== 布局、顶栏、分页 ===== */
 #app{display:flex;flex-direction:column;height:100%}
-header.top{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
-header.top h1{margin:0;font-size:16px;font-weight:700;margin-right:auto}
-header.top h1 small{color:var(--muted);font-weight:400;margin-left:8px}
-.tabs{display:flex;gap:4px}
-.tabs button.on{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+/* 顶栏三块：左 = 控制台名 + 活动名称；中 = 四个分页；右 = 连线状态 + 名单模糊 + 退出 */
+header.top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header.top .brand{min-width:0;display:flex;flex-direction:column;line-height:1.25}
+header.top h1{margin:0;font-size:16px;font-weight:700;white-space:nowrap}
+header.top .brand small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header.top .brand small:empty{display:none}
+.tabs{display:flex;gap:2px;padding:3px;background:#0c0e12;border:1px solid var(--line);border-radius:9px}
+.tabs button{border:0;background:transparent;border-radius:6px;padding:7px 18px;color:var(--muted);white-space:nowrap}
+.tabs button:hover{background:var(--panel2);color:var(--ink)}
+.tabs button.on{background:var(--gold);color:#1a1405;font-weight:700}
+header.top .side{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+header.top .status{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-right:4px}
+header.top .status .tag:empty{display:none}
+header.top .side > button{padding:6px 10px;white-space:nowrap}
+.tag.conn{display:inline-flex;align-items:center}
+/* 窗口窄时：分页移到第二行、占满宽度 */
+@media (max-width:1180px){
+  header.top{grid-template-columns:minmax(0,1fr) auto}
+  header.top .tabs{grid-column:1 / -1;grid-row:2;justify-content:center}
+  header.top .tabs button{flex:1}
+}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px}
 .dot.ok{background:var(--go-hi)}
 main{flex:1;min-height:0}
@@ -169,6 +185,13 @@ label.f>span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
 details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
 summary{cursor:pointer;font-weight:600}
 .help{font-size:12px;color:var(--muted);margin:8px 0}
+/* 电子书分页：左边设置，右边一页 A4 预览（整页放进视窗） */
+#ebook .xr{grid-template-columns:130px 1fr 0;gap:10px 8px}
+.ebl{font-size:13px;margin:8px 0 3px;color:var(--muted)}
+.ebnav{display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:8px}
+.ebnav button{padding:5px 12px}
+.ebnav input{width:64px;text-align:center;padding:5px}
+.ebpv{display:block;margin:0 auto;max-width:100%;max-height:calc(100vh - 200px);width:auto;height:auto;border:1px solid var(--line);border-radius:6px;background:#000}
 code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius:4px;font-size:12px}
 /* ===== 提示框 ===== */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#232836;border:1px solid var(--line);padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}

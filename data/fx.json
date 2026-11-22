@@ -32,7 +32,7 @@
   },
   "screens": {
     "副屏": {
-      "sLogoSize": 0.12,
+      "sLogoSize": 0.27,
       "sLogoMargin": 0.02,
       "sLogoOpacity": 0.55
     }

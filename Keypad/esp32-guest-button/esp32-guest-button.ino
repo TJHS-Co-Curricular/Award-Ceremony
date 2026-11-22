@@ -144,7 +144,7 @@ bool parseGuestUrl(String u, String &h, uint16_t &p, String &k) {
 
 // 灯号（优先级从上到下）：             单灯            三色灯
 //   刚揭晓成功                          闪 3 下         绿闪 3 下
-//   按了但还没授权 / 太快                短闪 1 下       红短闪 1 下
+//   按了但没成功（没授权 / 太快 / 网络） 快闪 1 秒       红亮 1 秒
 //   设置模式（手机连 AwardBox-XXXX）  慢闪            红黄轮流慢闪
 //   正在连 WiFi 或服务端                 快闪            红常亮
 //   嘉宾链接错误（密钥不对）             闪 2 下停一下   红闪 2 下停一下
@@ -182,9 +182,10 @@ void ledInit() {
   }
 }
 
+// 成功：闪 times 下（三色灯 = 绿闪）；失败：单灯快闪 1 秒，三色灯红灯亮 1 秒
 void flash(int times, bool good) {
   flashStart = millis();
-  flashUntil = flashStart + times * 200UL;
+  flashUntil = flashStart + (good ? times * 200UL : 1000UL);
   flashGood = good;
 }
 
@@ -195,7 +196,7 @@ void updateLed() {
   if (now < flashUntil) {
     bool on = ((now - flashStart) % 200) < 100;
     ledWrite(on);
-    rgbWrite(on && !flashGood, false, on && flashGood);
+    rgbWrite(!flashGood, false, on && flashGood);
     return;
   }
   updateRgb(now);
@@ -408,21 +409,23 @@ void stopPortal() {
 
 // ============================================================
 // 问服务端：现在能不能按（每 POLL_MS 一次，以服务端的回答为准）
-//   GET /api/guest/button?k=密钥&id=AwardBox-XXXX&rssi=-55&rtt=12&miss=0&up=123&v=2
+//   GET /api/guest/button?k=密钥&id=AwardBox-XXXX&rssi=-55&rtt=12&miss=0&up=123&v=4（揭晓失败过才加 &rf=次数&rc=上次的代码）
 //   → 200 {"armed":true} / {"armed":false}；403 = 密钥不对；404 = 服务端太旧（1.38 以前）
 // 信号（rssi，dBm）、上一次的延迟（rtt，毫秒）、开机以来失败几次（miss）给控制端看
 // ============================================================
 
-const char *FW_VER = "3";   // 按钮程序的版本，控制端看得到
+const char *FW_VER = "4";   // 按钮程序的版本，控制端看得到
 const uint16_t HTTP_TIMEOUT_MS = 1500;
 
-// 问状态和揭晓共用一条连接（keep-alive），量到的延迟就是一次请求来回的时间，不含重新连线
+// 问状态一直用同一条连接（keep-alive），量到的延迟就是一次请求来回的时间，不含重新连线；揭晓每次开新的（见 reveal()）
 WiFiClient net;
 HTTPClient http;
 unsigned long nextPollAt = 0;
 int pollFails = 0;          // 连续失败几次
 long lastRtt = -1;          // 上一次的延迟（毫秒），-1 = 还没有
 uint32_t missCount = 0;     // 开机以来失败几次
+uint32_t revFails = 0;      // 开机以来揭晓失败几次（下一次问状态时报给服务端，写进日志、控制端看得到）
+int revCode = 0;            // 上一次揭晓失败的代码：< 0 = 网络（ESP32 HTTPClient 的错误码），其它 = HTTP 状态码
 
 void setArmed(bool a) {
   if (a == armed) return;
@@ -462,6 +465,7 @@ void pollServer() {
   String uri = "/api/guest/button?k=" + key + "&id=" + apName + "&rssi=" + String(WiFi.RSSI()) +
                "&miss=" + String(missCount) + "&up=" + String(now / 1000) + "&v=" + FW_VER;
   if (lastRtt >= 0) uri += "&rtt=" + String(lastRtt);
+  if (revFails) uri += "&rf=" + String(revFails) + "&rc=" + String(revCode);
   String body;
   int code = httpCall(false, uri, body, HTTP_TIMEOUT_MS);
   unsigned long rtt = millis() - now;
@@ -513,8 +517,20 @@ void reveal() {
   }
   String body;
   unsigned long t0 = millis();
+  // 揭晓用一条新的连接：和问状态共用的那条可能已经被断开，拿来发就会失败
+  // （问状态失败了 0.5 秒后会再问，揭晓只有按下去这一次，不能赌）
+  net.stop();
   int code = httpCall(true, "/api/guest/reveal?k=" + key, body, 3000);
-  Serial.printf("揭晓请求 %lu ms\n", millis() - t0);
+  if (code == HTTPC_ERROR_CONNECTION_REFUSED) {   // 连不上：请求根本没送出去，再试一次不会揭晓两位
+    Serial.println("揭晓：连不上服务端，马上再试一次");
+    net.stop();
+    code = httpCall(true, "/api/guest/reveal?k=" + key, body, 3000);
+  }
+  Serial.printf("揭晓请求 %lu ms，结果 %d\n", millis() - t0, code);
+  if (code != 200) {
+    revFails++;
+    revCode = code;
+  }
   nextPollAt = 0;   // 马上再问一次能不能按（揭晓完服务端会自动收回授权）
   if (code == 200) {
     Serial.println("揭晓成功");

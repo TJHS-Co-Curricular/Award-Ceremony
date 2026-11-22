@@ -18,9 +18,10 @@ for (const b of document.querySelectorAll(".tabs button"))
   b.onclick = () => {
     for (const x of document.querySelectorAll(".tabs button"))
       x.classList.toggle("on", x === b);
-    for (const t of ["live", "edit", "export", "fx"])
+    for (const t of ["live", "edit", "export", "ebook", "fx"])
       $(t).classList.toggle("hidden", b.dataset.tab !== t);
     if (b.dataset.tab === "export") exOpen();
+    if (b.dataset.tab === "ebook") ebTabOpen();
     if (b.dataset.tab === "fx") fxOpen();
     else fxClose();
     if (b.dataset.tab === "edit") {

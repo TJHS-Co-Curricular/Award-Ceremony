@@ -34,7 +34,13 @@ function labelOf(a, x) {
       section:
         "大类画面 " +
         ((x.awardId && V.awards.find((w) => w.id === x.awardId)?.section) || ""),
-      photo: "合影画面 " + (t || ""),
+      photo:
+        "合影画面 " +
+        ((x.of === "section"
+          ? V.awards.find((w) => w.id === x.awardId)?.section
+          : x.of === "group"
+            ? V.awards.find((w) => w.id === x.awardId)?.group
+            : t) || ""),
       diag: x.on ? "输出页显示帧数" : "输出页隐藏帧数",
       revealAll: "全部揭晓 " + (t || ""),
       markPending: "标为未公布 " + (t || ""),

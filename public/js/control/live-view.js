@@ -43,6 +43,9 @@ function renderButtons() {
               `开机 ${upTxt(b.up)}` + (b.miss ? ` · 开机以来问服务端失败 ${b.miss} 次` : ""),
             )
           : null,
+        b.online && b.revFail
+          ? el("div", { class: "lv bad" }, `⚠ 开机以来按了没揭晓成功 ${b.revFail} 次（最后一次：${b.revWhy}）`)
+          : null,
       ),
     );
   }
@@ -103,11 +106,20 @@ function render() {
   $("bGuest").firstChild.textContent = g.armed
     ? "收回嘉宾授权"
     : "🎤 交给嘉宾揭晓当前奖项";
-  $("bGuest").disabled =
-    !g.armed &&
-    !(
-      onAward && !(s.mode === "reveal" && s.revealed >= onAward.winners.length)
-    );
+  // 能不能交给嘉宾：当前奖项还没揭晓完（和服务端 show.js 的 isComplete() 同一条规则）。
+  // 入围揭晓：入围者都出现后，还有「揭晓得主」那一步；先一后全：名字都出现后，还有「全部出现」的合集
+  const n = onAward ? onAward.winners.length : 0,
+    nomAward = onAward && onAward.revealMode === "nominee" && onAward.winners.some((w) => w.win),
+    faAward = onAward && onAward.revealMode === "firstall",
+    faPages = faAward ? Math.ceil(n / (onAward.chunk >= 2 ? onAward.chunk : 20)) : 0;   // 20 = 服务端 GALLERY_MAX
+  const awardDone =
+    s.mode === "reveal" &&
+    (nomAward
+      ? s.phase === "winner"
+      : faAward
+        ? s.phase === "all" && (s.page || 0) >= faPages - 1
+        : s.revealed >= n);
+  $("bGuest").disabled = !g.armed && !(onAward && !awardDone);
   $("gState").textContent = g.armed
     ? `🎤 已授权：嘉宾可揭晓「${gAward?.title || ""}」（${s.mode === "reveal" ? s.revealed : 0}/${gAward?.winners.length || 0}），揭晓完自动收回`
     : V.guests.length || V.buttons.some((b) => b.online)
@@ -149,12 +161,15 @@ function render() {
       let e = i;
       while (e + 1 < V.awards.length && V.awards[e + 1].section === a.section) e++;
       const run = V.awards.slice(i, e + 1),
-        sLive = s.mode === "section" && run.some((x) => x.id === s.awardId);
+        sLive = s.mode === "section" && run.some((x) => x.id === s.awardId),
+        sPho = s.mode === "photo" && s.photoOf === "section" && run.some((x) => x.id === s.awardId);
       const first = run.find((x) => !s.doneIds.includes(x.id)) || a;
+      // 合影：现在的奖项在这个大类里就用它（按「下一步」接着走），否则用第一个还没公布的
+      const phoId = (run.some((x) => x.id === s.awardId) ? s.awardId : first.id);
       list.append(
         el(
           "div",
-          { class: "ghead shead" + (sLive ? " live" : "") },
+          { class: "ghead shead" + (sLive || sPho ? " live" : "") },
           el(
             "span",
             { class: "gt" },
@@ -163,8 +178,8 @@ function render() {
               ? el("small", {}, run.find((x) => x.sectionSub).sectionSub)
               : null,
           ),
-          sLive
-            ? el("span", { class: "tag live" }, "大类画面中")
+          sLive || sPho
+            ? el("span", { class: "tag live" }, sPho ? "合影中" : "大类画面中")
             : el(
                 "span",
                 { class: "tag" },
@@ -178,6 +193,14 @@ function render() {
             },
             "大类画面",
           ),
+          el(
+            "button",
+            {
+              onclick: () => act("photo", { awardId: phoId, of: "section" }),
+              title: "大屏显示这个大类的名称，给整个大类的大合照用",
+            },
+            "合影画面",
+          ),
         ),
       );
     }
@@ -186,12 +209,14 @@ function render() {
       let e = i;
       while (e + 1 < V.awards.length && V.awards[e + 1].group === a.group) e++;
       const run = V.awards.slice(i, e + 1),
-        gLive = s.mode === "group" && run.some((x) => x.id === s.awardId);
+        gLive = s.mode === "group" && run.some((x) => x.id === s.awardId),
+        gPho = s.mode === "photo" && s.photoOf === "group" && run.some((x) => x.id === s.awardId);
       const first = run.find((x) => !s.doneIds.includes(x.id)) || a;
+      const phoId = (run.some((x) => x.id === s.awardId) ? s.awardId : first.id);
       list.append(
         el(
           "div",
-          { class: "ghead" + (gLive ? " live" : "") },
+          { class: "ghead" + (gLive || gPho ? " live" : "") },
           el(
             "span",
             { class: "gt" },
@@ -200,8 +225,8 @@ function render() {
               ? el("small", {}, run.find((x) => x.groupSub).groupSub)
               : null,
           ),
-          gLive
-            ? el("span", { class: "tag live" }, "分类标题中")
+          gLive || gPho
+            ? el("span", { class: "tag live" }, gPho ? "合影中" : "分类标题中")
             : el(
                 "span",
                 { class: "tag" },
@@ -215,11 +240,19 @@ function render() {
             },
             "分类标题",
           ),
+          el(
+            "button",
+            {
+              onclick: () => act("photo", { awardId: phoId, of: "group" }),
+              title: "大屏显示这个分类的名称，给整个分类的大合照用",
+            },
+            "合影画面",
+          ),
         ),
       );
     }
     const live =
-      (s.mode === "title" || s.mode === "reveal" || s.mode === "photo") &&
+      (s.mode === "title" || s.mode === "reveal" || (s.mode === "photo" && !s.photoOf)) &&
       s.awardId === a.id;
     const done = s.doneIds.includes(a.id);
     const item = el(

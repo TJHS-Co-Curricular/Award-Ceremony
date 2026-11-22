@@ -52,6 +52,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
 /* ===== 分类标题画面（进入新分类时） ===== */
 #s-group .kicker{margin-bottom:40px}
+#gKick:empty{display:none}   /* 没有大类名称时不放小字 */
 #s-group h1{font-family:var(--serif);font-weight:800;font-size:150px;letter-spacing:.1em;line-height:1.2;text-align:center;max-width:calc(100% - 220px);margin:36px 0 18px}
 #s-group .gsub{font-size:42px;letter-spacing:.42em;padding-left:.42em;color:var(--muted);text-transform:uppercase;text-align:center;max-width:calc(100% - 220px)}
 #s-group ol{list-style:none;margin-top:70px;display:flex;flex-direction:column;gap:22px;align-items:flex-start}
