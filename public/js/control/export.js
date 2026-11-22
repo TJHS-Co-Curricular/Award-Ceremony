@@ -37,7 +37,8 @@ const EX_PRESET = () => ({
   tmatTop: 20, tmatAward: 15.5, tmatTopX: 0, tmatTopY: 0, tmatAwardX: 0, tmatAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
     // 奖项名（中文 + 英文）换成 data/material/ 里同名的素材图片；大小 = 画面高度 %（个人图）
   logoOn: true, logoSize: 16, logoMargin: 2.5, logoOpacity: 100,   // 照片右上角的学校 Logo（「效果控制」上传）；大小、边距 = 照片宽度 %
-  size: '1920x1080', fmt: 'jpg'
+  size: '1920x1080', fmt: 'jpg',
+  winOnly: false   // 入围揭晓的奖项只导出得主（维护者 2026-11-22）
 });
 // 读回来的设计要检查一遍：缺的补默认值、数字限制范围、颜色必须是 #rrggbb
 function exClean(v) {
@@ -60,6 +61,7 @@ function exClean(v) {
   o.logoOn = v?.logoOn !== false; o.logoSize = num(v?.logoSize, 4, 50, d.logoSize); o.logoMargin = num(v?.logoMargin, 0, 10, d.logoMargin); o.logoOpacity = num(v?.logoOpacity, 20, 100, d.logoOpacity);
   o.size = ['1920x1080', '3840x2160', 'photo'].includes(v?.size) ? v.size : d.size;
   o.fmt = v?.fmt === 'png' ? 'png' : 'jpg';
+  o.winOnly = !!v?.winOnly;
   return o;
 }
 let EXS = EX_PRESET(), exLoaded = false, exSaveT = 0, exPvT = 0;
@@ -303,6 +305,18 @@ async function exRender(award, w, fam) {
 const safeFile = t => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 60) || '未命名';
 
 /* ---- 分页界面 ---- */
+/* ---- 入围揭晓的得主（维护者 2026-11-22）----
+ * 入围奖项的名称常写成「最佳事务候选人」。得主那张卡（只导出得主、海报）印「候选人」不对，所以去掉名称最后的「候选人 / 入围」
+ * （英文去掉最后的 Candidate / Nominee）：「2026 最佳事务候选人」→「2026 最佳事务」。名称里没有这些字就照原样。 */
+const EX_CAND_ZH = /\s*(候选人|候選人|候选|候選|入围者|入圍者|入围|入圍)\s*$/, EX_CAND_EN = /\s*(candidates?|nominees?|finalists?)\s*$/i;
+const exIsNominee = a => a.revealMode === 'nominee' && a.winners.some(w => w.win);
+const exWinners = a => (exIsNominee(a) ? a.winners.filter(w => w.win) : a.winners);   // 只要得主时，这个奖项导出谁
+function exWinAward(a) {
+  const t = String(a.title || '').replace(EX_CAND_ZH, ''), s = String(a.subtitle || '').replace(EX_CAND_EN, '');
+  return t !== (a.title || '') || s !== (a.subtitle || '') ? { ...a, title: t || a.title, subtitle: s || a.subtitle } : a;
+}
+// 这一位的卡片用哪个奖项名：入围奖项的得主、而且是「只要得主」的场合 → 去掉「候选人」
+const exCardAward = (a, w, winOnly) => (winOnly && exIsNominee(a) && w.win ? exWinAward(a) : a);
 function exAwards() { return draft ? draft.awards.filter(a => a.winners.length) : []; }
 function exFillSel() {
   const sel = $('exAward'), keep = sel.value, list = exAwards();
@@ -338,7 +352,7 @@ function exBuildUI() {
   exMatInfo();
   $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
   $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow; $('exG_sparkle').checked = EXS.sparkle;
-  $('exSize').value = EXS.size; $('exFmt').value = EXS.fmt;
+  $('exSize').value = EXS.size; $('exFmt').value = EXS.fmt; $('exWinOnly').checked = EXS.winOnly;
 }
 function exChanged(rebuild) {
   EXS = exClean(EXS);
@@ -373,6 +387,7 @@ function exMatInfo() {
   $('exMatMiss').textContent = !exMats.length ? '' : miss.length ? '找不到素材、照旧印文字：' + miss.join('、') : '所有奖项名都找到素材';
 }
 $('exSize').onchange = () => { EXS.size = $('exSize').value; exChanged(); };
+$('exWinOnly').onchange = () => { EXS.winOnly = $('exWinOnly').checked; exChanged(); };
 $('exFmt').onchange = () => { EXS.fmt = $('exFmt').value; exChanged(); };
 $('exAward').onchange = () => { exFillWho(); exPreview().catch(e => toast(e.message, true)); };
 $('exWho').onchange = () => exPreview().catch(e => toast(e.message, true));
@@ -392,14 +407,15 @@ async function exPreview() {
   const list = exAwards(); if (!list.length) { $('exPvCap').textContent = '还没有得奖者'; return; }
   const a = list[+$('exAward').value || 0] || list[0], w = a.winners[+$('exWho').value || 0] || a.winners[0];
   const fam = await exUseFonts();
-  const cv = await exRender(a, w, fam);
+  const cv = await exRender(exCardAward(a, w, EXS.winOnly), w, fam);
   const pv = $('exPv'), PW = 1280; pv.width = PW; pv.height = Math.round(PW * cv.height / cv.width);
   pv.getContext('2d').drawImage(cv, 0, 0, pv.width, pv.height);
-  $('exPvCap').textContent = `预览：${a.title} · ${w.name}（输出 ${cv.width}×${cv.height}）${cv.mat.length ? ' · 素材：' + cv.mat.join('、') : ''}`;
+  $('exPvCap').textContent = `预览：${a.title} · ${w.name}（输出 ${cv.width}×${cv.height}）${cv.mat.length ? ' · 素材：' + cv.mat.join('、') : ''}${EXS.winOnly && exIsNominee(a) && !w.win ? ' · ⚠ 只导出得主：这位不会导出' : ''}`;
 }
 async function exExport(all) {
   const list = exAwards(), awards = all ? list : [list[+$('exAward').value || 0]].filter(Boolean);
-  const total = awards.reduce((t, a) => t + a.winners.length, 0);
+  const who = a => (EXS.winOnly ? exWinners(a) : a.winners);   // 勾了「入围奖项只导出得主」：入围揭晓的奖项只导出得主
+  const total = awards.reduce((t, a) => t + who(a).length, 0);
   if (!total) return toast('没有可导出的得奖者', true);
   const fmt = EXS.fmt, files = [], btns = [$('bExportOne'), $('bExportAll')];
   btns.forEach(b => (b.disabled = true));
@@ -408,9 +424,9 @@ async function exExport(all) {
     let k = 0;
     for (const a of awards) {
       const dir = `${String(list.indexOf(a) + 1).padStart(2, '0')}-${safeFile(a.title)}`;
-      for (const [wi, w] of a.winners.entries()) {
+      for (const [wi, w] of who(a).entries()) {
         $('exProg').textContent = `生成中 ${++k}/${total}…`; $('exBar').style.width = (k / total * 100) + '%';
-        const cv = await exRender(a, w, fam);
+        const cv = await exRender(exCardAward(a, w, EXS.winOnly), w, fam);
         const blob = await new Promise(r => cv.toBlob(r, fmt === 'png' ? 'image/png' : 'image/jpeg', .92));
         const tag = a.revealMode === 'nominee' && w.win ? '-得主' : '';
         files.push({ name: `${dir}/${String(wi + 1).padStart(3, '0')}-${safeFile(w.name)}${tag}.${fmt}`, data: new Uint8Array(await blob.arrayBuffer()) });

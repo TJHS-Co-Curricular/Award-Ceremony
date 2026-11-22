@@ -58,7 +58,7 @@ async function poOpen() {
 const poAwards = () => (draft ? draft.awards.filter(a => a.winners.length) : []);
 const poCur = () => PO.posters[PO.cur];
 // 海报上放谁：入围揭晓的奖项（有标「得主」）只放得主，入围者不放（维护者定 2026-11-22：最佳执委只要得主）；其它奖项放全部
-const poWho = a => (a.revealMode === 'nominee' && a.winners.some(w => w.win) ? a.winners.filter(w => w.win) : a.winners);
+const poWho = a => exWinners(a);   // export.js：入围揭晓只要得主
 
 /* ---- 表单 ---- */
 function poBuild() {
@@ -312,7 +312,7 @@ async function poDraw(P, dpi, card, progress) {
 async function poCard(a, w, px, fam) {
   const rw = Math.max(640, Math.min(3840, Math.round(px))), keep = EXS;
   EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}` };
-  try { return await exRender(a, w, fam); } finally { EXS = keep; }
+  try { return await exRender(exCardAward(a, w, true), w, fam); } finally { EXS = keep; }   // 海报上都是得主：奖项名去掉「候选人」
 }
 
 /* ---- 预览、导出 ---- */
