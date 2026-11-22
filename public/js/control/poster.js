@@ -14,7 +14,7 @@
 const PO_SIZES = [['51x43', '51 × 43 英寸（最高成就）'], ['24x43', '24 × 43 英寸（杰出 / 优秀团体）'], ['11x43', '11 × 43 英寸（学会 / 执委）']];
 const PO_BG_EDGE = 8192;   // 背景图片长边上限（51 英寸 × 150 dpi ≈ 7650 像素）
 const PO_DEF = () => ({
-  dpi: 150, panelA: 35, titleOn: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
+  dpi: 150, panelA: 35, headOn: true, titleOn: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
   posters: [
     { name: '最高成就', w: 51, h: 43, ids: [], heads: {} },
     { name: '杰出 / 优秀团体', w: 24, h: 43, ids: [], heads: {} },
@@ -35,7 +35,7 @@ function poClean(v) {
   return {
     dpi: [100, 150, 200].includes(+v?.dpi) ? +v.dpi : d.dpi, panelA: num(v?.panelA, 0, 80, d.panelA),
     color: /^#[0-9a-f]{6}$/i.test(v?.color || '') ? v.color : d.color,
-    titleOn: v?.titleOn !== false, titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
+    headOn: v?.headOn !== false, titleOn: v?.titleOn !== false, titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
     cur: Math.min(posters.length - 1, Math.max(0, Math.floor(num(v?.cur, 0, 99, 0)))), posters
   };
 }
@@ -60,7 +60,8 @@ const poWho = a => (a.revealMode === 'nominee' && a.winners.some(w => w.win) ? a
 
 /* ---- 表单 ---- */
 function poBuild() {
-  $('po_titleOn').checked = PO.titleOn; for (const id of ['po_color', 'po_titleK', 'po_font']) $(id).disabled = !PO.titleOn;
+  $('po_headOn').checked = PO.headOn; $('po_titleOn').checked = PO.titleOn; $('po_titleK').disabled = !PO.titleOn;
+  for (const id of ['po_color', 'po_font']) $(id).disabled = !PO.titleOn && !PO.headOn;   // 颜色、字体：活动抬头和奖项标题共用
   $('po_dpi').value = String(PO.dpi); $('po_color').value = PO.color; $('po_titleK').value = PO.titleK; $('po_titleKV').textContent = PO.titleK + '%'; $('po_font').value = PO.font;
   $('poBgInfo').textContent = poBg ? '已上传' : '没有（用深色渐层）'; $('bPoBgDel').disabled = !poBg;
   $('poPick').replaceChildren(...PO.posters.map((p, i) => el('option', { value: String(i) }, `${i + 1}. ${p.name}（${p.w}×${p.h}）`)));
@@ -100,6 +101,7 @@ function poChanged() {
   poPreviewSoon();
 }
 $('po_dpi').onchange = () => { PO.dpi = +$('po_dpi').value; poChanged(); };
+$('po_headOn').onchange = () => { PO.headOn = $('po_headOn').checked; poChanged(); poBuild(); };
 $('po_titleOn').onchange = () => { PO.titleOn = $('po_titleOn').checked; poChanged(); poBuild(); };
 $('po_color').oninput = () => { PO.color = $('po_color').value; poChanged(); };
 $('po_titleK').oninput = () => { PO.titleK = +$('po_titleK').value; $('po_titleKV').textContent = PO.titleK + '%'; poChanged(); };
@@ -165,7 +167,8 @@ function poLayout(P, secs, fam) {
   const ens = secs.map(a => (panel && PO.titleOn && !P.heads[a.id] && a.subtitle ? String(a.subtitle) : ''));   // 分段版式：自动标题下面加英文名
   const widest = heads.map(ls => Math.max(1, ...ls.map(t => { g.font = `700 100px ${fam}`; return g.measureText(t).width / 100; })));   // 每 1 单位字号的宽度
   // 抬头、页脚的高度只看海报尺寸，不跟卡片变
-  const hh = panel ? Math.min(P.w * .45, P.h * .16) : 0, foot = panel ? poFoot() : '', hf = foot ? Math.min(P.w * .055, P.h * .03) : 0;
+  const hh = panel && PO.headOn ? Math.min(P.w * .45, P.h * .16) : 0,   // 活动抬头可以单独关掉（维护者 2026-11-22：大标题和奖项标题分开）
+    foot = panel ? poFoot() : '', hf = foot ? Math.min(P.w * .055, P.h * .03) : 0;
   for (let cw = Math.min(P.w, P.h * 1.6); cw > 0.4; cw *= 0.99) {
     const ch = cw * 9 / 16, gx = cw * .1, gy = cw * .065, m = cw * .09, sg = cw * .14, inner = P.w - 2 * m;
     const pp = panel ? cw * .13 : 0, area = inner - 2 * pp;   // 底框里面的留白
@@ -236,8 +239,8 @@ async function poDraw(P, dpi, card, progress) {
   const pad = L.extra / (secs.length + 1);   // 多出来的高度平均分给上下和段与段之间
   let y = L.m, k = 0;
 
-  // 抬头（分段版式）：学校 Logo + 活动名称（开头是年份就分两行）+ 英文名 + 分隔线，在抬头的高度里置中
-  if (L.panel) {
+  // 抬头（分段版式、没关掉时）：学校 Logo + 活动名称（开头是年份就分两行）+ 英文名 + 分隔线，在抬头的高度里置中
+  if (L.hh) {
     const hh = L.hh, logo = await exLoadLogo(), tl = poEvTitle(), sub = String(draft?.event?.subtitle || '').trim();
     const lh = logo?.naturalWidth ? hh * .34 : 0, tfs = hh * .17, efs = hh * .055;
     const used = lh + (lh ? hh * .06 : 0) + tl.length * tfs * 1.12 + (sub ? efs * 2 : 0) + hh * .08;

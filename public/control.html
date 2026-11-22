@@ -305,7 +305,8 @@
             <div class="ecard">
               <div class="head"><b style="flex:1">所有海报共用</b></div>
               <label class="xr">分辨率 <select id="po_dpi"><option value="100">100 dpi（文件小）</option><option value="150">150 dpi（建议）</option><option value="200">200 dpi（很大）</option></select><span></span></label>
-              <label class="xr" title="图片导出的卡片上已经有奖项名；关掉 = 每个奖项只排卡片，段与段之间留一点空">显示标题 <input type="checkbox" id="po_titleOn" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="分段版式最上面的学校 Logo + 活动名称 + 英文名（紧凑网格本来就没有）">显示活动抬头 <input type="checkbox" id="po_headOn" style="width:auto;justify-self:start"><span class="muted" style="font-size:11px;white-space:nowrap">分段版式</span></label>
+              <label class="xr" title="每个奖项上面的大标题。图片导出的卡片上已经有奖项名；关掉 = 每个奖项只排卡片，段与段之间留一点空">显示奖项标题 <input type="checkbox" id="po_titleOn" style="width:auto;justify-self:start"><span></span></label>
               <label class="xr" title="分段版式每个奖项后面的半透明底框；0 = 只有金色边框">底框深浅 <input type="range" id="po_panelA" min="0" max="80" step="5"><span id="po_panelAV"></span></label>
               <label class="xr">标题颜色 <input type="color" id="po_color" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">标题大小 <input type="range" id="po_titleK" min="40" max="200" step="5"><span id="po_titleKV"></span></label>
