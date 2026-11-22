@@ -298,6 +298,7 @@
               <label class="xr">名称 <input id="po_name" maxlength="40"><span></span></label>
               <label class="xr">尺寸 <select id="po_size"><option value="51x43">51 × 43 英寸（最高成就）</option><option value="24x43">24 × 43 英寸（杰出 / 优秀团体）</option><option value="11x43">11 × 43 英寸（学会 / 执委）</option><option value="custom">自己填</option></select><span></span></label>
               <label class="xr">宽 × 高（英寸） <span style="display:flex;gap:6px;align-items:center"><input id="po_w" type="number" min="4" max="120" step="0.5" style="width:80px"> × <input id="po_h" type="number" min="4" max="120" step="0.5" style="width:80px"></span><span></span></label>
+              <label class="xr" title="紧凑网格 = 像 2025 最高成就那张；分段 = 上面活动抬头（Logo + 活动名称）、每个奖项一个底框 + 英文名、下面日期地点">版式 <select id="po_style"><option value="auto">自动（宽的紧凑网格，直的分段）</option><option value="grid">紧凑网格</option><option value="panel">分段（抬头 + 底框）</option></select><span id="po_styleNow" class="muted" style="font-size:11px;white-space:nowrap"></span></label>
               <p class="help">勾选要放进这张海报的奖项（顺序跟奖项编辑一样）。每个奖项一段：上面大标题，下面是图片导出的卡片。卡片大小、每排几张自动算，全部放得下、卡片最大。</p>
               <div id="poAwards"></div>
             </div>
@@ -305,6 +306,7 @@
               <div class="head"><b style="flex:1">所有海报共用</b></div>
               <label class="xr">分辨率 <select id="po_dpi"><option value="100">100 dpi（文件小）</option><option value="150">150 dpi（建议）</option><option value="200">200 dpi（很大）</option></select><span></span></label>
               <label class="xr" title="图片导出的卡片上已经有奖项名；关掉 = 每个奖项只排卡片，段与段之间留一点空">显示标题 <input type="checkbox" id="po_titleOn" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="分段版式每个奖项后面的半透明底框；0 = 只有金色边框">底框深浅 <input type="range" id="po_panelA" min="0" max="80" step="5"><span id="po_panelAV"></span></label>
               <label class="xr">标题颜色 <input type="color" id="po_color" style="width:48px;height:28px;padding:1px"><span></span></label>
               <label class="xr">标题大小 <input type="range" id="po_titleK" min="40" max="200" step="5"><span id="po_titleKV"></span></label>
               <label class="xr">标题字体 <input id="po_font" list="poFontList" placeholder="留空 = 跟奖项编辑的中文字体"><span></span></label>

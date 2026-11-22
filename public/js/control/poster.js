@@ -14,7 +14,7 @@
 const PO_SIZES = [['51x43', '51 × 43 英寸（最高成就）'], ['24x43', '24 × 43 英寸（杰出 / 优秀团体）'], ['11x43', '11 × 43 英寸（学会 / 执委）']];
 const PO_BG_EDGE = 8192;   // 背景图片长边上限（51 英寸 × 150 dpi ≈ 7650 像素）
 const PO_DEF = () => ({
-  dpi: 150, titleOn: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
+  dpi: 150, panelA: 35, titleOn: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
   posters: [
     { name: '最高成就', w: 51, h: 43, ids: [], heads: {} },
     { name: '杰出 / 优秀团体', w: 24, h: 43, ids: [], heads: {} },
@@ -28,11 +28,12 @@ function poClean(v) {
     name: String(p?.name || '海报').slice(0, 40),
     w: num(p?.w, 4, 120, 24), h: num(p?.h, 4, 120, 43),
     ids: (Array.isArray(p?.ids) ? p.ids : []).map(String).slice(0, 200),
+    style: ['grid', 'panel'].includes(p?.style) ? p.style : 'auto',
     heads: Object.fromEntries(Object.entries(p?.heads && typeof p.heads === 'object' ? p.heads : {}).map(([k, t]) => [String(k), String(t || '').slice(0, 200)]).filter(([, t]) => t.trim()))
   }));
   if (!posters.length) posters.push(d.posters[0]);
   return {
-    dpi: [100, 150, 200].includes(+v?.dpi) ? +v.dpi : d.dpi,
+    dpi: [100, 150, 200].includes(+v?.dpi) ? +v.dpi : d.dpi, panelA: num(v?.panelA, 0, 80, d.panelA),
     color: /^#[0-9a-f]{6}$/i.test(v?.color || '') ? v.color : d.color,
     titleOn: v?.titleOn !== false, titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
     cur: Math.min(posters.length - 1, Math.max(0, Math.floor(num(v?.cur, 0, 99, 0)))), posters
@@ -69,6 +70,8 @@ function poBuild() {
   const key = `${P.w}x${P.h}`;
   $('po_size').value = PO_SIZES.some(s => s[0] === key) ? key : 'custom';
   $('po_w').value = P.w; $('po_h').value = P.h;
+  $('po_style').value = P.style || 'auto'; $('po_styleNow').textContent = poStyle(P) === 'panel' ? '现在：分段' : '现在：紧凑网格';
+  $('po_panelA').value = PO.panelA; $('po_panelAV').textContent = PO.panelA + '%';
   const awards = poAwards(), sel = poSecs(P);
   $('poAwards').replaceChildren(...(awards.length ? awards.map(a => {
     const on = P.ids.includes(a.id), i = sel.indexOf(a);
@@ -104,6 +107,8 @@ $('po_font').onchange = () => { PO.font = $('po_font').value.trim(); poChanged()
 $('po_name').oninput = () => { poCur().name = $('po_name').value || '海报'; poChanged(); $('poPick').options[PO.cur].textContent = `${PO.cur + 1}. ${poCur().name}（${poCur().w}×${poCur().h}）`; };
 $('po_size').onchange = () => { const v = $('po_size').value; if (v !== 'custom') { const [w, h] = v.split('x').map(Number); Object.assign(poCur(), { w, h }); } poChanged(); poBuild(); };
 for (const id of ['po_w', 'po_h']) $(id).onchange = () => { Object.assign(poCur(), { w: +$('po_w').value, h: +$('po_h').value }); poChanged(); poBuild(); };
+$('po_style').onchange = () => { poCur().style = $('po_style').value; poChanged(); poBuild(); };
+$('po_panelA').oninput = () => { PO.panelA = +$('po_panelA').value; $('po_panelAV').textContent = PO.panelA + '%'; poChanged(); };
 $('poPick').onchange = () => { PO.cur = +$('poPick').value; poChanged(); poBuild(); };
 $('bPoAdd').onclick = () => { PO.posters.push({ name: '新海报', w: 24, h: 43, ids: [], heads: {} }); PO.cur = PO.posters.length - 1; poChanged(); poBuild(); };
 $('bPoDel').onclick = () => {
@@ -148,24 +153,35 @@ function poAutoHead(secs, i) {
   return a.group && (!prev || prev.group !== a.group) ? `${a.group}\n${a.title}` : a.title;
 }
 const poHead = (P, secs, i) => (P.heads[secs[i].id] || poAutoHead(secs, i)).split(/\r?\n/).map(t => t.trim()).filter(Boolean);
+// 版式：grid = 紧凑网格（像 2025 最高成就那张）；panel = 分段（上面活动抬头、每个奖项一个底框 + 英文名、下面日期地点）。
+// auto：宽的海报用 grid，直的（宽 < 高 × 0.8，例：24×43、11×43）用 panel（维护者 2026-11-22：直幅可以自己优化，例子只供参考）
+const poStyle = P => (P.style === 'grid' || P.style === 'panel' ? P.style : P.w < P.h * .8 ? 'panel' : 'grid');
+const poEvTitle = () => { const t = String(draft?.event?.title || '').trim(), m = t.match(/^(\d{4})\s*年?\s*(.+)$/); return m ? [m[1], m[2]] : t ? [t] : []; };
+const poFoot = () => [draft?.event?.date, draft?.event?.time, draft?.event?.venue].map(x => String(x || '').trim()).filter(Boolean).join(' · ');
 // 卡片由大到小试：每段 = 标题 + ceil(人数 / 列数) 排卡片，全部放得下的最大卡片就是答案；列数所有段一样
 function poLayout(P, secs, fam) {
-  const g = el('canvas').getContext('2d'), heads = secs.map((_, i) => (PO.titleOn ? poHead(P, secs, i) : []));   // 不要标题（图片导出的卡片上已经有奖项名）：每段只有卡片
+  const panel = poStyle(P) === 'panel', g = el('canvas').getContext('2d');
+  const heads = secs.map((_, i) => (PO.titleOn ? poHead(P, secs, i) : []));   // 不要标题（图片导出的卡片上已经有奖项名）：每段只有卡片
+  const ens = secs.map(a => (panel && PO.titleOn && !P.heads[a.id] && a.subtitle ? String(a.subtitle) : ''));   // 分段版式：自动标题下面加英文名
   const widest = heads.map(ls => Math.max(1, ...ls.map(t => { g.font = `700 100px ${fam}`; return g.measureText(t).width / 100; })));   // 每 1 单位字号的宽度
+  // 抬头、页脚的高度只看海报尺寸，不跟卡片变
+  const hh = panel ? Math.min(P.w * .45, P.h * .16) : 0, foot = panel ? poFoot() : '', hf = foot ? Math.min(P.w * .055, P.h * .03) : 0;
   for (let cw = Math.min(P.w, P.h * 1.6); cw > 0.4; cw *= 0.99) {
     const ch = cw * 9 / 16, gx = cw * .1, gy = cw * .065, m = cw * .09, sg = cw * .14, inner = P.w - 2 * m;
-    if (cw > inner) continue;
-    const cols = Math.max(1, Math.floor((inner + gx) / (cw + gx)));
-    let total = 2 * m + Math.max(0, secs.length - 1) * sg;
-    const fs = Math.min(cw * .42 * PO.titleK / 100, ...widest.map(x => inner * .96 / x));   // 同一张海报的标题一样大（照最长的那个）
+    const pp = panel ? cw * .13 : 0, area = inner - 2 * pp;   // 底框里面的留白
+    if (cw > area) continue;
+    const cols = Math.max(1, Math.floor((area + gx) / (cw + gx)));
+    let total = 2 * m + hh + hf + Math.max(0, secs.length - 1) * sg;
+    const fs = Math.min(cw * .42 * PO.titleK / 100, ...widest.map(x => area * .96 / x));   // 同一张海报的标题一样大（照最长的那个）
     const parts = secs.map((a, i) => {
-      const th = heads[i].length ? heads[i].length * fs * 1.18 + fs * .3 : 0;
+      const en = ens[i], efs = fs * .3;
+      const th = heads[i].length ? heads[i].length * fs * 1.18 + (en ? efs * 1.9 : 0) + fs * .3 : 0;
       const rows = Math.ceil(poWho(a).length / cols);
-      const h = th + rows * ch + (rows - 1) * gy;
+      const h = 2 * pp + th + rows * ch + (rows - 1) * gy;
       total += h;
-      return { a, lines: heads[i], fs, th, rows, h };
+      return { a, lines: heads[i], en, efs, fs, th, rows, h };
     });
-    if (total <= P.h) return { cw, ch, gx, gy, m, sg, cols, parts, extra: P.h - total };
+    if (total <= P.h) return { panel, cw, ch, gx, gy, m, sg, pp, cols, parts, hh, hf, foot, extra: P.h - total };
   }
   return null;
 }
@@ -177,32 +193,77 @@ async function poTitleFam() {
   await document.fonts.load(`700 40px ${f}`, '最高成就奖').catch(() => {});
   return f;
 }
+const poLift = (hex, f) => '#' + [1, 3, 5].map(i => Math.round(Math.min(255, parseInt(hex.slice(i, i + 2), 16) * f + (f > 1 ? 20 : 0))).toString(16).padStart(2, '0')).join('');
+// 金色渐层大字 + 深色描边、阴影（例子海报的样子）；cx、by、px 都是像素
+function poBigText(g, t, cx, by, px, fam, maxW) {
+  g.font = `700 ${px}px ${fam}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  if (maxW && g.measureText(t).width > maxW) { px *= maxW / g.measureText(t).width; g.font = `700 ${px}px ${fam}`; }
+  const gr = g.createLinearGradient(0, by - px * .85, 0, by + px * .1); gr.addColorStop(0, poLift(PO.color, 1.25)); gr.addColorStop(1, poLift(PO.color, .82));
+  g.save();
+  g.shadowColor = 'rgba(40,20,0,.55)'; g.shadowBlur = px * .06; g.shadowOffsetX = g.shadowOffsetY = px * .035;
+  g.lineJoin = 'round'; g.lineWidth = px * .045; g.strokeStyle = 'rgba(70,35,0,.85)'; g.strokeText(t, cx, by);
+  g.shadowColor = 'transparent'; g.fillStyle = gr; g.fillText(t, cx, by);
+  g.restore();
+}
+// 小字（英文名、日期地点）：主色、字距拉开、淡淡的阴影
+function poSmallText(g, t, cx, by, px, fam, maxW, spacing = .12) {
+  g.save(); g.font = `600 ${px}px ${fam}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  try { g.letterSpacing = `${px * spacing}px`; } catch { /* 旧浏览器没有字距 */ }
+  if (maxW && g.measureText(t).width > maxW) { px *= maxW / g.measureText(t).width; g.font = `600 ${px}px ${fam}`; try { g.letterSpacing = `${px * spacing}px`; } catch { /* 同上 */ } }
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = px * .25; g.fillStyle = poLift(PO.color, 1.1); g.fillText(t, cx, by); g.restore();
+}
+// 分隔线：两边淡出的金线，中间一个小菱形
+function poRule(g, cx, y, w, lw) {
+  g.save();
+  const gr = g.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, poLift(PO.color, 1.05)); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(cx - w / 2, y - lw / 2, w, lw);
+  const d = lw * 3.2; g.translate(cx, y); g.rotate(Math.PI / 4); g.fillStyle = poLift(PO.color, 1.15); g.fillRect(-d / 2, -d / 2, d, d);
+  g.restore();
+}
+function poRound(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 // 画一张海报：dpi = 每英寸像素；card(a, w, px) → 卡片 canvas；progress(k, n)
 async function poDraw(P, dpi, card, progress) {
   const secs = poSecs(P), tfam = await poTitleFam(), L = poLayout(P, secs, tfam);
-  const W = Math.round(P.w * dpi), H = Math.round(P.h * dpi);
+  const W = Math.round(P.w * dpi), H = Math.round(P.h * dpi), D = v => v * dpi;
   const cv = el('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
   const bg = await poLoadBg();
   if (bg) exCover(g, bg, 0, 0, W, H);
   else { const gr = g.createRadialGradient(W / 2, H * .35, 0, W / 2, H * .35, Math.hypot(W, H) * .6); gr.addColorStop(0, thC('#2a2110')); gr.addColorStop(1, thC('#07060c')); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
   if (!L) return { cv, L, secs };
-  const total = secs.reduce((t, a) => t + poWho(a).length, 0);
+  const total = secs.reduce((t, a) => t + poWho(a).length, 0), cx = W / 2, inner = P.w - 2 * L.m;
   const pad = L.extra / (secs.length + 1);   // 多出来的高度平均分给上下和段与段之间
-  let y = L.m + pad, k = 0;
-  const c = PO.color, lift = (hex, f) => '#' + [1, 3, 5].map(i => Math.round(Math.min(255, parseInt(hex.slice(i, i + 2), 16) * f + (f > 1 ? 20 : 0))).toString(16).padStart(2, '0')).join('');
+  let y = L.m, k = 0;
+
+  // 抬头（分段版式）：学校 Logo + 活动名称（开头是年份就分两行）+ 英文名 + 分隔线，在抬头的高度里置中
+  if (L.panel) {
+    const hh = L.hh, logo = await exLoadLogo(), tl = poEvTitle(), sub = String(draft?.event?.subtitle || '').trim();
+    const lh = logo?.naturalWidth ? hh * .34 : 0, tfs = hh * .17, efs = hh * .055;
+    const used = lh + (lh ? hh * .06 : 0) + tl.length * tfs * 1.12 + (sub ? efs * 2 : 0) + hh * .08;
+    let hy = y + Math.max(0, (hh - used) / 2);
+    if (lh) { const lw = lh * logo.naturalWidth / logo.naturalHeight; g.drawImage(logo, cx - D(lw) / 2, D(hy), D(lw), D(lh)); hy += lh + hh * .06; }
+    tl.forEach(t => { poBigText(g, t, cx, D(hy + tfs * .92), D(tfs), tfam, D(inner * .96)); hy += tfs * 1.12; });
+    if (sub) { poSmallText(g, sub, cx, D(hy + efs * 1.25), D(efs), tfam, D(inner * .96)); hy += efs * 2; }
+    poRule(g, cx, D(hy + hh * .04), D(inner * .7), D(hh * .012));
+    y += hh;
+  }
+  y += pad;
+
   for (const s of L.parts) {
-    // 标题：金色渐层字 + 深色描边、阴影（例子海报的样子）
-    const fs = s.fs * dpi; g.font = `700 ${fs}px ${tfam}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-    s.lines.forEach((t, li) => {
-      const by = (y + s.fs * .15 + s.fs * 1.18 * li + s.fs * .95) * dpi;
-      const gr = g.createLinearGradient(0, by - fs * .85, 0, by + fs * .1); gr.addColorStop(0, lift(c, 1.25)); gr.addColorStop(1, lift(c, .82));
-      g.save();
-      g.shadowColor = 'rgba(40,20,0,.55)'; g.shadowBlur = fs * .06; g.shadowOffsetX = g.shadowOffsetY = fs * .035;
-      g.lineJoin = 'round'; g.lineWidth = fs * .045; g.strokeStyle = 'rgba(70,35,0,.85)'; g.strokeText(t, W / 2, by);
-      g.shadowColor = 'transparent'; g.fillStyle = gr; g.fillText(t, W / 2, by);
-      g.restore();
-    });
+    // 底框（分段版式）：半透明深色 + 金色细边
+    if (L.panel) {
+      g.save(); poRound(g, D(L.m), D(y), D(inner), D(s.h), D(L.cw * .08));
+      g.fillStyle = `rgba(10,6,0,${PO.panelA / 100})`; g.fill();
+      g.lineWidth = D(L.cw * .012); g.strokeStyle = thC('rgba(217,178,95,.8)'); g.stroke(); g.restore();
+      y += L.pp;
+    }
+    s.lines.forEach((t, li) => poBigText(g, t, cx, D(y + s.fs * .15 + s.fs * 1.18 * li + s.fs * .95), D(s.fs), tfam));
+    if (s.en) {
+      const ey = y + s.lines.length * s.fs * 1.18 + s.fs * .15;
+      poSmallText(g, s.en.toUpperCase(), cx, D(ey + s.efs * .95), D(s.efs), tfam, D((inner - 2 * L.pp) * .9));
+      poRule(g, cx, D(ey + s.efs * 1.55), D(Math.min(inner * .5, s.fs * 4)), D(s.efs * .07));
+    }
     y += s.th;
     // 卡片：每排置中（最后一排人少时也在中间）
     const who = poWho(s.a), n = who.length;
@@ -211,13 +272,21 @@ async function poDraw(P, dpi, card, progress) {
       for (let c2 = 0; c2 < inRow; c2++) {
         const w = who[r * L.cols + c2];
         const im = await card(s.a, w, L.cw * dpi);
-        const x = (x0 + c2 * (L.cw + L.gx)) * dpi, yy = (y + r * (L.ch + L.gy)) * dpi;
-        g.save(); g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = L.cw * dpi * .015; g.shadowOffsetY = L.cw * dpi * .006;
-        g.drawImage(im, x, yy, L.cw * dpi, L.ch * dpi); g.restore();
+        const x = D(x0 + c2 * (L.cw + L.gx)), yy = D(y + r * (L.ch + L.gy));
+        g.save(); g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = D(L.cw * .015); g.shadowOffsetY = D(L.cw * .006);
+        g.drawImage(im, x, yy, D(L.cw), D(L.ch)); g.restore();
+        if (L.panel) { g.save(); g.lineWidth = D(L.cw * .006); g.strokeStyle = thC('rgba(217,178,95,.55)'); g.strokeRect(x, yy, D(L.cw), D(L.ch)); g.restore(); }
         progress?.(++k, total);
       }
     }
-    y += s.h - s.th + L.sg + pad;
+    y += s.h - s.th - L.pp + L.sg + pad;
+  }
+
+  // 页脚（分段版式）：日期 · 时间 · 地点，贴着海报底边
+  if (L.panel && L.foot) {
+    const fy = P.h - L.m - L.hf;
+    poRule(g, cx, D(fy + L.hf * .15), D(inner * .5), D(L.hf * .02));
+    poSmallText(g, L.foot, cx, D(fy + L.hf * .72), D(L.hf * .36), tfam, D(inner * .94), .06);
   }
   return { cv, L, secs };
 }
