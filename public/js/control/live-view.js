@@ -111,7 +111,7 @@ function render() {
   const n = onAward ? onAward.winners.length : 0,
     nomAward = onAward && onAward.revealMode === "nominee" && onAward.winners.some((w) => w.win),
     faAward = onAward && onAward.revealMode === "firstall",
-    faPages = faAward ? Math.ceil(n / (onAward.chunk >= 2 ? onAward.chunk : 20)) : 0;   // 20 = 服务端 GALLERY_MAX
+    faPages = faAward ? Math.ceil(n / (onAward.chunk >= 2 && !s.full ? onAward.chunk : 20)) : 0;   // 20 = 服务端 GALLERY_MAX；s.full = 直接全部揭晓（不分组）
   const awardDone =
     s.mode === "reveal" &&
     (nomAward
