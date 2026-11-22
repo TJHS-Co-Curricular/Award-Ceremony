@@ -350,6 +350,12 @@
 
     <!-- 编辑 -->
     <div id="edit" class="hidden">
+      <!-- 左：奖项目录（js/control/editor-nav.js），点一下跳到那个奖项；右：原本的编辑区 -->
+      <aside id="eside">
+        <h2>奖项目录（<span id="enavCount">0</span> 个）</h2>
+        <div class="alist" id="enav"></div>
+      </aside>
+      <div id="emain">
       <div class="ewrap">
         <div class="ebar">
           <button id="bAdd">＋ 新增奖项</button>
@@ -416,6 +422,7 @@
         <div id="elist"></div>
         <p class="help">获奖者每行一位，格式：<code>姓名 | 班级 | 学号 | 学会 | 照片文件名 | 备注 | 类型 | 得主</code>（「入围揭晓」的奖项在得主那一行写 <code>得主</code>；姓名之后都可省略；照片按扩展名识别、类型写 <code>团体</code> 或 <code>个人</code>，都可放在任意位置）。个人照统一拍成 <b>3:2 横幅、人站在右边</b>，左边留给大屏叠字；<b>团体</b>（学会、社团的大合照）照片居中、名字在照片下面。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
       </div>
+      </div>
     </div>
   </main>
 </div>
@@ -435,6 +442,7 @@
 <script src="/assets/js/control/guest.js"></script>
 <script src="/assets/js/control/ui.js"></script>
 <script src="/assets/js/control/editor.js"></script>
+<script src="/assets/js/control/editor-nav.js"></script>
 <script src="/assets/js/control/import.js"></script>
 <script src="/assets/js/control/xlsx-export.js"></script>
 <script src="/assets/js/control/photos.js"></script>

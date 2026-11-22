@@ -164,6 +164,7 @@ function renderEditor() {
       cnt.textContent = `${a.winners.length} 位`;
       check();
       setDirty(true);
+      enavSoon();
     });
     const cnt = el("span", { class: "tag" }, `${a.winners.length} 位`);
     const ins = {};
@@ -174,6 +175,7 @@ function renderEditor() {
       x.addEventListener("input", () => {
         a[key] = x.value;
         setDirty(true);
+        enavSoon();   // 左边目录跟着改名
       });
       const pair = { title: "subtitle", group: "groupSub", section: "sectionSub" }[key];
       if (pair)
@@ -235,12 +237,13 @@ function renderEditor() {
       chunkRow.classList.toggle("hidden", a.revealMode !== "firstall");
       check();
       setDirty(true);
+      enavSoon();
     };
     check();
     box.append(
       el(
         "div",
-        { class: "ecard" },
+        { class: "ecard", id: "ec" + i },   // id：左边目录（editor-nav.js）跳过来用
         el(
           "div",
           { class: "head" },
@@ -405,6 +408,7 @@ function renderEditor() {
         "还没有奖项，点上方「新增奖项」或用批量导入。",
       ),
     );
+  enavRender();   // 左边目录（editor-nav.js）
 }
 $("evTitle").addEventListener("input", (e) => {
   draft.event.title = e.target.value;
@@ -451,7 +455,7 @@ $("bAdd").onclick = () => {
   });
   setDirty(true);
   renderEditor();
-  $("elist").lastChild?.scrollIntoView({ behavior: "smooth" });
+  enavGo(draft.awards.length - 1);
 };
 $("bRevert").onclick = () => {
   if (!dirty || confirm("放弃所有未保存的修改？")) loadDraft();

@@ -167,7 +167,16 @@ table.xt tr.off td:not(:first-child){opacity:.35}
 @media (max-width:1100px){ .xgrid{grid-template-columns:1fr} .xmain{position:static} }
 
 /* ===== 奖项编辑分页 ===== */
-#edit{height:100%;overflow:auto;padding:18px}
+#edit{height:100%;display:grid;grid-template-columns:300px minmax(0,1fr)}
+#eside{min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px;border-right:1px solid var(--line);scrollbar-gutter:stable}
+#emain{min-height:0;overflow:auto;padding:18px}
+#elist .ecard{scroll-margin-top:70px}   /* 目录跳过来时不被上面固定的保存列挡住 */
+/* 奖项编辑 · 左边目录（editor-nav.js）：样式同现场控制的奖项列表，名称可以换行（不截断） */
+#enav .ghead .gt,#enav .aitem .t span:first-child{white-space:normal;overflow:visible}
+#enav .ghead{cursor:pointer}
+#enav .aitem{padding:7px 10px}
+#enav .aitem .no{color:var(--gold);font-weight:700;margin-right:6px}
+#enav .aitem .bad{color:#ffc98a}
 .ewrap{max-width:1100px;margin:0 auto}
 .ebar{position:sticky;top:-18px;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);margin-bottom:14px}
 .ebar .grow{flex:1}
@@ -202,6 +211,8 @@ code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius
 @media (max-width:1100px){
   #live{grid-template-columns:1fr;height:auto}
   #live>section{border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  #edit{grid-template-columns:1fr;height:auto}
+  #eside{display:none}
   main{overflow:auto}
   .bigrow{grid-template-columns:1fr 1fr}
   .ecard .row3,.grid2{grid-template-columns:1fr}
