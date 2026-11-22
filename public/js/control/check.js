@@ -60,7 +60,7 @@ function ckCollect(awards, photos, files, EB) {
   if (exMats.length) {
     const seen = new Set(), rows = [];
     for (const a of awards) {
-      const pairs = a.group ? [[a.group, a.groupSub], [a.title, a.subtitle]] : [[a.title, a.subtitle]];
+      const ht = exHeadTail(a, awards), pairs = [ht.head, ht.tail].filter(p => p[0] || p[1]);   // 和图片导出同一条规则（没分类时可能用大类素材）
       for (const [zh, en] of pairs) {
         const t = `${zh || ''}${en ? ' ' + en : ''}`.trim();
         if (t && !seen.has(t)) { seen.add(t); if (!exMatFind(zh, en)) rows.push([t, '']); }

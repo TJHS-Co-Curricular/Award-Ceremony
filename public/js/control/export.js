@@ -193,9 +193,8 @@ async function exRender(award, w, fam) {
   const shadow = on => { const a = S.shadow / 100; g.shadowColor = on && a ? `rgba(0,0,0,${Math.min(1, a * 1.25)})` : 'transparent'; g.shadowBlur = on ? U * .02 * a : 0; g.shadowOffsetX = g.shadowOffsetY = on ? U * .005 * a : 0; };
   const soc = socOf(w);   // 学会 [中文, 英文]：有对照表时按编号查（import.js）
   // 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复
-  const head = award.group ? [award.group, award.groupSub] : [award.title, award.subtitle];
-  const headFam = award.group ? fam.top : fam.topAward;
-  const tail = award.group ? [award.title, award.subtitle] : ['', ''];
+  const HT = exHeadTail(award), head = HT.head, tail = HT.tail;   // 没分类时可能用大类素材（exHeadTail）
+  const headFam = HT.grp ? fam.top : fam.topAward;
   // 素材图片：上方 / 下方的「中文 + 英文」找得到同名素材，就整组换成图片（中文和英文两项都隐藏时不画）
   const headM = S.matOn && (E.top.show || E.topEn.show) && (head[0] || head[1]) ? exMatFind(head[0], head[1]) : null;
   const tailM = S.matOn && (E.award.show || E.awardEn.show) && (tail[0] || tail[1]) ? exMatFind(tail[0], tail[1]) : null;
@@ -317,6 +316,18 @@ function exWinAward(a) {
 }
 // 这一位的卡片用哪个奖项名：入围奖项的得主、而且是「只要得主」的场合 → 去掉「候选人」
 const exCardAward = (a, w, winOnly) => (winOnly && exIsNominee(a) && w.win ? exWinAward(a) : a);
+/* 卡片上方 / 下方印什么（素材图片也按这个找）：
+ * 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复。
+ * 没分类、但大类找得到素材图片时：上方 = 大类素材，下方 = 奖项名（用户定 2026-11-22，例：最佳执委 → THE BEST COMMITTEE OF THE YEAR.png）。
+ * 大类没有素材就照旧，文字版式不变。list = 找大类英文名用的奖项清单（大类英文名可能只写在其中一个奖项上）。 */
+function exHeadTail(a, list) {
+  if (a.group) return { head: [a.group, a.groupSub], tail: [a.title, a.subtitle], grp: true };
+  if (a.section && EXS.matOn) {
+    const sub = a.sectionSub || ((list || exAwards()).find(x => x.section === a.section && x.sectionSub) || {}).sectionSub || '';
+    if (exMatFind(a.section, sub)) return { head: [a.section, sub], tail: [a.title, a.subtitle], grp: true, sec: true };
+  }
+  return { head: [a.title, a.subtitle], tail: ['', ''], grp: false };
+}
 function exAwards() { return draft ? draft.awards.filter(a => a.winners.length) : []; }
 function exFillSel() {
   const sel = $('exAward'), keep = sel.value, list = exAwards();
@@ -377,7 +388,7 @@ $('exG_matOn').onchange = e => { EXS.matOn = e.target.checked; exChanged(); };
 function exMatInfo() {
   const miss = [], seen = new Set();
   for (const a of exAwards()) {
-    const pairs = a.group ? [[a.group, a.groupSub], [a.title, a.subtitle]] : [[a.title, a.subtitle]];
+    const ht = exHeadTail(a), pairs = [ht.head, ht.tail].filter(p => p[0] || p[1]);
     for (const [zh, en] of pairs) {
       const t = `${zh || ''}${en ? ' ' + en : ''}`.trim();
       if (t && !seen.has(t)) { seen.add(t); if (!exMatFind(zh, en)) miss.push(t); }
