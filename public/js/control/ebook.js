@@ -762,12 +762,12 @@ const ebJpg = cv => new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new
 const ebDataUrl = b => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(new Error('图片读取失败')); r.readAsDataURL(b); });
 
 /* 最简单的 PDF：每页一张 A4，里面一张 JPG（DCTDecode，原样放进去，不重新压缩）。不用第三方库。 */
-async function ebPdf(jpgs, title) {
+async function ebPdf(jpgs, title, W = 595.28, H = 841.89) {   // 默认 A4（pt）；海报导出（poster.js）传实际尺寸
   const enc = new TextEncoder(), parts = [], xref = [];
   let off = 0;
   const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); off += b.length; };
   const obj = (n, ...body) => { xref[n] = off; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
-  const W = 595.28, H = 841.89, N = jpgs.length;   // A4 = 595.28 × 841.89 pt
+  const N = jpgs.length;
   const utf16 = t => '<FEFF' + [...String(t)].map(c => { const u = c.codePointAt(0);
     if (u < 0x10000) return u.toString(16).padStart(4, '0');
     const v = u - 0x10000; return ((v >> 10) + 0xd800).toString(16) + ((v & 0x3ff) + 0xdc00).toString(16); }).join('').toUpperCase() + '>';

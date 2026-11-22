@@ -249,3 +249,11 @@ code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius
 #check .ck p{margin:6px 0 0}
 #check .ck ul{margin:8px 0 0;padding-left:1.4em;max-height:320px;overflow:auto;columns:2 380px}
 #check .ck li{break-inside:avoid;line-height:1.6}
+
+/* 海报导出（js/control/poster.js）：奖项勾选列表 */
+#poAwards .poa{border-top:1px solid var(--line);padding:5px 0;font-size:13px}
+#poAwards .poa label{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
+#poAwards .poa label input{width:auto}
+#poAwards .poa.on label{color:var(--ink)}
+#poAwards .poa b{color:var(--ink)}
+#poAwards .poa textarea{margin:4px 0 2px 22px;width:calc(100% - 22px);font-size:13px;resize:vertical}

@@ -35,7 +35,7 @@
 <div id="app" class="hidden">
   <header class="top">
     <div class="brand"><h1 id="hTitle">颁奖控制台</h1><small id="hSub"></small></div>
-    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="fx">效果控制</button><button data-tab="check">赛前检查</button></nav>
+    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="poster">海报导出</button><button data-tab="fx">效果控制</button><button data-tab="check">赛前检查</button></nav>
     <div class="side">
       <div class="status">
         <span class="tag conn"><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
@@ -277,6 +277,48 @@
       </div>
     </div>
 
+    <!-- 海报导出：把图片导出的卡片排成大海报（js/control/poster.js） -->
+    <div id="poster" class="hidden">
+      <div class="xwrap">
+        <div class="ebar">
+          <b style="font-size:15px">海报导出</b>
+          <select id="poPick" style="width:auto;max-width:300px"></select>
+          <button id="bPoAdd">新增海报</button>
+          <span id="poSaveState" class="muted" style="font-size:12px"></span>
+          <span class="grow"></span>
+          <span id="poProg" class="muted" style="font-size:12px"></span>
+          <button id="bPoJpg">导出 JPG</button>
+          <button id="bPoPdf" style="background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700" title="PDF 的页面大小 = 海报实际尺寸（英寸），可以直接交给印刷店">导出 PDF</button>
+        </div>
+        <div class="xgrid">
+          <div class="xside">
+            <div class="ecard">
+              <div class="head"><b style="flex:1">这张海报</b><button id="bPoDel">删掉这张</button></div>
+              <label class="xr">名称 <input id="po_name" maxlength="40"><span></span></label>
+              <label class="xr">尺寸 <select id="po_size"><option value="51x43">51 × 43 英寸（最高成就）</option><option value="24x43">24 × 43 英寸（杰出 / 优秀团体）</option><option value="11x43">11 × 43 英寸（学会 / 执委）</option><option value="custom">自己填</option></select><span></span></label>
+              <label class="xr">宽 × 高（英寸） <span style="display:flex;gap:6px;align-items:center"><input id="po_w" type="number" min="4" max="120" step="0.5" style="width:80px"> × <input id="po_h" type="number" min="4" max="120" step="0.5" style="width:80px"></span><span></span></label>
+              <p class="help">勾选要放进这张海报的奖项（顺序跟奖项编辑一样）。每个奖项一段：上面大标题，下面是图片导出的卡片。卡片大小、每排几张自动算，全部放得下、卡片最大。</p>
+              <div id="poAwards"></div>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">所有海报共用</b></div>
+              <label class="xr">分辨率 <select id="po_dpi"><option value="100">100 dpi（文件小）</option><option value="150">150 dpi（建议）</option><option value="200">200 dpi（很大）</option></select><span></span></label>
+              <label class="xr">标题颜色 <input type="color" id="po_color" style="width:48px;height:28px;padding:1px"><span></span></label>
+              <label class="xr">标题大小 <input type="range" id="po_titleK" min="40" max="200" step="5"><span id="po_titleKV"></span></label>
+              <label class="xr">标题字体 <input id="po_font" list="poFontList" placeholder="留空 = 跟奖项编辑的中文字体"><span></span></label>
+              <datalist id="poFontList"></datalist>
+              <label class="xr">背景图片 <span style="display:flex;gap:6px;align-items:center"><input type="file" id="poBgFile" accept="image/*" style="width:auto"><button id="bPoBgDel">移除</button></span><span></span></label>
+              <p class="help">背景：<span id="poBgInfo"></span>。按比例铺满（多出来的裁掉）。卡片的样子在「图片导出」分页调。</p>
+            </div>
+          </div>
+          <div class="xmain">
+            <div id="poPvBox" style="text-align:center"><canvas id="poPv" width="10" height="10" style="max-width:100%;height:auto;border:1px solid var(--line);border-radius:4px;background:#000"></canvas></div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><span id="poPvCap" class="muted" style="font-size:12px;flex:1">—</span><button id="bPoPv" style="padding:4px 9px;font-size:12px">重新预览</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 赛前检查：只列出问题，不改任何资料（js/control/check.js） -->
     <div id="check" class="hidden">
       <div class="xwrap">
@@ -461,6 +503,7 @@
 <script src="/assets/js/control/fonts.js"></script>
 <script src="/assets/js/control/export.js"></script>
 <script src="/assets/js/control/ebook.js"></script>
+<script src="/assets/js/control/poster.js"></script>
 <script src="/assets/js/control/fx.js"></script>
 <script src="/assets/js/control/check.js"></script>
 <script src="/assets/js/control/main.js"></script>
