@@ -141,6 +141,12 @@ function doImport(replace) {
   if (!rows.length)
     return toast(`没有可导入的行（至少需要「奖项」和「姓名」两列；团体可以只填「${socL()}」）` + skip, true);
   const awards = replace ? [] : draft.awards;
+  // 替换全部时，大类、分类、奖项名称对得上的沿用原本的编号（维护者 2026-11-22）：海报选的奖项、现场进度都按编号记，换了编号会悄悄对不上
+  const oldIds = new Map(), reuse = new Map();
+  if (replace) for (const x of draft.awards) if (x.id) {
+    const k = [impKey(x.section), impKey(x.group), x.title].join("\u0001");
+    if (!oldIds.has(k)) oldIds.set(k, x.id);
+  }
   let added = 0;
   for (const r of rows) {
     const { name, rest, photo, type, win } = r;
@@ -158,6 +164,8 @@ function doImport(replace) {
     if (!a) {
       a = { section, sectionSub, group, groupSub, title, subtitle, revealMode: "one", winners: [] };
       awards.push(a);
+      const oid = oldIds.get([impKey(section), impKey(group), title].join("\u0001"));
+      if (oid) { reuse.set(a, oid); oldIds.delete([impKey(section), impKey(group), title].join("\u0001")); }
     }
     a.winners.push(makeWinner(name, rest, photo, type, win));
     added++;
@@ -188,6 +196,7 @@ function doImport(replace) {
       else if (a.winners.length > 6) a.revealMode = "all";
     }
   }
+  for (const [a, id] of reuse) a.id = id;   // 等上面按「新奖项」自动判断完揭晓方式再给编号
   const nomNoWin = awards.filter((a) => modeSet.get(a) === "nominee" && !a.winners.some((w) => w.win)).map((a) => a.title);
   if (badMode.size) skip += `；「揭晓方式」看不懂：「${[...badMode].join("」「")}」（可填 逐一揭晓 / 先一后全 / 一次全部揭晓 / 入围揭晓），这些奖项照自动判断`;
   if (nomNoWin.length) skip += `；入围揭晓但没标得主：「${nomNoWin.join("」「")}」（在「得主」列写「得主」）`;
@@ -227,8 +236,8 @@ function socOf(w) {
     const s = socFind(w.soc);
     return s ? [s.zh || "", s.en || ""] : [];
   }
-  // 没有对照表：照旧把「中文English」拆两行；「学会」栏没填时用备注（1.42 以前的名单）
-  const t = w.soc || w.detail || "";
+  // 没有对照表：照旧把「中文English」拆两行。学会栏空 = 不印（1.89 起不再拿备注顶上：备注可能是图片文件名，大屏也不这样做）
+  const t = w.soc || "";
   const m = String(t).match(/^(.*[　-鿿＀-￯])\s*([A-Za-z].*)$/);
   return m ? [m[1].trim(), m[2].trim()] : t ? [t] : [];
 }

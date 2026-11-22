@@ -4,6 +4,7 @@
  *   1 名单里写了、照片文件夹里没有的照片      4 照片文件夹里有、名单和电子书都没用到的照片
  *   2 备注写了图片文件名、但找不到的          5 图片导出的奖项名素材找不到的（有素材文件夹时才查）
  *   3 电子书的集锦 / 花絮 / 前言照片找不到的  6 学会编号在对照表里查不到的   7 没有得奖者的奖项
+ *   8 入围揭晓没标得主或标了几位      9 指定的字体文件（file:）不在 data/fonts/      10 海报里选了、但名单里已经没有的奖项（1.89）
  * 提供：ckRun()
  * 需要：core.js（api、el、V、dirty）、import.js（SOC、socFind）、export.js（exLoadMats、exMats、exMatFind）、ebook.js（ebClean、ebBtsLine）
  */
@@ -18,13 +19,17 @@ async function ckRun() {
   if (ckBusy || !V) return;
   ckBusy = true; $('ckSum').textContent = '检查中…'; $('bCkRun').disabled = true;
   try {
-    const [ph, pf, eb, soc] = await Promise.all([
+    const [ph, pf, eb, soc, fo, xs, po] = await Promise.all([
       api('GET', '/api/control/photos'), api('GET', '/api/control/photo-files'),
       api('GET', '/api/control/ebook').catch(() => ({ ebook: {} })), api('GET', '/api/control/societies').catch(() => ({ list: [] })),
+      api('GET', '/api/control/fonts').catch(() => ({ fonts: [] })), api('GET', '/api/control/export-style').catch(() => ({})),
+      api('GET', '/api/control/poster').catch(() => ({ poster: {} })),
       exLoadMats()
     ]);
     SOC = soc.list || [];
-    ckShow(ckCollect(V.awards || [], ph.photos || [], pf.files || [], ebClean(eb.ebook || {})));
+    const out = ckCollect(V.awards || [], ph.photos || [], pf.files || [], ebClean(eb.ebook || {}));
+    ckMore(out, V.awards || [], V.event || {}, (fo.fonts || []).map(f => f.name), xs.style || xs, po.poster || {});
+    ckShow(out);
   } catch (e) {
     $('ckSum').textContent = '检查失败：' + e.message; $('ckList').replaceChildren();
   } finally { ckBusy = false; $('bCkRun').disabled = false; }
@@ -85,6 +90,30 @@ function ckCollect(awards, photos, files, EB) {
   // 7 没有得奖者
   add('没有得奖者的奖项', '现场按到这个奖项时，大屏只有标题、没有名字。', awards.filter(a => !a.winners.length).map(a => [ckWhere(a) || '（没写奖项名）', '']), '每个奖项都有得奖者');
   return out;
+}
+
+// 8 ~ 10（1.89，维护者 2026-11-22）：入围揭晓的得主、字体文件、海报选的奖项
+function ckMore(out, awards, ev, fonts, xs, po) {
+  const add = (title, tip, rows, okText) => out.push({ title, tip, rows, okText });
+  // 8 入围揭晓：要刚好一位「得主」（没标 = 现场照逐一揭晓；标了几位 = 只算第一位）
+  const nom = awards.filter(a => a.revealMode === 'nominee' && a.winners.length).map(a => [a, a.winners.filter(w => w.win).length]).filter(([, k]) => k !== 1);
+  add('入围揭晓的得主', '入围揭晓的奖项要在名单里刚好标一位「得主」。没标：现场会照逐一揭晓；标了几位：只算第一位。到「奖项编辑」改。',
+    nom.map(([a, k]) => [ckWhere(a), k ? `标了 ${k} 位得主` : '还没标得主']), '入围揭晓的奖项都标好了得主');
+  // 9 字体：活动资料、图片导出设计、海报写了 file:文件名，但 data/fonts/ 里没有（换电脑、用空模版时常见；会悄悄变回默认字体）
+  const have = new Set(fonts.map(ckLow)), need = new Map();
+  const want = (v, where) => { const m = String(v || '').match(/^file:(.+)$/); if (m && !have.has(ckLow(m[1]))) need.set(m[1], [...(need.get(m[1]) || []), where]); };
+  want(ev.fontTitle, '活动资料 · 中文字体'); want(ev.fontText, '活动资料 · 英文 / 数字字体');
+  for (const [k, e] of Object.entries(xs?.elems || {})) want(e?.font, '图片导出 · ' + ((EX_ELEMS.find(x => x[0] === k) || [])[1] || k));
+  want(po?.font, '海报 · 标题字体');
+  add('字体文件找不到', '设置里指定的字体文件不在 data/fonts/：大屏、导出会改用默认字体。到「奖项编辑 → 字体」重新上传，或改用系统字体。',
+    [...need].map(([f, w]) => [f, [...new Set(w)].join('、')]), '指定的字体文件都在');
+  // 10 海报：选了、但名单里已经没有的奖项（例：删掉了奖项）
+  const ids = new Set(awards.map(a => a.id)), lost = [];
+  for (const p of Array.isArray(po?.posters) ? po.posters : []) {
+    const k = (Array.isArray(p?.ids) ? p.ids : []).filter(id => !ids.has(String(id))).length;
+    if (k) lost.push([String(p.name || '海报'), `${k} 个奖项已经不在名单里（导出时会少掉）`]);
+  }
+  add('海报的奖项', '海报选的奖项在名单里找不到了（删掉了，或用「替换全部奖项」导入时名称改了）。到「海报导出」重新勾选。', lost, '海报选的奖项都在');
 }
 
 function ckShow(list) {
