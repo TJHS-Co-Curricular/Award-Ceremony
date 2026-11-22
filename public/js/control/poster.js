@@ -2,6 +2,7 @@
  * 控制端 · 海报导出：把「图片导出」的成品卡排成一张大海报（维护者定 2026-11-22，例子：2025 表扬大会的三张海报）。
  *   一张海报 = 背景图片 + 几段（每段 = 一个奖项：大标题 + 那个奖项所有得奖者的卡片）。
  *   尺寸用英寸（最高成就 51×43、杰出 / 优秀团体 24×43、学会 / 执委 11×43），卡片大小和列数自动算：所有段都放得下、卡片最大。
+ *   入围揭晓的奖项只放得主（poWho）。
  *   卡片 = exRender()（export.js，跟图片导出同一份设计），固定 16:9；导出 JPG，或按实际尺寸的 PDF（ebPdf，ebook.js）。
  * 设置存 data/poster.json（GET / PUT /api/control/poster）；背景图片 data/backgrounds/poster.jpg（/api/control/poster-bg）。
  * 提供：poOpen()
@@ -53,6 +54,8 @@ async function poOpen() {
 }
 const poAwards = () => (draft ? draft.awards.filter(a => a.winners.length) : []);
 const poCur = () => PO.posters[PO.cur];
+// 海报上放谁：入围揭晓的奖项（有标「得主」）只放得主，入围者不放（维护者定 2026-11-22：最佳执委只要得主）；其它奖项放全部
+const poWho = a => (a.revealMode === 'nominee' && a.winners.some(w => w.win) ? a.winners.filter(w => w.win) : a.winners);
 
 /* ---- 表单 ---- */
 function poBuild() {
@@ -70,7 +73,7 @@ function poBuild() {
     const on = P.ids.includes(a.id), i = sel.indexOf(a);
     const row = el('div', { class: 'poa' + (on ? ' on' : '') },
       el('label', {}, el('input', { type: 'checkbox', ...(on ? { checked: '' } : {}), onchange: e => poToggle(a.id, e.target.checked) }),
-        el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, `（${a.winners.length}）`)));
+        el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, poWho(a).length < a.winners.length ? `（得主 ${poWho(a).length} / 入围 ${a.winners.length}）` : `（${a.winners.length}）`)));
     if (on) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
     return row;
   }) : [el('p', { class: 'muted' }, '还没有得奖者')]));
@@ -155,7 +158,7 @@ function poLayout(P, secs, fam) {
     const fs = Math.min(cw * .42 * PO.titleK / 100, ...widest.map(x => inner * .96 / x));   // 同一张海报的标题一样大（照最长的那个）
     const parts = secs.map((a, i) => {
       const th = heads[i].length ? heads[i].length * fs * 1.18 + fs * .3 : 0;
-      const rows = Math.ceil(a.winners.length / cols);
+      const rows = Math.ceil(poWho(a).length / cols);
       const h = th + rows * ch + (rows - 1) * gy;
       total += h;
       return { a, lines: heads[i], fs, th, rows, h };
@@ -182,7 +185,7 @@ async function poDraw(P, dpi, card, progress) {
   if (bg) exCover(g, bg, 0, 0, W, H);
   else { const gr = g.createRadialGradient(W / 2, H * .35, 0, W / 2, H * .35, Math.hypot(W, H) * .6); gr.addColorStop(0, thC('#2a2110')); gr.addColorStop(1, thC('#07060c')); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
   if (!L) return { cv, L, secs };
-  const total = secs.reduce((t, a) => t + a.winners.length, 0);
+  const total = secs.reduce((t, a) => t + poWho(a).length, 0);
   const pad = L.extra / (secs.length + 1);   // 多出来的高度平均分给上下和段与段之间
   let y = L.m + pad, k = 0;
   const c = PO.color, lift = (hex, f) => '#' + [1, 3, 5].map(i => Math.round(Math.min(255, parseInt(hex.slice(i, i + 2), 16) * f + (f > 1 ? 20 : 0))).toString(16).padStart(2, '0')).join('');
@@ -200,11 +203,11 @@ async function poDraw(P, dpi, card, progress) {
     });
     y += s.th;
     // 卡片：每排置中（最后一排人少时也在中间）
-    const n = s.a.winners.length;
+    const who = poWho(s.a), n = who.length;
     for (let r = 0; r < s.rows; r++) {
       const inRow = Math.min(L.cols, n - r * L.cols), rowW = inRow * L.cw + (inRow - 1) * L.gx, x0 = (P.w - rowW) / 2;
       for (let c2 = 0; c2 < inRow; c2++) {
-        const w = s.a.winners[r * L.cols + c2];
+        const w = who[r * L.cols + c2];
         const im = await card(s.a, w, L.cw * dpi);
         const x = (x0 + c2 * (L.cw + L.gx)) * dpi, yy = (y + r * (L.ch + L.gy)) * dpi;
         g.save(); g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = L.cw * dpi * .015; g.shadowOffsetY = L.cw * dpi * .006;
@@ -235,7 +238,7 @@ async function poPreview() {
     return poCards.get(key);
   });
   const pv = $('poPv'); pv.width = cv.width; pv.height = cv.height; pv.getContext('2d').drawImage(cv, 0, 0);
-  const n = secs.reduce((t, a) => t + a.winners.length, 0);
+  const n = secs.reduce((t, a) => t + poWho(a).length, 0);
   $('poPvCap').textContent = !secs.length ? '左边勾选要放进这张海报的奖项'
     : !L ? `放不下：${n} 张卡片太多，换大一点的尺寸或分成两张海报`
     : `${P.w} × ${P.h} 英寸 · ${secs.length} 个奖项 · ${n} 张卡片 · 每排 ${L.cols} 张 · 卡片 ${L.cw.toFixed(2)} × ${L.ch.toFixed(2)} 英寸 · 导出 ${Math.round(P.w * PO.dpi)} × ${Math.round(P.h * PO.dpi)} 像素`;
