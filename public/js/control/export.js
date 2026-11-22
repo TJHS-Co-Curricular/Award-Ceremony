@@ -32,6 +32,7 @@ const EX_PRESET = () => ({
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
+  idSide: true,     // 学生证照片（-ID）横排：左照片右资料（exIdSide；维护者 2026-11-22，图片导出也照海报那样）
   matOn: true, matTop: 20, matAward: 22, matTopX: 0, matTopY: 0, matAwardX: 0, matAwardY: 0,
   // 团体图（含学生证照片）自己一套（用户定 2026-11-22：个人图文字在左边、要往右移的素材，团体图照片在中间，共用会歪）
   tmatTop: 20, tmatAward: 15.5, tmatTopX: 0, tmatTopY: 0, tmatAwardX: 0, tmatAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
@@ -53,7 +54,7 @@ function exClean(v) {
   o.sparkle = v?.sparkle !== false;
   o.shade = num(v?.shade, 0, 100, d.shade); o.shadow = num(v?.shadow, 0, 100, d.shadow);
   o.textX = num(v?.textX, 15, 50, d.textX); o.nameY = num(v?.nameY, 15, 70, d.nameY);
-  o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false;
+  o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false; o.idSide = v?.idSide !== false;
   o.matOn = v?.matOn !== false; o.matTop = num(v?.matTop, 5, 45, d.matTop); o.matAward = num(v?.matAward, 5, 45, d.matAward);
   for (const id of ['matTopX', 'matTopY', 'matAwardX', 'matAwardY', 'tmatTopX', 'tmatTopY', 'tmatAwardX', 'tmatAwardY']) o[id] = num(v?.[id], -30, 30, 0);
   // 旧设计没有团体的大小：沿用个人图的（下方原本是个人的 70%），位置从 0 开始
@@ -263,7 +264,7 @@ async function exRender(award, w, fam) {
     const textH = block.reduce((t, [key, , m], i) => t + E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0), 0);
     const pad = U * .03, below = (matD ? matD.h + U * .05 : U * .02);   // 卡片上下留边；卡片下面的素材图片
     let cardBottom;
-    if (idCard && S.idSide) cardBottom = exIdSide(g, { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S });   // 学生证照片横排（海报导出）
+    if (idCard && S.idSide) cardBottom = exIdSide(g, { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S });   // 学生证照片横排（图片导出、海报导出）
     else {
     const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - (textH + pad * 2) - below - H * .02;   // 照片能用的高度（整张卡 + 素材都要放得下）
     let ph = Math.max(10, boxH), pw = ph * ar;
@@ -309,7 +310,7 @@ async function exRender(award, w, fam) {
 
 /* 学生证照片横排（海报导出，维护者 2026-11-22）：直排是照片在上、文字在下，学生证照片是直的，卡片会又窄又长；
  * 横排 = 左边照片（完整、不裁切）+ 右边名字 / 班级 / 学号 / 学会，中间一条金线，卡片金边、底色和直排一样。
- * 只在 EXS.idSide 为真时用（poster.js 的 poCard() 按 PO.idSide 临时设），图片导出不受影响。返回卡片底边的 y。 */
+ * EXS.idSide 为真时用：图片导出「团体图 → 学生证横排」（默认打勾，1.87），海报导出的 poCard() 按 PO.idSide 临时盖掉它。返回卡片底边的 y。 */
 function exIdSide(g, o) {
   const { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S } = o;
   const ar = img ? img.naturalWidth / img.naturalHeight : .75;
@@ -416,7 +417,7 @@ function exBuildUI() {
   $('exG_logoOn').checked = EXS.logoOn; $('exG_matOn').checked = EXS.matOn;
   exMatInfo();
   $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
-  $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow; $('exG_sparkle').checked = EXS.sparkle;
+  $('exG_teamBg').value = EXS.teamBg; $('exG_teamFrame').value = EXS.teamFrame; $('exG_teamGlow').checked = EXS.teamGlow; $('exG_idSide').checked = EXS.idSide; $('exG_sparkle').checked = EXS.sparkle;
   $('exSize').value = EXS.size; $('exFmt').value = EXS.fmt; $('exWinOnly').checked = EXS.winOnly;
 }
 function exChanged(rebuild) {
@@ -435,6 +436,7 @@ for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin',
 $('exG_teamBg').oninput = e => { EXS.teamBg = e.target.value; exChanged(); };
 $('exG_teamFrame').oninput = e => { EXS.teamFrame = e.target.value; exChanged(); };
 $('exG_teamGlow').onchange = e => { EXS.teamGlow = e.target.checked; exChanged(); };
+$('exG_idSide').onchange = e => { EXS.idSide = e.target.checked; exChanged(); };
 $('exG_sparkle').onchange = e => { EXS.sparkle = e.target.checked; exChanged(); };
 $('exG_logoOn').onchange = e => { EXS.logoOn = e.target.checked; exChanged(); };
 $('exG_matOn').onchange = e => { EXS.matOn = e.target.checked; exChanged(); };
