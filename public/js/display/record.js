@@ -3,16 +3,15 @@
  * 用虚拟时钟（clock.js）一格一格地推进特效，每一帧合成到一张画布，再用浏览器内建的 WebCodecs 编码成 H.264（不支持就用 VP9），
  * 最后 mp4.js 包成 .mp4。逐帧离线渲染：电脑慢只会导出得久一点，影片本身不会掉帧。
  * 内容：
- *   standby   待机画面 = 大会背景（背景 + 副标题 + 活动名称 + 装饰线，名称有流光）
+ *   standby   待机画面 = 大会背景（背景 + 浮尘 + 副标题 + 活动名称 + 装饰线，名称有流光）
  *   promo     宣传背景（待机画面 + 下方的日期 / 时间 / 地点 / 其它一行）
- *   standbybg 待机背景（星系 / 光河，没有文字）
- *   greenbg   绿幕（待机背景的圈圈放在纯绿色 #00FF00 上，没有文字；后期抠掉绿色叠到别的影片上）
- *   base      底层背景（舞台渐层 + 浮尘 + 边框，其它画面后面那层）
+ *   base      底层背景（舞台渐层 + 浮尘 + 边框，没有文字，其它画面后面那层）
+ *   （standbybg 待机背景、greenbg 绿幕是星系 / 光河用的，1.70 拿掉了；旧的任务清单写这两个会当成 base）
  *   flash     揭晓闪光（黑底，叠加时用「滤色 / Screen」混合）
  * 循环：最后 fade 秒和开头交叉淡化，首尾接得上，播放器设「循环播放」就看不出接缝。
  * 文字是按网页实际排版逐字画到画布上的（位置、字体、渐层、阴影跟网页一样）。
- * 学校 Logo（画面左上角 #slogo）：大会背景、宣传背景、待机背景、底层背景都画上去，大小 / 边距 / 不透明度照「效果控制 → 画面左上角 Logo」（用户定 2026-11-18）；
- *   绿幕、揭晓闪光是叠加用的素材，不放 Logo。
+ * 学校 Logo（画面左上角 #slogo）：大会背景、宣传背景、底层背景都画上去，大小 / 边距 / 不透明度照「效果控制 → 画面左上角 Logo」（用户定 2026-11-18）；
+ *   揭晓闪光是叠加用的素材，不放 Logo。
  * opt.sink（服务器渲染、服务端有 NVENC 时由 lib/render.js 给）：每帧原始画面交给服务端的 ffmpeg 用显卡编码，不在浏览器编码（blob = null）。
  * 提供：recStart(opt, fx, onProgress) → Promise<{ blob, size, codec, hw, width, height, speed }>、recStill(opt, fx) → Promise<{ blob, width, height }>（一张 PNG）、recCancel()
  * 需要：stage.js、clock.js、fxconf.js、mp4.js、fx/*、render.js、main.js（booted）
@@ -144,7 +143,7 @@ function recTitle(out, L, frac) {
 }
 
 /* ---------- 学校 Logo（= 大屏左上角的 #slogo，CSS 见 display.css）：正方形框 = 画面高 × sLogoSize，按原比例缩进框里贴左上角 ---------- */
-const recHasLogo = c => c !== 'greenbg' && c !== 'flash';
+const recHasLogo = c => c !== 'flash';
 async function recLogoLayer(W, H, content) {
   const im = $('slogo');
   if (!recHasLogo(content) || !FXC.sLogoOn || !im.getAttribute('src')) return null;
@@ -236,57 +235,40 @@ async function recPrepare(opt, fx) {
   recStop = false;
   for (let i = 0; !booted && i < 200; i++) await new Promise(r => setTimeout(r, 50));
   if (!booted) throw new Error('连不上服务端');
+  if (opt.content === 'standbybg' || opt.content === 'greenbg') opt.content = 'base';   // 旧名称（星系 / 光河拿掉了）
   fxPreviewSet(fx);
   await bgImgReady(); bgDraw();   // 大会背景图片（display/bgimg.js）：等载好、按影片像素画好
-  if (opt.content === 'base' || opt.content === 'flash') standbyFx(false, FXC.standby);   // 用不到待机背景：停掉省时间
-  else standbyFx(opt.content === 'greenbg' || bgFxOn(), FXC.standby);   // 绿幕一定用星系 / 光河；背景图片 / 透明时其它内容不用
   REC_INFO = opt.content === 'promo'; if (lastV) standbyInfo(lastV.event);   // 宣传背景才有日期 / 时间 / 地点
   $('s-standby').classList.remove('enter');   // 去掉进场动画，文字位置才是最终的
-  for (let i = 0; i < 30; i++) recTick(1000 / 60);   // 先跑半秒：标题缩放、星系建好
+  for (let i = 0; i < 30; i++) recTick(1000 / 60);   // 先跑半秒：标题缩放、浮尘建好
   await document.fonts.ready;
   for (let i = 0; i < 2; i++) recTick(1000 / 60);   // 字体载好后再缩放一次（标题、日期地点的 fitText 在下一帧）
 }
 const recHasText = c => c === 'standby' || c === 'promo';
-/* 背景那一层（影片、图片共用）。绿幕、闪光不受「大会背景」影响。
- * 大会背景 = 背景图片：图片 + 浮尘（和现场一样，没有渐层、边框）；= 透明：黑底 + 浮尘（「透明」在影片里没有意义）；
- * = 程序画的：原本的做法（待机 = 星系 / 光河；base = 渐层 + 浮尘 + 边框）。 */
+/* 背景那一层（影片、图片共用），和现场大屏一样：
+ * 大会背景 = 深色渐层（默认）：渐层 + 浮尘 + 边框（大会背景、宣传背景、底层背景都是这样，前两个再叠文字）；
+ * = 背景图片：图片 + 浮尘（没有渐层、边框）；= 透明：黑底 + 浮尘（「透明」在影片里没有意义）；
+ * 揭晓闪光：黑底 + 闪光，不受大会背景影响。 */
 function recBgLayer(o, content, B, W, H) {
-  const gold = $('goldfx'), r = document.documentElement.classList;
-  if (content !== 'greenbg' && content !== 'flash' && (r.contains('bg-image') || r.contains('bg-clear'))) {
+  const r = document.documentElement.classList;
+  if (content === 'flash') { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); return; }
+  if (r.contains('bg-image') || r.contains('bg-clear')) {
     if (r.contains('bg-image')) o.drawImage($('bgimg'), 0, 0, W, H); else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); }
     o.drawImage($('bg'), 0, 0);
     return;
   }
-  if (recHasText(content) || content === 'standbybg' || content === 'greenbg') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }
-  else if (content === 'base') { o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0); }
-  else { o.fillStyle = '#000'; o.fillRect(0, 0, W, H); o.drawImage($('fx'), 0, 0); }
+  o.drawImage(B.bgc, 0, 0); o.drawImage($('bg'), 0, 0); o.drawImage(B.fr, 0, 0);
 }
-/* 绿幕：星系 / 光河是「发光的东西画在黑底上」，把亮度当成不透明度：
- *   a = 最亮的颜色通道（太暗的当成全透明），颜色 = 原色 ÷ a，再叠到纯绿色上。
- * 黑色部分变成纯绿，亮的地方保持原色，半透明的光晕按亮度混一点绿，抠像后光晕边缘也自然。 */
-const REC_GREEN_T = 8;   // 亮度（0–255）低于这个当成全透明（星系底色 #030201、暗角都会变成纯绿）
-function recGreen(o, W, H) {
-  const d = o.getImageData(0, 0, W, H), p = d.data, t = REC_GREEN_T, k = 255 / (255 - t);
-  for (let i = 0; i < p.length; i += 4) {
-    const r = p[i], g = p[i + 1], b = p[i + 2], m = r > g ? (r > b ? r : b) : (g > b ? g : b);
-    if (m <= t) { p[i] = 0; p[i + 1] = 255; p[i + 2] = 0; p[i + 3] = 255; continue; }
-    const a = (m - t) * k / 255, s = a * 255 / m;   // s：原色 → 原色 ÷ 亮度 × a
-    p[i] = r * s; p[i + 1] = g * s + 255 * (1 - a); p[i + 2] = b * s; p[i + 3] = 255;
-  }
-  o.putImageData(d, 0, 0);
-}
-/* 一张静态图片（PNG）：宣传海报 / 投影片背景用。先跑 opt.seconds（默认 4）秒让星系转开，取那一帧 */
+/* 一张静态图片（PNG）：宣传海报 / 投影片背景用。先跑 opt.seconds（默认 4）秒让浮尘散开，取那一帧 */
 async function recStill(opt, fx) {
   await recPrepare(opt, fx);
-  const content = opt.content, gold = $('goldfx'), W = gold.width, H = gold.height;
-  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
+  const content = opt.content, W = $('bg').width, H = $('bg').height;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content !== 'flash' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
   for (let i = 0; i < Math.round((opt.seconds || 4) * 60); i++) { if (recStop) throw new Error('已取消'); recTick(1000 / 60); if (i % 60 === 0) await recYield(); }
-  const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });
-  if (content === 'flash') { o.filter = gold.style.filter || 'none'; o.drawImage(gold, 0, 0); o.filter = 'none'; }   // 原本的做法（闪光不出静态图）
-  else recBgLayer(o, content, B, W, H);
+  const out = recCanvas(W, H), o = out.getContext('2d');
+  recBgLayer(o, content, B, W, H);
   if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, .25); }   // 流光停在标题中间偏亮的位置
   if (LG) o.drawImage(LG, 0, 0);
-  if (content === 'greenbg') recGreen(o, W, H);
   const blob = await new Promise(r => out.toBlob(r, 'image/png'));
   return { blob, width: W, height: H };
 }
@@ -297,9 +279,9 @@ async function recRun(opt, fx, onProgress, allowHw) {
     : '这个浏览器不支持影片编码（WebCodecs），请用新版 Chrome 或 Edge，或把「在哪里渲染」改成服务器');
   await recPrepare(opt, fx);
   const content = opt.content, fps = opt.fps === 60 ? 60 : 30, sub = 60 / fps;
-  const gold = $('goldfx'), W = gold.width, H = gold.height;
-  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content === 'base' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
-  const out = recCanvas(W, H), o = out.getContext('2d', { willReadFrequently: content === 'greenbg' });   // 绿幕每帧要读回像素
+  const W = $('bg').width, H = $('bg').height;
+  const L = recHasText(content) ? recTextLayers(W, H) : null, B = content !== 'flash' ? recBaseLayers(W, H) : null, LG = await recLogoLayer(W, H, content);
+  const out = recCanvas(W, H), o = out.getContext('2d');
 
   const N = Math.round(opt.seconds * fps), loop = content !== 'flash' && opt.fade > 0, C = loop ? Math.min(Math.round(opt.fade * fps), Math.floor(N / 2)) : 0;
   const P = loop ? opt.seconds / Math.max(1, Math.round(opt.seconds / SHIMMER_P)) : SHIMMER_P;   // 流光周期：让影片长度刚好是整数个周期，循环时文字也接得上
@@ -372,7 +354,6 @@ async function recRun(opt, fx, onProgress, allowHw) {
       }
       if (L) { o.drawImage(L.stat, 0, 0); recTitle(o, L, ((k / fps) / P) % 1); }
       if (LG) o.drawImage(LG, 0, 0);   // Logo 在最上面（循环淡化之后画，接缝时 Logo 不会闪）
-      if (content === 'greenbg') recGreen(o, W, H);   // 循环淡化在黑底上做完再换绿底
       await E.push(out, k, o);
       onProgress(++done / total, '渲染中');
       if (i % 2 === 0) await recYield();

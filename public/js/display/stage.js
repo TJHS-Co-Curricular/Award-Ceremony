@@ -33,7 +33,7 @@ function fit() {
   const cw = RECORD ? Math.round(SW * REC_K / 2) * 2 : SW, ch = RECORD ? Math.round(SH * REC_K / 2) * 2 : SH;   // 影片宽高要双数
   // 只调整三个全屏特效画布（卡片里的照片画布 cards.js 自己定尺寸）：交给 fx/react.js（或后台线程）；特效还没载入时先直接设
   if (typeof fxSizeCanvases === 'function') fxSizeCanvases(cw, ch);
-  else for (const c of [$('bg'), $('goldfx'), $('fx')]) if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+  else for (const c of [$('bg'), $('fx')]) if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
   const s = Math.min(innerWidth / SW, innerHeight / SH);
   stage.style.transform = `translate(-50%,-50%) scale(${s})`;
   if (changed && lastV) { clearTimeout(resizeT); resizeT = setTimeout(relayout, 250); }

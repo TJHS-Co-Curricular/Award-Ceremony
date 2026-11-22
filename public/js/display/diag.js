@@ -3,7 +3,7 @@
  * 打开方式：控制端「输出页」那一栏的「📊 显示帧数」开关（所有输出页一起，重启服务端后自动关），
  *           或在输出页网址加 &fps=1（只影响这一个窗口）。控制端里的小预览不显示。
  * 显示：FPS（最近 1 秒）、最近 10 秒最低 FPS、最慢一帧、超过 50ms 的卡顿次数（最近 1 分钟）、
- *       连线状态和断线次数、舞台尺寸、当前画面、待机背景粒子数。
+ *       连线状态和断线次数、舞台尺寸、当前画面。
  * 提供：diagSet(on)、diagDrop()（main.js 断线时调用）
  * 需要：stage.js（qs、PREVIEW、SW、SH、$）
  */
@@ -44,7 +44,7 @@ function diagLoop(now) {
   const low = diagHist.length ? Math.min(...diagHist.map(h => h[1])) : fps;
   const off = $('conn').classList.contains('show');
   const scene = document.querySelector('.scene.active')?.id?.replace('s-', '') || '-';
-  const parts = FX_WORKER ? (FX_STATS ? FX_STATS + '（后台线程）' : '特效在后台线程') : typeof gyOn !== 'undefined' && gyOn ? `星系粒子 ${gyStreaks.length + gyDust.length + gyDots.length}${gyGlOk ? '（WebGL）' : `（没用 WebGL：${gyGlWhy}）`}` : typeof gOn !== 'undefined' && gOn ? `光河粒子 ${gParts.length}` : '';
+  const parts = FX_WORKER ? (FX_STATS ? FX_STATS + '（后台线程）' : '特效在后台线程') : '';
   const mem = performance.memory ? ` · 内存 ${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)}MB` : '';
   diagBox.style.color = fps >= 50 ? '#9ff0b0' : fps >= 30 ? '#ffd27a' : '#ff8a8a';
   diagBox.textContent =

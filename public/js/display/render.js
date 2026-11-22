@@ -1,7 +1,7 @@
 /*
  * 大屏 · 渲染：按服务端推来的画面数据切换场景（待机 / 消息 / 分类标题 / 奖项标题 / 揭晓）。
  * 提供：render(view)、relayout()、show(sceneId)、renderPhoto(view)、standbyInfo(event)、REC_INFO
- * 需要：stage.js、cards.js、nominee.js、firstall.js、fonts.js、fx/flash.js、fx/goldriver.js
+ * 需要：stage.js、cards.js、nominee.js、firstall.js、fonts.js、fx/flash.js
  */
 'use strict';
 
@@ -22,13 +22,7 @@ function standbyInfo(ev) {
   requestAnimationFrame(() => { fitText(box); fitText($('evNote')); });   // 太长就整行缩小
 }
 
-let gStop = 0;
 function show(id) {
-  // 待机画面的金色光河：显示时运行，离开后等淡出完再停（省电）
-  clearTimeout(gStop);
-  const kind = FXC.standby;   // 待机背景：旋涡星系（默认）或金色光河（fx/standby.js，「效果控制」里选）
-  // bgFxOn()：大会背景是图片 / 透明时不跑（display/bgimg.js）
-  if (id === 's-standby') standbyFx(bgFxOn(), kind); else gStop = setTimeout(() => standbyFx(false, kind), 1200);
   for (const s of document.querySelectorAll('.scene')) {
     const on = s.id === id;
     if (on && !s.classList.contains('active')) { s.classList.remove('enter'); void s.offsetWidth; s.classList.add('enter'); }

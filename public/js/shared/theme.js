@@ -94,7 +94,7 @@ function thC(c) {
   if (m) { const [r, g, b] = f([+m[1], +m[2], +m[3]]); o = m[4] ? `rgba(${r},${g},${b}${m[4]})` : `rgb(${r},${g},${b})`; }
   else if (/^#[0-9a-f]{6}$/i.test(c)) o = '#' + f(thHex(c)).map(v => v.toString(16).padStart(2, '0')).join('');
   else o = c;
-  if (thCCache.size > 20000) thCCache.clear();   // 光河的光丝颜色是连续的，避免越存越多
+  if (thCCache.size > 20000) thCCache.clear();   // 保险：颜色种类太多时清掉，避免越存越多
   thCCache.set(c, o); return o;
 }
 // WebGL：[r, g, b]（0 ~ 1）→ 转过的 [r, g, b]；默认原样返回同一个数组（数值完全不变）

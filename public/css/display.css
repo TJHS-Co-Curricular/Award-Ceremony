@@ -20,9 +20,9 @@ body.idle{cursor:none}
     linear-gradient(var(--bg1),var(--bg2));}
 canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #fx{z-index:20}
-/* 大会背景（display/bgimg.js）：背景图片 / 透明时，不画渐层、边框、待机星系 / 光河；透明时连网页底色也不要（OBS 里垫影片） */
+/* 大会背景（display/bgimg.js）：背景图片 / 透明时，不画渐层、边框；透明时连网页底色也不要（OBS 里垫影片） */
 .bg-image #stage,.bg-clear #stage{background:none}
-.bg-image .frame,.bg-clear .frame,.bg-image #goldfx,.bg-clear #goldfx{display:none}
+.bg-image .frame,.bg-clear .frame{display:none}
 html.bg-clear,.bg-clear body{background:transparent}
 .frame{position:absolute;inset:36px;border:1px solid rgb(var(--gold-rgb) / .22);pointer-events:none;z-index:5}
 .frame::before,.frame::after{content:"";position:absolute;inset:10px;border:1px solid rgb(var(--gold-rgb) / .10)}
@@ -39,9 +39,8 @@ html.bg-clear,.bg-clear body{background:transparent}
 .ornament b{width:12px;height:12px;transform:rotate(45deg);border:1.5px solid var(--gold)}
 .kicker{font-size:30px;letter-spacing:.6em;padding-left:.6em;color:var(--muted);text-transform:uppercase}
 
-/* ===== 待机画面：黑金粒子光河背景（fx/goldriver.js）；文字放在光带上方 ===== */
+/* ===== 待机画面 ===== */
 #s-standby{justify-content:flex-start;padding-top:calc(var(--sh,1080px) * .13)}
-#goldfx{position:absolute;inset:0;z-index:0}
 #s-standby > :not(canvas){position:relative;z-index:1}
 #s-standby .en{font-family:var(--serif);font-weight:500;font-size:calc(84px * var(--sub-k, 1));letter-spacing:.42em;padding-left:.42em;line-height:1;text-transform:uppercase;text-align:center;max-width:calc(100% - 200px);
   background:linear-gradient(180deg,var(--t-title1) 0%,var(--t-title2) 45%,var(--gold-lo) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(0,0,0,.6))}

@@ -1,10 +1,10 @@
 /*
  * 大屏 · 大会背景（效果控制「大会背景」，SCHEMA 的 bgMode）：
- *   fx    = 程序画的（星系 / 光河 + 渐层，原本的样子，什么都不做）
+ *   fx    = 深色渐层 + 边框（默认，CSS 画的，这里什么都不做）
  *   image = 背景图片：控制端上传的 JPEG（本屏幕有自己的一张就用它，否则用「所有屏幕」那张），
  *           画进 canvas #bgimg（不用 <img>：OBS 内置浏览器会把原图留在显存里），铺满（cover），所有画面都在它上面
- *   clear = 透明：网页底色、渐层、边框、待机背景全部不画，只留文字 / 照片 / 浮尘 / 闪光，在 OBS 里把影片放在下面
- * 提供：bgImgSet(v.bg)、bgApply()、bgFxOn()、bgClearOn()、bgImgOk()（外壳换新、导出影片要等图片画好）、bgImgReady()（Promise）、bgMode()
+ *   clear = 透明：网页底色、渐层、边框全部不画，只留文字 / 照片 / 浮尘 / 闪光，在 OBS 里把影片放在下面
+ * 提供：bgImgSet(v.bg)、bgApply()、bgClearOn()、bgImgOk()（外壳换新、导出影片要等图片画好）、bgImgReady()（Promise）、bgMode()
  * 需要：stage.js（KEY、RECORD、REC_K、SW / SH、$）、fxconf.js（FXC、FX_SCREEN）
  */
 'use strict';
@@ -18,15 +18,12 @@ function bgPick() {
   if (own) return '/media/bg?s=' + encodeURIComponent(FX_SCREEN) + '&v=' + own + '&k=' + encodeURIComponent(KEY);
   return bgMap.all ? '/media/bg?v=' + bgMap.all + '&k=' + encodeURIComponent(KEY) : '';
 }
-// 待机背景（星系 / 光河）要不要跑：背景图片 / 透明时看不到，不跑（省显卡）；选了图片但还没上传 = 照样是程序画的
-function bgFxOn() { const r = document.documentElement.classList; return !r.contains('bg-image') && !r.contains('bg-clear'); }
 function bgImgSet(map) { bgMap = map || null; bgApply(); }
 function bgApply() {
   const mode = bgMode(), url = mode === 'image' ? bgPick() : '';
-  const root = document.documentElement.classList, was = bgFxOn();
+  const root = document.documentElement.classList;
   root.toggle('bg-image', mode === 'image' && !!url);
   root.toggle('bg-clear', mode === 'clear');
-  if (was !== bgFxOn() && $('s-standby').classList.contains('active')) standbyFx(bgFxOn(), FXC.standby);
   if (url !== bgUrl) {
     bgUrl = url; bgBmp?.close?.(); bgBmp = null; bgDrawnKey = '';
     if (url) {

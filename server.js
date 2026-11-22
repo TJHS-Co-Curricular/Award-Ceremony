@@ -65,7 +65,7 @@ async function main() {
   rt.cfg = cfg;
   await loadData();
   loadState();
-  loadFx(rt.data?.event?.standbyFx);
+  loadFx();
 
   const server = http.createServer(handler);
   server.listen(cfg.port, cfg.host, () => {
