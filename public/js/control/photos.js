@@ -116,7 +116,7 @@ $("bMissCsv").onclick = async () => {
     ];
   });
   if (!out.length) return toast("所有得奖者都有照片");
-  const head = ["分类", "奖项", "类型", "姓名", "班级", "学号", "学会", "照片文件名", "问题"];
+  const head = ["分类", "奖项", "类型", "姓名", "班级", "学号", socL(), "照片文件名", "问题"];
   const csv =
     "﻿" + [head, ...out].map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
   const d = new Date(),

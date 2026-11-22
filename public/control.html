@@ -197,7 +197,7 @@
               <label class="xr">离边缘（照片宽度 %） <input type="range" id="exG_logoMargin" min="0" max="10" step="0.5"><span id="exG_logoMarginV"></span></label>
               <label class="xr">不透明度 <input type="range" id="exG_logoOpacity" min="20" max="100" step="5"><span id="exG_logoOpacityV"></span></label>
             </div>
-            <p class="help">内容来自「奖项编辑」（含还没保存的修改）。奖项有分类时，上方写分类、学会下面写奖项名；没分类就上方写奖项名。学会写在得奖者的「备注」栏（例如 <code>学长团Prefectorial Board</code>，自动拆成中英文两行）。照片要先放进 <code>data/photos/</code>。设计会自动存到服务端，换电脑也一样。⚠ 导出的图片含名字，请当作保密资料保管。</p>
+            <p class="help">内容来自「奖项编辑」（含还没保存的修改）。奖项有分类时，上方写分类、<span class="socL">学会</span>下面写奖项名；没分类就上方写奖项名。<span class="socL">学会</span>写在得奖者的「<span class="socL">学会</span>」栏（编号查对照表，或写成 <code>学长团Prefectorial Board</code> 自动拆成中英文两行）。照片要先放进 <code>data/photos/</code>。设计会自动存到服务端，换电脑也一样。⚠ 导出的图片含名字，请当作保密资料保管。</p>
           </div>
           <div class="xmain">
             <canvas id="exPv" width="1280" height="720" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#000;display:block"></canvas>
@@ -298,7 +298,7 @@
               <div class="head"><b style="flex:1">这张海报</b><button id="bPoDel">删掉这张</button></div>
               <label class="xr">名称 <input id="po_name" maxlength="40"><span></span></label>
               <label class="xr" title="海报最上面抬头的大字（Logo 下面）。紧凑网格版式写了才加抬头">标题 <textarea id="po_title" rows="2" maxlength="200" style="resize:vertical"></textarea><span></span></label>
-              <label class="xr">尺寸 <select id="po_size"><option value="51x43">51 × 43 英寸（最高成就）</option><option value="24x43">24 × 43 英寸（杰出 / 优秀团体）</option><option value="11x43">11 × 43 英寸（学会 / 执委）</option><option value="custom">自己填</option></select><span></span></label>
+              <label class="xr">尺寸 <select id="po_size"><option value="51x43">51 × 43 英寸</option><option value="24x43">24 × 43 英寸</option><option value="11x43">11 × 43 英寸</option><option value="custom">自己填</option></select><span></span></label>
               <label class="xr">宽 × 高（英寸） <span style="display:flex;gap:6px;align-items:center"><input id="po_w" type="number" min="4" max="120" step="0.5" style="width:80px"> × <input id="po_h" type="number" min="4" max="120" step="0.5" style="width:80px"></span><span></span></label>
               <label class="xr" title="紧凑网格 = 像 2025 最高成就那张；分段 = 上面活动抬头（Logo + 活动名称）、每个奖项一个底框 + 英文名、下面日期地点">版式 <select id="po_style"><option value="auto">自动（宽的紧凑网格，直的分段）</option><option value="grid">紧凑网格</option><option value="panel">分段（抬头 + 底框）</option></select><span id="po_styleNow" class="muted" style="font-size:11px;white-space:nowrap"></span></label>
               <p class="help">勾选要放进这张海报的奖项（顺序跟奖项编辑一样）。每个奖项一段：上面大标题，下面是图片导出的卡片。卡片大小、每排几张自动算，全部放得下、卡片最大。</p>
@@ -310,7 +310,7 @@
               <label class="xr" title="分段版式最上面的学校 Logo + 活动名称 + 英文名（紧凑网格本来就没有）">显示活动抬头 <input type="checkbox" id="po_headOn" style="width:auto;justify-self:start"><span class="muted" style="font-size:11px;white-space:nowrap">分段版式</span></label>
               <label class="xr" title="抬头里活动名称上面的学校 Logo（「效果控制」上传）">抬头 Logo <input type="checkbox" id="po_logoHead" style="width:auto;justify-self:start"><span></span></label>
               <label class="xr" title="每张卡片照片右上角的学校 Logo（图片导出设计里也要开着才有）">卡片 Logo <input type="checkbox" id="po_logoCard" style="width:auto;justify-self:start"><span></span></label>
-              <label class="xr" title="学生证照片（文件名 -ID 结尾，例：最佳执委）的卡片：左边照片、右边名字 / 班级 / 学号 / 学会；不勾 = 和图片导出一样照片在上、文字在下">学生证横排 <input type="checkbox" id="po_idSide" style="width:auto;justify-self:start"><span class="muted" style="font-size:11px;white-space:nowrap">左照片右资料</span></label>
+              <label class="xr" title="学生证照片（文件名 -ID 结尾，例：最佳执委）的卡片：左边照片、右边名字 / 班级 / 学号 / 第 4 栏；不勾 = 和图片导出一样照片在上、文字在下">学生证横排 <input type="checkbox" id="po_idSide" style="width:auto;justify-self:start"><span class="muted" style="font-size:11px;white-space:nowrap">左照片右资料</span></label>
               <label class="xr" title="每个奖项上面的大标题。图片导出的卡片上已经有奖项名；关掉 = 每个奖项只排卡片，段与段之间留一点空">显示奖项标题 <input type="checkbox" id="po_titleOn" style="width:auto;justify-self:start"><span></span></label>
               <label class="xr" title="分段版式每个奖项后面的半透明底框；0 = 只有金色边框">底框深浅 <input type="range" id="po_panelA" min="0" max="80" step="5"><span id="po_panelAV"></span></label>
               <label class="xr">标题颜色 <input type="color" id="po_color" style="width:48px;height:28px;padding:1px"><span></span></label>
@@ -434,6 +434,7 @@
             <label class="f"><span>活动名称（待机画面大标题）</span><input id="evTitle" maxlength="120"></label>
             <label class="f"><span>副标题</span><input id="evSub" maxlength="160"></label>
             <label class="f" title="保存时，每个大类、分类名称前面自动加「年份 + 空格」；名称里原本写的年份（2026年、2026 年）会换成这个。奖项名、英文名不加。"><span>年份（自动加在每个大类、分类名称前面，例：2026；留空 = 不加）</span><input id="evYear" maxlength="4" inputmode="numeric" placeholder="例：2026"></label>
+            <label class="f" title="名单第 4 栏（班级、学号后面那一栏）在控制端、Excel 表头、赛前检查里叫什么。只改名称，资料不变；留空 = 学会。"><span>名单第 4 栏的名称（默认 学会；例：社团、单位、队伍）</span><input id="evSocLabel" maxlength="8" placeholder="学会"></label>
             <label class="f"><span>活动名称大小（%，100 = 原本；50 ~ 200）</span><input id="evTitleSize" type="number" min="50" max="200" step="5"></label>
             <label class="f"><span>副标题大小（%，100 = 原本；50 ~ 200）</span><input id="evSubSize" type="number" min="50" max="200" step="5"></label>
             <label class="f"><span>日期（例如：2026 年 11 月 20 日（星期五））</span><input id="evDate" maxlength="60"></label>
@@ -460,7 +461,7 @@
 
         <details>
           <summary>从 Excel / Google Sheets 批量导入</summary>
-          <p class="help">在表格里选中并复制，直接粘贴到下面（也支持 CSV）。可选列（需要表头）：<code>大类</code> <code>大类英文</code> <code>分类</code> <code>分类英文</code> <code>副标题</code> <code>分类编号</code> <code>大类列出分类</code> <code>大类编号</code>（填 显示 / 不显示、列出 / 不列；空着 = 显示）<code>揭晓方式</code>（填 逐一揭晓 / 先一后全 / 一次全部揭晓 / 入围揭晓，同一奖项填一行就行；空着就自动判断；先一后全要分组就加数字，例：<code>先一后全 每5位一组</code>）（例子见项目的 <code>docs/Example.xlsx</code>）；奖项名称、大类、分类写成「中文English」会自动拆开。列顺序：<code>奖项名称</code> <code>学会</code> <code>姓名</code> <code>班级</code> <code>学号</code> <code>照片文件名</code> <code>备注</code> <code>类型</code> <code>得主</code>（学会可空，写成「中文English」导出图片时分两行；姓名之后都可空；类型填「团体」即为团体大合照，团体的姓名可以留空、只填学会（用学会名称当名字）；得主列填「得主 / 是」的奖项自动设为入围揭晓）。第一行如果是表头（含「奖项」「姓名」），会按表头名称对应列，列顺序可以不同；同名奖项会合并。</p>
+          <p class="help">在表格里选中并复制，直接粘贴到下面（也支持 CSV）。可选列（需要表头）：<code>大类</code> <code>大类英文</code> <code>分类</code> <code>分类英文</code> <code>副标题</code> <code>分类编号</code> <code>大类列出分类</code> <code>大类编号</code>（填 显示 / 不显示、列出 / 不列；空着 = 显示）<code>揭晓方式</code>（填 逐一揭晓 / 先一后全 / 一次全部揭晓 / 入围揭晓，同一奖项填一行就行；空着就自动判断；先一后全要分组就加数字，例：<code>先一后全 每5位一组</code>）（例子见项目的 <code>docs/Example.xlsx</code>）；奖项名称、大类、分类写成「中文English」会自动拆开。列顺序：<code>奖项名称</code> <code><span class="socL">学会</span></code> <code>姓名</code> <code>班级</code> <code>学号</code> <code>照片文件名</code> <code>备注</code> <code>类型</code> <code>得主</code>（<span class="socL">学会</span>可空，写成「中文English」导出图片时分两行；姓名之后都可空；类型填「团体」即为团体大合照，团体的姓名可以留空、只填<span class="socL">学会</span>（用<span class="socL">学会</span>名称当名字）；得主列填「得主 / 是」的奖项自动设为入围揭晓）。第一行如果是表头（含「奖项」「姓名」），会按表头名称对应列，列顺序可以不同；同名奖项会合并。</p>
           <textarea id="importTxt" rows="7" placeholder="奖项	姓名	班级	学号	照片&#10;学业优异奖	陈小明	高一甲班	10001	001.jpg&#10;学业优异奖	林小华	高二乙班	10002	002.jpg&#10;最佳服务奖	王小美	高三丙班	10003"></textarea>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button id="bImportAppend">追加到现有奖项</button>
@@ -470,8 +471,8 @@
         </details>
 
         <details>
-          <summary>学会对照表（<span id="socCnt">0</span> 个）</summary>
-          <p class="help">从 Excel 复制三列直接粘贴：<code>学会编号</code> <code>学会名字(中)</code> <code>学会名字(英)</code>（第一行是表头会自动跳过；没分栏、写成一整串「A01 学长团 Prefectorial Board」也可以）。名单的「学会」栏写编号（或学会中文名），导出图片时自动换成中文、英文两行。编号、中文名都查不到的不印学会，奖项编辑里会标黄。清空后保存 = 不用对照表（照旧把「学会」栏的「中文English」拆两行）。</p>
+          <summary><span class="socL">学会</span>对照表（<span id="socCnt">0</span> 个）</summary>
+          <p class="help">从 Excel 复制三列直接粘贴：<code><span class="socL">学会</span>编号</code> <code><span class="socL">学会</span>名字(中)</code> <code><span class="socL">学会</span>名字(英)</code>（第一行是表头会自动跳过；没分栏、写成一整串「A01 学长团 Prefectorial Board」也可以）。名单的「<span class="socL">学会</span>」栏写编号（或<span class="socL">学会</span>中文名），导出图片时自动换成中文、英文两行。编号、中文名都查不到的不印<span class="socL">学会</span>，奖项编辑里会标黄。清空后保存 = 不用对照表（照旧把「<span class="socL">学会</span>」栏的「中文English」拆两行）。</p>
           <textarea id="socTxt" rows="7" placeholder="学会编号	学会名字(中)	学会名字(英)&#10;S01	学长团	Prefectorial Board&#10;S02	华乐团	Chinese Orchestra"></textarea>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button id="bSocSave">保存对照表</button>
@@ -485,7 +486,7 @@
         </div>
 
         <div id="elist"></div>
-        <p class="help">获奖者每行一位，格式：<code>姓名 | 班级 | 学号 | 学会 | 照片文件名 | 备注 | 类型 | 得主</code>（「入围揭晓」的奖项在得主那一行写 <code>得主</code>；姓名之后都可省略；照片按扩展名识别、类型写 <code>团体</code> 或 <code>个人</code>，都可放在任意位置）。个人照统一拍成 <b>3:2 横幅、人站在右边</b>，左边留给大屏叠字；<b>团体</b>（学会、社团的大合照）照片居中、名字在照片下面。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
+        <p class="help">获奖者每行一位，格式：<code>姓名 | 班级 | 学号 | <span class="socL">学会</span> | 照片文件名 | 备注 | 类型 | 得主</code>（「入围揭晓」的奖项在得主那一行写 <code>得主</code>；姓名之后都可省略；照片按扩展名识别、类型写 <code>团体</code> 或 <code>个人</code>，都可放在任意位置）。个人照统一拍成 <b>3:2 横幅、人站在右边</b>，左边留给大屏叠字；<b>团体</b>（大合照）照片居中、名字在照片下面。照片放在服务器的 <code>data/photos/</code> 文件夹，建议用编号命名（如 <code>001.jpg</code>）避免文件名泄露名字。</p>
       </div>
       </div>
     </div>

@@ -104,6 +104,8 @@ function renderEditor() {
   $("evTitle").value = draft.event.title;
   $("evSub").value = draft.event.subtitle || "";
   $("evYear").value = draft.event.year || "";
+  $("evSocLabel").value = draft.event.socLabel || "";
+  socLApply();
   $("evTitleSize").value = draft.event.titleSize || 100;
   $("evSubSize").value = draft.event.subSize || 100;
   for (const [id, k] of EV_INFO) $(id).value = draft.event[k] || "";
@@ -134,7 +136,7 @@ function renderEditor() {
     const ta = el("textarea", {
       rows: Math.min(14, Math.max(3, a.winners.length + 1)),
       placeholder:
-        "姓名 | 班级 | 学号 | 学会 | 照片.jpg | 备注 | 类型（团体 / 个人） | 得主",
+        `姓名 | 班级 | 学号 | ${socL()} | 照片.jpg | 备注 | 类型（团体 / 个人） | 得主`,
       class: "secret",
     });
     ta.value = winnersToText(a.winners);
@@ -157,7 +159,7 @@ function renderEditor() {
             : "";
       warn.classList.toggle("hidden", a.revealMode !== "nominee" || k === 1);
       const miss = socMissing(a.winners);   // 学会对照表里查不到的编号（导出图片时不印学会）
-      swarn.textContent = miss.length ? `⚠ 学会查不到：${miss.join("、")}` : "";
+      swarn.textContent = miss.length ? `⚠ ${socL()}查不到：${miss.join("、")}` : "";
       swarn.classList.toggle("hidden", !miss.length);
     };
     ta.addEventListener("input", () => {
@@ -418,6 +420,11 @@ $("evTitle").addEventListener("input", (e) => {
 $("evYear").addEventListener("input", (e) => {   // 年份：保存时服务端套到每个大类、分类名称前面（lib/data.js 的 withYear）
   draft.event.year = e.target.value.trim();
   setDirty(true);
+});
+$("evSocLabel").addEventListener("input", (e) => {   // 名单第 4 栏的名称（只改给人看的字，资料字段 soc 不变）
+  draft.event.socLabel = e.target.value.trim();
+  setDirty(true);
+  socLApply();
 });
 $("evSub").addEventListener("input", (e) => {
   draft.event.subtitle = e.target.value;

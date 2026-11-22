@@ -1,7 +1,7 @@
 /*
  * 控制端 · 海报导出：把「图片导出」的成品卡排成一张大海报（维护者定 2026-11-22，例子：2025 表扬大会的三张海报）。
  *   一张海报 = 背景图片 + 几段（每段 = 一个奖项：大标题 + 那个奖项所有得奖者的卡片）。
- *   尺寸用英寸（最高成就 51×43、杰出 / 优秀团体 24×43、学会 / 执委 11×43），卡片大小和列数自动算：所有段都放得下、卡片最大。
+ *   尺寸用英寸（预设 51×43、24×43、11×43，也可以自己填；1.86 起不再写联课处的海报名，方便别的部门用），卡片大小和列数自动算：所有段都放得下、卡片最大。
  *   入围揭晓的奖项只放得主（poWho）。
  *   卡片 = exRender()（export.js，跟图片导出同一份设计），固定 16:9；导出 JPG，或按实际尺寸的 PDF（ebPdf，ebook.js）。
  * 设置存 data/poster.json（GET / PUT /api/control/poster）；背景图片 data/backgrounds/poster.jpg（/api/control/poster-bg）。
@@ -11,14 +11,12 @@
  */
 'use strict';
 
-const PO_SIZES = [['51x43', '51 × 43 英寸（最高成就）'], ['24x43', '24 × 43 英寸（杰出 / 优秀团体）'], ['11x43', '11 × 43 英寸（学会 / 执委）']];
+const PO_SIZES = [['51x43', '51 × 43 英寸'], ['24x43', '24 × 43 英寸'], ['11x43', '11 × 43 英寸']];
 const PO_BG_EDGE = 8192;   // 背景图片长边上限（51 英寸 × 150 dpi ≈ 7650 像素）
 const PO_DEF = () => ({
   dpi: 150, panelA: 35, headOn: true, titleOn: true, logoHead: true, logoCard: true, idSide: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
   posters: [
-    { name: '最高成就', w: 51, h: 43, ids: [], heads: {} },
-    { name: '杰出 / 优秀团体', w: 24, h: 43, ids: [], heads: {} },
-    { name: '学会 / 执委', w: 11, h: 43, ids: [], heads: {} }
+    { name: '海报 1', w: 24, h: 43, ids: [], heads: {} }   // 没有 data/poster.json 时的默认（已保存的海报不受影响）
   ]
 });
 function poClean(v) {

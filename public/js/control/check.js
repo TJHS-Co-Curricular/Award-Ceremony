@@ -79,7 +79,8 @@ function ckCollect(awards, photos, files, EB) {
     }
     for (const [s, ns] of map) socRows.push([s, `${ns.length} 位：${ns.slice(0, 6).join('、')}${ns.length > 6 ? '…' : ''}`]);
   }
-  add('学会查不到', SOC.length ? '名单「学会」栏写的编号 / 名字，在学会对照表里找不到（大屏、图片导出不显示学会）。到「奖项编辑 → 学会对照表」补上。' : '还没有学会对照表：学会栏照原文拆成中文、英文两行，不用检查。', socRows, SOC.length ? '学会都查得到' : '没有对照表，不用检查');
+  const L = socL();   // 名单第 4 栏的名称（默认学会）
+  add(L + '查不到', SOC.length ? `名单「${L}」栏写的编号 / 名字，在${L}对照表里找不到（大屏、图片导出不显示）。到「奖项编辑 → ${L}对照表」补上。` : `还没有${L}对照表：${L}栏照原文拆成中文、英文两行，不用检查。`, socRows, SOC.length ? L + '都查得到' : '没有对照表，不用检查');
 
   // 7 没有得奖者
   add('没有得奖者的奖项', '现场按到这个奖项时，大屏只有标题、没有名字。', awards.filter(a => !a.winners.length).map(a => [ckWhere(a) || '（没写奖项名）', '']), '每个奖项都有得奖者');
@@ -93,7 +94,7 @@ function ckShow(list) {
   $('ckNote').textContent = '只把问题列出来，不会改名单或文件。改好以后按「重新检查」。' + (dirty ? '　⚠ 奖项编辑里有没保存的修改：这里查的是已保存的名单。' : '');
   $('ckList').replaceChildren(...list.map(x => el('section', { class: 'ck' + (x.rows.length ? ' bad' : ' ok') },
     el('h3', {}, el('span', { class: 'ckmark' }, x.rows.length ? '⚠' : '✓'), x.title, el('span', { class: 'muted' }, x.rows.length ? `　${x.rows.length} 条` : `　${x.okText}`)),
-    x.rows.length || x.title === '奖项名素材' || x.title === '学会查不到' ? el('p', { class: 'muted' }, x.tip) : null,
+    x.rows.length || x.title === '奖项名素材' || x.title === socL() + '查不到' ? el('p', { class: 'muted' }, x.tip) : null,
     x.rows.length ? el('ul', {}, x.rows.slice(0, 300).map(([a, b]) => el('li', {}, el('b', {}, a), b ? el('span', { class: 'muted' }, '　' + b) : null)),
       x.rows.length > 300 ? el('li', { class: 'muted' }, `……还有 ${x.rows.length - 300} 条`) : null) : null)));
 }

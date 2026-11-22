@@ -21,7 +21,7 @@ function modeText(a) {
 function exportAwardsXlsx() {
   const awards = draft?.awards || [];
   if (!awards.length) return toast("还没有奖项", true);
-  const rows = [XLSX_HEAD];
+  const rows = [XLSX_HEAD.map((h) => (h === "学会" ? socL() : h))];   // 第 4 栏用自定名称（导入也认得）
   for (const a of awards) {
     const head = [a.section || "", a.sectionSub || "", a.group || "", a.groupSub || "", a.title || "", a.subtitle || "", modeText(a)];
     const flags = [   // 没有分类 / 大类的奖项留空

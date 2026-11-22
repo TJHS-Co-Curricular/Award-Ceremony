@@ -14,7 +14,7 @@ function enavGo(i) { const c = $('ec' + i); if (c) { c.scrollIntoView({ block: '
 function enavWarn(a) {
   if (!a.winners.length) return '没有名单';
   if (a.revealMode === 'nominee' && a.winners.filter(w => w.win).length !== 1) return '得主没标好';
-  if (typeof socMissing === 'function' && socMissing(a.winners).length) return '学会查不到';
+  if (typeof socMissing === 'function' && socMissing(a.winners).length) return socL() + '查不到';
   return '';
 }
 function enavRender() {

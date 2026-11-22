@@ -1,18 +1,27 @@
 /*
  * 控制端 · 基础：共用状态和小工具（其它控制端脚本都要先载入它）。
  * 提供：$、CLIENT_VERSION、V（最新控制端视图）、sel（选中的奖项）、draft（编辑草稿）、dirty、es（实时连接）、
- *       toast、api、el、MODE_NAME、splitZhEn、infoLine、store、log、mb、loadImg、clone、copy
+ *       toast、api、el、socL、socLApply、MODE_NAME、splitZhEn、infoLine、store、log、mb、loadImg、clone、copy
  * ⚠ CLIENT_VERSION 要和 lib/env.js 的 VERSION 一起改。
  */
 'use strict';
 
 const $ = id => document.getElementById(id);
-const CLIENT_VERSION = '1.85';
+const CLIENT_VERSION = '1.86';
 let V = null;          // 最新控制端视图
 let sel = null;        // 选中的奖项 id
 let draft = null;      // 编辑草稿
 let dirty = false;
 let es = null;          // 实时连接（EventSource）
+// 名单第 4 栏（soc，资料里的字段名不变）给人看的名称：活动资料的 socLabel，没写 = 「学会」（维护者定 2026-11-22：给别的部门用时可以改成社团、单位…）
+function socL() { return String(draft?.event?.socLabel || V?.event?.socLabel || '').trim() || '学会'; }
+// 网页里写死的「学会」字样都包在 <span class="socL"> 里，这里换成现在的名称
+function socLApply() {
+  const t = socL();
+  document.querySelectorAll('.socL').forEach((x) => { x.textContent = t; });
+  const ta = $('socTxt');
+  if (ta) ta.placeholder = `${t}编号\t${t}名字(中)\t${t}名字(英)\nS01\t学长团\tPrefectorial Board\nS02\t华乐团\tChinese Orchestra`;
+}
 // 预览框（/display?preview=1 的 iframe）用控制端这条连线收到的公开视图，不自己开连线（session.js 收、输出页 main.js 的 pvFeed 用）
 let pvRaw = null;       // 最新一份公开视图（JSON 原文）
 // ⚠ 要用 function 宣告（挂在 window 上，预览框里用 parent.pvLatest() 叫得到）

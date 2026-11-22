@@ -405,7 +405,7 @@ function exBuildUI() {
     const c = el('input', { type: 'color', style: 'width:38px;height:28px;padding:1px' }); c.value = st.color; c.oninput = () => set('color', c.value);
     const f = el('input', { list: 'exFontList', placeholder: '跟随大屏', style: 'width:100%;min-width:90px' }); f.value = st.font; f.onchange = () => set('font', f.value.trim());
     tb.append(el('tr', { class: st.show ? '' : 'off' },
-      el('td', {}, chk('show', '', '显示这一项'), ' ', label),
+      el('td', {}, chk('show', '', '显示这一项'), ' ', label.replace('学会', socL())),   // 第 4 栏用自定名称
       el('td', {}, n('size', '0.5', 68)),
       el('td', {}, c),
       el('td', {}, chk('bold', 'B', '粗体'), chk('italic', 'I', '斜体')),

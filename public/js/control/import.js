@@ -34,9 +34,11 @@ function parseRows(text) {
   // 有表头：按表头名称对应列（列顺序可以随意）
   // 顺序就是优先级：「分类英文」要先于「分类」，「奖项英文 / 副标题」要先于「奖项」
   // 学会的列（学会编号 / 学会名字(中) / 学会名字(英)…）只能对应学会，不会被「编号」「名字」误认成学号、姓名
-  const SOC_HEAD = /学会|學會|society|club/i;
+  // 也认得社团 / 单位 / 部门 / 队伍，和「名单第 4 栏的名称」（socL()，给别的部门用，维护者定 2026-11-22）
+  const SOC_W = "学会|學會|社团|社團|单位|單位|部门|部門|队伍|隊伍|society|club|unit|dept" + (/^(班级|学号|姓名|奖项|备注|类型|照片)$/.test(socL()) ? "" : "|" + socL().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const SOC_HEAD = new RegExp(SOC_W, "i");
   const H = [
-    ["socName", /(学会|學會|society|club).*(名|name)/i],
+    ["socName", new RegExp(`(${SOC_W}).*(名|name)`, "i")],
     ["soc", SOC_HEAD],
     // 三个显示设定（要先于「大类」「分类」「学号(编号)」）：值写 显示 / 不显示、列出 / 不列（1.59）
     ["sectionNoList", /(大类|大類|section).*(列出|列表|list)/i],
@@ -134,10 +136,10 @@ function doImport(replace) {
   const rows = parseRows($("importTxt").value);
   const modeSet = new Map(), chunkSet = new Map(), badMode = new Set();
   let skip = rows.skipped.length
-    ? `；跳过 ${rows.skipped.length} 行（没有奖项名称，或姓名和学会都空）：「${rows.skipped.slice(0, 3).join("」「")}」${rows.skipped.length > 3 ? "……" : ""}`
+    ? `；跳过 ${rows.skipped.length} 行（没有奖项名称，或姓名和${socL()}都空）：「${rows.skipped.slice(0, 3).join("」「")}」${rows.skipped.length > 3 ? "……" : ""}`
     : "";
   if (!rows.length)
-    return toast("没有可导入的行（至少需要「奖项」和「姓名」两列；团体可以只填「学会」）" + skip, true);
+    return toast(`没有可导入的行（至少需要「奖项」和「姓名」两列；团体可以只填「${socL()}」）` + skip, true);
   const awards = replace ? [] : draft.awards;
   let added = 0;
   for (const r of rows) {
@@ -266,6 +268,6 @@ $("bSocSave").onclick = async () => {
   socShow();
   renderEditor();
   const miss = draft ? socMissing(draft.awards.flatMap((a) => a.winners)) : [];
-  toast(`学会对照表已保存：${SOC.length} 个` + (miss.length ? `；名单里有 ${miss.length} 个编号查不到（奖项编辑里标黄）` : ""), !!miss.length);
-  log(`保存学会对照表（${SOC.length} 个）`);
+  toast(`${socL()}对照表已保存：${SOC.length} 个` + (miss.length ? `；名单里有 ${miss.length} 个编号查不到（奖项编辑里标黄）` : ""), !!miss.length);
+  log(`保存${socL()}对照表（${SOC.length} 个）`);
 };
