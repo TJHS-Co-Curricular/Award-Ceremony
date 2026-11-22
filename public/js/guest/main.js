@@ -1,5 +1,6 @@
 /*
  * 嘉宾揭晓页（手机）：显示当前奖项和已揭晓名单；主持人授权后，按住按钮 0.8 秒揭晓下一位。
+ * 需要：shared/theme.js（themeApply）
  */
 "use strict";
 
@@ -12,6 +13,7 @@ let V = null,
 
 function render(v) {
   V = v;
+  themeApply(v.fx?.all); // 主题颜色（shared/theme.js；只用「所有屏幕」的设定）
   $("ev").textContent = v.event?.title || "";
   const onAward = (v.mode === "title" || v.mode === "reveal") && v.award;
   const sec = v.mode === "section" && v.section,

@@ -51,6 +51,12 @@ function fxFmt(s, v) {
   return s.label?.includes('倍') ? (+v).toFixed(d) + '×' : (+v).toFixed(d);
 }
 
+const fxThemeAuto = k => ({ thHi: '#f7e2a6', thLo: '#9a7330' })[k] || '#000000';   // 「自动」时颜色框先显示原本的金色（= shared/theme.js 的 TH_BASE）
+function fxThemeReset() {   // 主题颜色全部回到默认（金色）
+  for (const s of fxSchema) if (s.type === 'color') fxData.all[s.key] = s.def;
+  fxChanged(); fxBuild();
+}
+
 /* ---------- 表单 ---------- */
 function fxBuild() {
   const form = $('fxForm'); form.replaceChildren();
@@ -60,14 +66,28 @@ function fxBuild() {
     const card = el('div', { class: 'ecard' }, el('div', { class: 'head' }, el('b', { style: 'flex:1' }, g)));
     for (const s of items) card.append(fxRow(s));
     if (items.some(s => s.key === 'logoOn')) card.append(fxLogoRow());
+    if (items.some(s => s.key === 'thMain')) card.append(el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' },
+      el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页的金色系跟着换（特效、图片导出、电子书之后的版本再跟上）'),
+      el('button', { onclick: fxThemeReset }, '回到默认金色')));
     form.append(card);
   }
 }
 function fxRow(s) {
   const v = fxGet(s.key), locked = s.global && fxScope, row = el('div', { class: 'fxr' + (fxOver(s.key) ? ' over' : '') });
-  const out = el('span', { class: 'fxv' }, s.type === 'num' || s.type === 'auto' ? fxFmt(s, v) : '');
+  const out = el('span', { class: 'fxv' }, s.type === 'num' || s.type === 'auto' ? fxFmt(s, v) : s.type === 'color' ? (v || '自动') : '');
   let ctl;
-  if (s.type === 'enum') {
+  if (s.type === 'color') {   // 颜色（主题）：auto 的项目可以选「自动」= 跟着主色（null）
+    const auto = s.auto ? el('input', { type: 'checkbox', style: 'width:auto' }) : null;
+    const pick = el('input', { type: 'color', style: 'width:52px;height:28px;padding:1px' });
+    pick.value = v || fxThemeAuto(s.key);
+    pick.oninput = () => { if (auto) auto.checked = false; fxSetVal(s.key, pick.value); out.textContent = pick.value; fxMark(row); };
+    ctl = pick;
+    if (auto) {
+      auto.checked = v == null;
+      auto.onchange = () => { const nv = auto.checked ? null : pick.value; fxSetVal(s.key, nv); out.textContent = nv || '自动'; fxMark(row); };
+      ctl = el('div', { style: 'display:flex;gap:8px;align-items:center' }, pick, el('label', { class: 'muted', style: 'display:flex;gap:4px;align-items:center;white-space:nowrap;cursor:pointer' }, auto, '自动'));
+    }
+  } else if (s.type === 'enum') {
     ctl = el('select', { onchange: e => { fxSetVal(s.key, e.target.value); fxMark(row); } }, ...s.options.map(([val, txt]) => el('option', { value: val }, txt)));
     ctl.value = v;
   } else if (s.type === 'bool') {

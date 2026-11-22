@@ -3,11 +3,12 @@
  * 本屏幕用：默认值 ← 所有屏幕的设定 ← 本屏幕（网址 name=，OBS 版去掉「·OBS」）单独的设定 ← 控制端预览的暂时设定。
  * 值改了马上生效：交给 fxPush()（fx/react.js；后台线程模式由 fx/host.js 转达），需要重建的特效会在下一帧重建，不用刷新页面。
  * 提供：FXC（目前生效的设定）、fxSet(v.fx)、fxPreviewSet(obj)（控制端预览窗口专用）
- * 需要：stage.js（qs、$）；调用时才用到 fx/react.js 或 fx/host.js（fxPush）、standby.js、render.js
+ * 需要：stage.js（qs、$）、shared/theme.js（themeApply）；调用时才用到 fx/react.js 或 fx/host.js（fxPush）、standby.js、render.js
  */
 'use strict';
 
 const FX_DEF = {
+  thMain: '#d9b25f', thHi: null, thLo: null, thBg: '#07060c',   // 主题颜色（shared/theme.js；null = 跟着主色）
   standby: 'galaxy',
   gyBright: .75, gySpeed: .12, gyDensity: 1, gySize: 1, gyX: null, gyY: null, gyTilt: .36,   // gyX / gyY：null = 自动
   grBright: 1, grDensity: 1,
@@ -42,6 +43,7 @@ function fxUpdate() {
   };
   clearTimeout(fxRebuild.t);
   if (RECORD) go(); else fxRebuild.t = setTimeout(go, 400);   // 导出影片：马上重建（之后时间由导出程序控制）
+  themeApply(next);   // 主题颜色：只是 CSS 变量，马上生效
   const rs = document.documentElement.style;   // 照片 Logo：只是 CSS 变量，改了马上生效，不用重画照片
   rs.setProperty('--logo-k', next.logoSize); rs.setProperty('--logo-m', next.logoMargin); rs.setProperty('--logo-o', next.logoOpacity);
   document.documentElement.classList.toggle('nologo', !next.logoOn);
