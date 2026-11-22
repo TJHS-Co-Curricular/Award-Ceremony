@@ -35,7 +35,7 @@
 <div id="app" class="hidden">
   <header class="top">
     <div class="brand"><h1 id="hTitle">颁奖控制台</h1><small id="hSub"></small></div>
-    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="fx">效果控制</button></nav>
+    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="fx">效果控制</button><button data-tab="check">赛前检查</button></nav>
     <div class="side">
       <div class="status">
         <span class="tag conn"><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
@@ -277,6 +277,20 @@
       </div>
     </div>
 
+    <!-- 赛前检查：只列出问题，不改任何资料（js/control/check.js） -->
+    <div id="check" class="hidden">
+      <div class="xwrap">
+        <div class="ebar">
+          <b style="font-size:15px">赛前检查</b>
+          <span id="ckSum" class="muted">—</span>
+          <span class="grow"></span>
+          <button id="bCkRun">重新检查</button>
+        </div>
+        <p class="muted" id="ckNote">只把问题列出来，不会改名单或文件。改好以后按「重新检查」。</p>
+        <div id="ckList"></div>
+      </div>
+    </div>
+
     <!-- 效果控制：表单由 js/control/fx.js 按服务端的设定格式生成 -->
     <div id="fx" class="hidden">
       <div class="xwrap">
@@ -448,6 +462,7 @@
 <script src="/assets/js/control/export.js"></script>
 <script src="/assets/js/control/ebook.js"></script>
 <script src="/assets/js/control/fx.js"></script>
+<script src="/assets/js/control/check.js"></script>
 <script src="/assets/js/control/main.js"></script>
 </body>
 </html>
