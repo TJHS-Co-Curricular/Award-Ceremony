@@ -35,7 +35,7 @@
 <div id="app" class="hidden">
   <header class="top">
     <div class="brand"><h1 id="hTitle">颁奖控制台</h1><small id="hSub"></small></div>
-    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="poster">海报导出</button><button data-tab="fx">效果控制</button><button data-tab="check">赛前检查</button></nav>
+    <nav class="tabs"><button data-tab="live" class="on">现场控制</button><button data-tab="edit">奖项编辑</button><button data-tab="export">图片导出</button><button data-tab="ebook">电子书</button><button data-tab="poster">海报导出</button><button data-tab="fx">效果控制</button><button data-tab="check">会前检查</button></nav>
     <div class="side">
       <div class="status">
         <span class="tag conn"><span class="dot" id="connDot"></span><span id="connTxt">未连接</span></span>
@@ -330,11 +330,11 @@
       </div>
     </div>
 
-    <!-- 赛前检查：只列出问题，不改任何资料（js/control/check.js） -->
+    <!-- 会前检查：只列出问题，不改任何资料（js/control/check.js） -->
     <div id="check" class="hidden">
       <div class="xwrap">
         <div class="ebar">
-          <b style="font-size:15px">赛前检查</b>
+          <b style="font-size:15px">会前检查</b>
           <span id="ckSum" class="muted">—</span>
           <span class="grow"></span>
           <button id="bCkRun">重新检查</button>
@@ -435,7 +435,7 @@
             <label class="f"><span>活动名称（待机画面大标题）</span><input id="evTitle" maxlength="120"></label>
             <label class="f"><span>副标题</span><input id="evSub" maxlength="160"></label>
             <label class="f" title="保存时，每个大类、分类名称前面自动加「年份 + 空格」；名称里原本写的年份（2026年、2026 年）会换成这个。奖项名、英文名不加。"><span>年份（自动加在每个大类、分类名称前面，例：2026；留空 = 不加）</span><input id="evYear" maxlength="4" inputmode="numeric" placeholder="例：2026"></label>
-            <label class="f" title="名单第 4 栏（班级、学号后面那一栏）在控制端、Excel 表头、赛前检查里叫什么。只改名称，资料不变；留空 = 学会。"><span>名单第 4 栏的名称（默认 学会；例：社团、单位、队伍）</span><input id="evSocLabel" maxlength="8" placeholder="学会"></label>
+            <label class="f" title="名单第 4 栏（班级、学号后面那一栏）在控制端、Excel 表头、会前检查里叫什么。只改名称，资料不变；留空 = 学会。"><span>名单第 4 栏的名称（默认 学会；例：社团、单位、队伍）</span><input id="evSocLabel" maxlength="8" placeholder="学会"></label>
             <label class="f"><span>活动名称大小（%，100 = 原本；50 ~ 200）</span><input id="evTitleSize" type="number" min="50" max="200" step="5"></label>
             <label class="f"><span>副标题大小（%，100 = 原本；50 ~ 200）</span><input id="evSubSize" type="number" min="50" max="200" step="5"></label>
             <label class="f"><span>日期（例如：2026 年 11 月 20 日（星期五））</span><input id="evDate" maxlength="60"></label>
