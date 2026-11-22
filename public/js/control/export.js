@@ -32,7 +32,9 @@ const EX_PRESET = () => ({
   textX: 25,        // 个人图文字中心的横向位置（画面宽度 %）
   nameY: 36.7,      // 个人图姓名的纵向位置（画面高度 %）
   teamBg: '#07060c', teamFrame: '#d9b25f', teamGlow: true,
-  matOn: true, matTop: 20, matAward: 22, matTopX: 0, matTopY: 0, matAwardX: 0, matAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
+  matOn: true, matTop: 20, matAward: 22, matTopX: 0, matTopY: 0, matAwardX: 0, matAwardY: 0,
+  // 团体图（含学生证照片）自己一套（用户定 2026-11-22：个人图文字在左边、要往右移的素材，团体图照片在中间，共用会歪）
+  tmatTop: 20, tmatAward: 15.5, tmatTopX: 0, tmatTopY: 0, tmatAwardX: 0, tmatAwardY: 0,   // X = 画面宽度 %，Y = 画面高度 %（正数 = 往右 / 往下），只移动图片，不影响其它文字
     // 奖项名（中文 + 英文）换成 data/material/ 里同名的素材图片；大小 = 画面高度 %（个人图）
   logoOn: true, logoSize: 16, logoMargin: 2.5, logoOpacity: 100,   // 照片右上角的学校 Logo（「效果控制」上传）；大小、边距 = 照片宽度 %
   size: '1920x1080', fmt: 'jpg'
@@ -52,7 +54,9 @@ function exClean(v) {
   o.textX = num(v?.textX, 15, 50, d.textX); o.nameY = num(v?.nameY, 15, 70, d.nameY);
   o.teamBg = col(v?.teamBg, d.teamBg); o.teamFrame = col(v?.teamFrame, d.teamFrame); o.teamGlow = v?.teamGlow !== false;
   o.matOn = v?.matOn !== false; o.matTop = num(v?.matTop, 5, 45, d.matTop); o.matAward = num(v?.matAward, 5, 45, d.matAward);
-  for (const id of ['matTopX', 'matTopY', 'matAwardX', 'matAwardY']) o[id] = num(v?.[id], -30, 30, 0);
+  for (const id of ['matTopX', 'matTopY', 'matAwardX', 'matAwardY', 'tmatTopX', 'tmatTopY', 'tmatAwardX', 'tmatAwardY']) o[id] = num(v?.[id], -30, 30, 0);
+  // 旧设计没有团体的大小：沿用个人图的（下方原本是个人的 70%），位置从 0 开始
+  o.tmatTop = num(v?.tmatTop, 5, 45, o.matTop); o.tmatAward = num(v?.tmatAward, 5, 45, Math.max(5, Math.round(o.matAward * .7 * 2) / 2));
   o.logoOn = v?.logoOn !== false; o.logoSize = num(v?.logoSize, 4, 50, d.logoSize); o.logoMargin = num(v?.logoMargin, 0, 10, d.logoMargin); o.logoOpacity = num(v?.logoOpacity, 20, 100, d.logoOpacity);
   o.size = ['1920x1080', '3840x2160', 'photo'].includes(v?.size) ? v.size : d.size;
   o.fmt = v?.fmt === 'png' ? 'png' : 'jpg';
@@ -246,14 +250,14 @@ async function exRender(award, w, fam) {
     const cx = W / 2, maxW = W * .86;
     shadow(true);
     let y = H * .04;
-    if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.matTop / 100, 'matTop');
+    if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.tmatTop / 100, 'tmatTop');
     if (!headMat && E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
     if (!headMat && E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
     shadow(false);
     const top = y + U * .045;
     const zh = soc[0] === w.name ? '' : soc[0];   // 团体名就是学会名时，不重复写中文
     const block = [['name', w.name, .9], ...(idCard ? [['cls', w.cls, .7], ['sid', w.sid, .7]] : []), ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
-    const matD = tailMat && exMatFit(tailMat, maxW, H * S.matAward / 100 * .7);   // 团体图：合照为主，下方素材缩小一点
+    const matD = tailMat && exMatFit(tailMat, maxW, H * S.tmatAward / 100);   // 团体图自己的大小（默认比个人图小：合照为主）
     const textH = block.reduce((t, [key, , m], i) => t + E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0), 0);
     const pad = U * .03, below = (matD ? matD.h + U * .05 : U * .02);   // 卡片上下留边；卡片下面的素材图片
     const ar = img ? img.naturalWidth / img.naturalHeight : 1.5, boxH = H - top - (textH + pad * 2) - below - H * .02;   // 照片能用的高度（整张卡 + 素材都要放得下）
@@ -290,7 +294,7 @@ async function exRender(award, w, fam) {
         shadow(true);
       }
     });
-    if (matD) drawMat(tailMat, cx, py + ch + U * .025, maxW, matD.h, 'matAward');   // 素材放在卡片下面
+    if (matD) drawMat(tailMat, cx, py + ch + U * .025, maxW, matD.h, 'tmatAward');   // 素材放在卡片下面
   }
   shadow(false);
   return cv;
@@ -329,7 +333,7 @@ function exBuildUI() {
       el('td', {}, n('spacing', '0.02', 58)),
       el('td', {}, f)));
   }
-  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
+  for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY', 'tmatTop', 'tmatAward', 'tmatTopX', 'tmatTopY', 'tmatAwardX', 'tmatAwardY']) { $('exG_' + id).value = EXS[id]; $('exG_' + id + 'V').textContent = EXS[id] + '%'; }
   $('exG_logoOn').checked = EXS.logoOn; $('exG_matOn').checked = EXS.matOn;
   exMatInfo();
   $('exLogoInfo').textContent = V?.logo ? '' : '还没上传（在「效果控制」上传）';
@@ -348,7 +352,7 @@ async function exSave() {
   try { await api('PUT', '/api/control/export-style', EXS); $('exSaveState').textContent = '设计已保存'; $('exSaveState').className = 'muted'; }
   catch (e) { $('exSaveState').textContent = '保存失败：' + e.message; }
 }
-for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
+for (const id of ['shade', 'shadow', 'textX', 'nameY', 'logoSize', 'logoMargin', 'logoOpacity', 'matTop', 'matAward', 'matTopX', 'matTopY', 'matAwardX', 'matAwardY', 'tmatTop', 'tmatAward', 'tmatTopX', 'tmatTopY', 'tmatAwardX', 'tmatAwardY']) $('exG_' + id).oninput = e => { EXS[id] = +e.target.value; $('exG_' + id + 'V').textContent = e.target.value + '%'; exChanged(); };
 $('exG_teamBg').oninput = e => { EXS.teamBg = e.target.value; exChanged(); };
 $('exG_teamFrame').oninput = e => { EXS.teamFrame = e.target.value; exChanged(); };
 $('exG_teamGlow').onchange = e => { EXS.teamGlow = e.target.checked; exChanged(); };

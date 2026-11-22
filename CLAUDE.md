@@ -87,7 +87,7 @@ start.bat                 启动源码版
 README.md                 用户文档（中文）
 ```
 
-运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/societies.json`（学会对照表：编号 → 中文、英文名，图片导出用；名单 `soc` 栏写编号，`socOf()` 在 `js/control/import.js`）、`data/fx.json`（效果设定）、`data/ebook.json`（电子书设置：封面副标题、前言、集锦照片文件名、幕后花絮（bts：「文件名 | 说明」，ebDrawBts() 拍立得样式，奖项后面、编委前面；集锦和花絮都用 ebPhotoPages() 分页：直的照片单独一页、两张直的左上 + 右下 ebPortBoxes()，用户定 2026-11-21）、编委 / 鸣谢、附录）、`data/logo.png`（照片右上角的学校 Logo）、`data/material/`（或 `data/mterial/`，图片导出的奖项名素材图片：文件名 = 奖项英文名或中文名，`exMatFind()` 在 `js/control/export.js`，接口 `/api/control/materials`、`/api/control/material`）、`logs/audit.log`。
+运行时生成：`config.json`、`data/awards.json|awards.enc`、`data/state.json`（进度，不含名字）、`data/photos/`（含 `_cache/` 压缩版）、`data/fonts/`（上传的字体）、`data/export-style.json`（图片导出设计）、`data/societies.json`（学会对照表：编号 → 中文、英文名，图片导出用；名单 `soc` 栏写编号，`socOf()` 在 `js/control/import.js`）、`data/fx.json`（效果设定）、`data/ebook.json`（电子书设置：封面副标题、前言、集锦照片文件名、幕后花絮（bts：「文件名 | 说明」，ebDrawBts() 拍立得样式，奖项后面、编委前面；集锦和花絮都用 ebPhotoPages() 分页：直的照片单独一页、两张直的左上 + 右下 ebPortBoxes()，用户定 2026-11-21）、编委 / 鸣谢、附录）、`data/logo.png`（照片右上角的学校 Logo）、`data/material/`（或 `data/mterial/`，图片导出的奖项名素材图片：文件名 = 奖项英文名或中文名，`exMatFind()` 在 `js/control/export.js`；个人图用 `EXS.matTop/matAward/…X/Y`，团体图（含学生证）用另一套 `tmat*`，用户定 2026-11-22，接口 `/api/control/materials`、`/api/control/material`）、`logs/audit.log`。
 
 ### 网页脚本的规则
 
