@@ -103,6 +103,7 @@ function renderEditor() {
   if (!draft) return;
   $("evTitle").value = draft.event.title;
   $("evSub").value = draft.event.subtitle || "";
+  $("evYear").value = draft.event.year || "";
   $("evTitleSize").value = draft.event.titleSize || 100;
   $("evSubSize").value = draft.event.subSize || 100;
   for (const [id, k] of EV_INFO) $(id).value = draft.event[k] || "";
@@ -412,6 +413,10 @@ function renderEditor() {
 }
 $("evTitle").addEventListener("input", (e) => {
   draft.event.title = e.target.value;
+  setDirty(true);
+});
+$("evYear").addEventListener("input", (e) => {   // 年份：保存时服务端套到每个大类、分类名称前面（lib/data.js 的 withYear）
+  draft.event.year = e.target.value.trim();
   setDirty(true);
 });
 $("evSub").addEventListener("input", (e) => {

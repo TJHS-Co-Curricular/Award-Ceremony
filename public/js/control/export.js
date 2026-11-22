@@ -90,7 +90,8 @@ function exLoad(name) {
  * 比对：只看字母、数字、汉字，不分大小写，结尾的 S 不算（AWARD = AWARDS）；英文写成「Gold」也认得「GOLD AWARD」；
  * 文件名打错一两个字母（长名字）或一个字（中文名）也认得，但要只有一个最接近的才算。 */
 let exMats = [];   // [{ name, v, key }]
-const exMatKey = t => String(t || '').replace(/\.(png|jpe?g|webp|gif)$/i, '').toUpperCase().replace(/[^0-9A-Z\u3400-\u9fff]/g, '').replace(/S$/, '');
+const exMatKey = t => String(t || '').replace(/\.(png|jpe?g|webp|gif)$/i, '').replace(/^\s*(?:19|20)\d{2}\s*(?:年(?!度))?\s*/, '').toUpperCase()   // 开头的年份不算（「2026 学生服务…」也认得没写年份的素材）
+  .replace(/[^0-9A-Z\u3400-\u9fff]/g, '').replace(/S$/, '');
 async function exLoadMats() {
   try { exMats = (await api('GET', '/api/control/materials')).list.map(m => ({ ...m, key: exMatKey(m.name) })); } catch { exMats = []; }
 }

@@ -100,7 +100,7 @@ README.md                 用户文档（中文）
 
 ## 服务端架构（lib/）
 
-- **活动资料**（`event`）：`title`、`subtitle`、`date`、`time`、`venue`、`note`（待机画面装饰线下的日期 · 时间 · 地点一行 + 其它一行，`render.js` 的 `standbyInfo()`）、`infoOn`（大屏显不显示那几行）。导出时 `record.js` 设 `REC_INFO`：`promo`（宣传背景）显示、`standby`（大会背景）不显示，不看 `infoOn`；`recStill()` 导出一张 PNG。
+- **活动资料**（`event`）：`year`（4 位数年份，`lib/data.js` 的 `normalizeData()` 用 `withYear()` 在每个 `section` / `group` 前面加「年份 + 空格」，原本开头的年份（`YEAR_RE`：2026年、2026 年，「年度」不算）先去掉；奖项名、英文名不加；空 = 不动，用户定 2026-11-22；素材比对 `exMatKey()` 也去掉开头的年份）、`title`、`subtitle`、`date`、`time`、`venue`、`note`（待机画面装饰线下的日期 · 时间 · 地点一行 + 其它一行，`render.js` 的 `standbyInfo()`）、`infoOn`（大屏显不显示那几行）。导出时 `record.js` 设 `REC_INFO`：`promo`（宣传背景）显示、`standby`（大会背景）不显示，不看 `infoOn`；`recStill()` 导出一张 PNG。
 - **名单字段**：每位获奖者 `{ name, cls（班级）, sid（学号）, soc（学会：编号或名字，按学会对照表查成 socZh / socEn）, detail（备注）, photo, type }`（`type` 只有 `'team'` 一种取值，表示团体；个人不写），`normalizeData()` 会去掉空字段。`publicView()` 只带出已揭晓者的这些字段（学会只带查好的 `socZh` / `socEn`，不带对照表）。
 - **共享状态**：都在 `lib/runtime.js` 的 `rt` 上（`rt.cfg`、`rt.data`、`rt.state`…）。整体替换时写 `rt.state = …`，不要把 `rt.state` 存进模块级变量。
 - **状态**：`rt.state = { mode, awardId, revealed, phase, doneIds, blackout, message, seq }`
