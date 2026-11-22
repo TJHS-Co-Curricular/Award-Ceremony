@@ -14,7 +14,7 @@
 const PO_SIZES = [['51x43', '51 × 43 英寸（最高成就）'], ['24x43', '24 × 43 英寸（杰出 / 优秀团体）'], ['11x43', '11 × 43 英寸（学会 / 执委）']];
 const PO_BG_EDGE = 8192;   // 背景图片长边上限（51 英寸 × 150 dpi ≈ 7650 像素）
 const PO_DEF = () => ({
-  dpi: 150, color: '#ffc000', titleK: 100, font: '', cur: 0,
+  dpi: 150, titleOn: true, color: '#ffc000', titleK: 100, font: '', cur: 0,
   posters: [
     { name: '最高成就', w: 51, h: 43, ids: [], heads: {} },
     { name: '杰出 / 优秀团体', w: 24, h: 43, ids: [], heads: {} },
@@ -34,7 +34,7 @@ function poClean(v) {
   return {
     dpi: [100, 150, 200].includes(+v?.dpi) ? +v.dpi : d.dpi,
     color: /^#[0-9a-f]{6}$/i.test(v?.color || '') ? v.color : d.color,
-    titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
+    titleOn: v?.titleOn !== false, titleK: num(v?.titleK, 40, 200, d.titleK), font: String(v?.font || '').slice(0, 120),
     cur: Math.min(posters.length - 1, Math.max(0, Math.floor(num(v?.cur, 0, 99, 0)))), posters
   };
 }
@@ -59,6 +59,7 @@ const poWho = a => (a.revealMode === 'nominee' && a.winners.some(w => w.win) ? a
 
 /* ---- 表单 ---- */
 function poBuild() {
+  $('po_titleOn').checked = PO.titleOn; for (const id of ['po_color', 'po_titleK', 'po_font']) $(id).disabled = !PO.titleOn;
   $('po_dpi').value = String(PO.dpi); $('po_color').value = PO.color; $('po_titleK').value = PO.titleK; $('po_titleKV').textContent = PO.titleK + '%'; $('po_font').value = PO.font;
   $('poBgInfo').textContent = poBg ? '已上传' : '没有（用深色渐层）'; $('bPoBgDel').disabled = !poBg;
   $('poPick').replaceChildren(...PO.posters.map((p, i) => el('option', { value: String(i) }, `${i + 1}. ${p.name}（${p.w}×${p.h}）`)));
@@ -74,7 +75,7 @@ function poBuild() {
     const row = el('div', { class: 'poa' + (on ? ' on' : '') },
       el('label', {}, el('input', { type: 'checkbox', ...(on ? { checked: '' } : {}), onchange: e => poToggle(a.id, e.target.checked) }),
         el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, poWho(a).length < a.winners.length ? `（得主 ${poWho(a).length} / 入围 ${a.winners.length}）` : `（${a.winners.length}）`)));
-    if (on) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
+    if (on && PO.titleOn) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
     return row;
   }) : [el('p', { class: 'muted' }, '还没有得奖者')]));
 }
@@ -96,6 +97,7 @@ function poChanged() {
   poPreviewSoon();
 }
 $('po_dpi').onchange = () => { PO.dpi = +$('po_dpi').value; poChanged(); };
+$('po_titleOn').onchange = () => { PO.titleOn = $('po_titleOn').checked; poChanged(); poBuild(); };
 $('po_color').oninput = () => { PO.color = $('po_color').value; poChanged(); };
 $('po_titleK').oninput = () => { PO.titleK = +$('po_titleK').value; $('po_titleKV').textContent = PO.titleK + '%'; poChanged(); };
 $('po_font').onchange = () => { PO.font = $('po_font').value.trim(); poChanged(); };
@@ -148,7 +150,7 @@ function poAutoHead(secs, i) {
 const poHead = (P, secs, i) => (P.heads[secs[i].id] || poAutoHead(secs, i)).split(/\r?\n/).map(t => t.trim()).filter(Boolean);
 // 卡片由大到小试：每段 = 标题 + ceil(人数 / 列数) 排卡片，全部放得下的最大卡片就是答案；列数所有段一样
 function poLayout(P, secs, fam) {
-  const g = el('canvas').getContext('2d'), heads = secs.map((_, i) => poHead(P, secs, i));
+  const g = el('canvas').getContext('2d'), heads = secs.map((_, i) => (PO.titleOn ? poHead(P, secs, i) : []));   // 不要标题（图片导出的卡片上已经有奖项名）：每段只有卡片
   const widest = heads.map(ls => Math.max(1, ...ls.map(t => { g.font = `700 100px ${fam}`; return g.measureText(t).width / 100; })));   // 每 1 单位字号的宽度
   for (let cw = Math.min(P.w, P.h * 1.6); cw > 0.4; cw *= 0.99) {
     const ch = cw * 9 / 16, gx = cw * .1, gy = cw * .065, m = cw * .09, sg = cw * .14, inner = P.w - 2 * m;
