@@ -7,11 +7,13 @@
  * 静态背景（galaxy.js 的 gyBg）重建时上传成贴图，每帧在同一次 WebGL 里先画背景、再「相加」画粒子，
  * 画好的整张由 galaxy.js 一次贴到 #goldfx（省掉一次全屏叠加）。
  * 提供：gyGlOk、gyGlUpload()、gyGlDraw(now)
- * 需要：galaxy.js（gyG、gyBg、gyStreaks、gyDust、gyDots、gyT、gyCanvas、GY_COLORS）、FXC、SW / SH、FX_GL、mkCanvas
+ * 需要：galaxy.js（gyG、gyBg、gyStreaks、gyDust、gyDots、gyT、gyCanvas、gyCols）、FXC、SW / SH、FX_GL、mkCanvas、shared/theme.js（thGl）
  */
 'use strict';
 
-let gyGlOk = false, gyGlWhy = '';   // gyGlWhy = 没用 WebGL 的原因（诊断框显示）
+let gyGlOk = false, gyGlWhy = '';
+// 原本写在 shader 里的颜色（0 ~ 1）：金粉、亮金点的四段渐层（= galaxy.js 的 #ffe48a、gySprite）
+const GY_GL_DUST = [1.0, 0.894, 0.541], GY_GL_DOT = [[1.0, 0.988, 0.863], [1.0, 0.863, 0.353], [1.0, 0.706, 0.078], [1.0, 0.667, 0.0]];   // gyGlWhy = 没用 WebGL 的原因（诊断框显示）
 const gyGl = (() => {
   if (!FX_GL) { gyGlWhy = RECORD ? '导出影片' : '网址 gl=0'; return null; }
   try { return gyGlInit(); } catch (e) { gyGlWhy = '初始化失败：' + e.message; console.warn('星系 WebGL 初始化失败，改回原本画法：', e.message); return null; }
@@ -65,7 +67,8 @@ void main() {
   gl_Position = clip(proj(aP.x, a) + aP.w * 0.5);
 }`, `
 in float vA; out vec4 o;
-void main() { o = vec4(vec3(1.0, 0.894, 0.541) * vA, vA); }`);
+uniform vec3 uDustCol;
+void main() { o = vec4(uDustCol * vA, vA); }`);
   // 闪烁的亮金点：发光圆点（和 galaxy.js 的 gySprite 同样的渐层）
   const dots = prog(`
 layout(location=0) in vec4 aP; layout(location=1) in float aTw;
@@ -77,11 +80,12 @@ void main() {
   gl_Position = clip(proj(aP.x, aP.y + uT * aP.z * 6.0));
 }`, `
 in float vA; out vec4 o;
+uniform vec3 uDot[4];
 void main() {
   float d = length(gl_PointCoord - 0.5) * 2.0;
-  vec4 c = d < 0.18 ? mix(vec4(1.0, 0.988, 0.863, 1.0), vec4(1.0, 0.863, 0.353, 0.85), d / 0.18)
-         : d < 0.5 ? mix(vec4(1.0, 0.863, 0.353, 0.85), vec4(1.0, 0.706, 0.078, 0.25), (d - 0.18) / 0.32)
-         : mix(vec4(1.0, 0.706, 0.078, 0.25), vec4(1.0, 0.667, 0.0, 0.0), clamp((d - 0.5) / 0.5, 0.0, 1.0));
+  vec4 c = d < 0.18 ? mix(vec4(uDot[0], 1.0), vec4(uDot[1], 0.85), d / 0.18)
+         : d < 0.5 ? mix(vec4(uDot[1], 0.85), vec4(uDot[2], 0.25), (d - 0.18) / 0.32)
+         : mix(vec4(uDot[2], 0.25), vec4(uDot[3], 0.0), clamp((d - 0.5) / 0.5, 0.0, 1.0));
   float a = c.a * vA; o = vec4(c.rgb * a, a);
 }`);
   // 静态背景：一个盖满画面的三角形贴上 gyBg（不用顶点资料）
@@ -108,7 +112,6 @@ void main() { o = texture(uTex, vUv); }`);
   const B = { prog: bg, v: gl.createVertexArray(), tex: gl.createTexture() };
   gl.bindTexture(gl.TEXTURE_2D, B.tex);
   for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
-  gl.useProgram(S.prog); gl.uniform3fv(gl.getUniformLocation(streak, 'uCol'), GY_COLORS.flatMap(c => c.split(',').map(x => x / 255)));   // 颜色固定，只设一次
   gl.bindVertexArray(null);
   gyGlOk = true;
   return { cv, gl, S, D, O, B, SEG };
@@ -119,6 +122,10 @@ function gyGlUpload() {
   if (!gyGl) return;
   const { gl, S, D, O, B } = gyGl;
   gl.bindTexture(gl.TEXTURE_2D, B.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gyBg);   // 静态背景（不透明）
+  // 颜色（按主题颜色转；默认时数值和以前写在 shader 里的完全一样）
+  gl.useProgram(S.prog); gl.uniform3fv(S.u.uCol, gyCols.flatMap(c => c.split(',').map(x => x / 255)));
+  gl.useProgram(D.prog); gl.uniform3fv(D.u.uDustCol, thGl(GY_GL_DUST));
+  gl.useProgram(O.prog); gl.uniform3fv(O.u.uDot, GY_GL_DOT.flatMap(thGl));
   const put = (o, list, f, n) => {
     const a = new Float32Array(list.length * n); list.forEach((p, i) => f(p, a, i * n));
     gl.bindBuffer(gl.ARRAY_BUFFER, o.b); gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW); o.n = list.length;

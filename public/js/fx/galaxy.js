@@ -4,7 +4,7 @@
  * 星系中心不在画面中间（超宽屏偏右下，其它比例偏下），标题后面压暗，字更清楚。
  * 亮度、速度、数量、大小、位置、倾斜都在控制端「效果控制」调（display/fxconf.js 的 FXC.gy*），改了会自动重建。
  * 提供：galaxyFx(on)
- * 需要：stage.js（SW、SH、PREVIEW、$）、display/fxconf.js（FXC）
+ * 需要：stage.js（SW、SH、PREVIEW、$）、display/fxconf.js（FXC）、shared/theme.js（thC：主题颜色）
  */
 'use strict';
 
@@ -18,18 +18,22 @@ const GY = {      // 数量是「效果控制 → 粒子数量 1 倍」时的基
 const gyCanvas = $('goldfx'), gyCtx = gyCanvas.getContext('2d');
 const gyBgCanvas = mkCanvas();   // 静态背景只用这一张（重建时重用，不另开新的，免得浏览器内存一直涨）
 const GY_COLORS = ['255,252,220', '255,228,80', '255,196,40'];   // 光痕的三种颜色（白金 / 金 / 深金）
+let gyCols = GY_COLORS;   // 按主题颜色转过的 GY_COLORS（gyBuild() 算；默认 = GY_COLORS）
 let gySkip = false, gyOn = false, gyLast = 0, gyT = 0, gySlow = 0, gyW = 0, gyH = 0, gyBg = null, gyStreaks = [], gyDust = [], gyDots = [], gyG = null;
-const gySprite = (() => {   // 预先画好的发光圆点
-  const c = mkCanvas(64, 64);
-  const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(255,252,220,1)'); gr.addColorStop(.18, 'rgba(255,220,90,.85)'); gr.addColorStop(.5, 'rgba(255,180,20,.25)'); gr.addColorStop(1, 'rgba(255,170,0,0)');
-  x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return c;
-})();
+const gySprite = mkCanvas(64, 64);   // 预先画好的发光圆点（gyBuild() 按主题颜色重画）
+function gySpriteDraw() {
+  const x = gySprite.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  x.clearRect(0, 0, 64, 64);
+  gr.addColorStop(0, thC('rgba(255,252,220,1)')); gr.addColorStop(.18, thC('rgba(255,220,90,.85)')); gr.addColorStop(.5, thC('rgba(255,180,20,.25)')); gr.addColorStop(1, thC('rgba(255,170,0,0)'));
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+}
 const gyGauss = () => (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 2;
 
 // 按舞台尺寸决定星系的位置和大小，重建静态背景和所有粒子
 function gyBuild() {
   gyW = SW; gyH = SH;
+  gySpriteDraw();
+  gyCols = GY_COLORS.map(c => thC(`rgb(${c})`).slice(4, -1));   // 'rgb(r,g,b)' → 'r,g,b'
   const wide = SW / SH > 2.2, U = Math.min(SH, SW / 1.8) * FXC.gySize, B = FXC.gyBright;
   const G = gyG = { CX: SW * (FXC.gyX ?? (wide ? .66 : .6)), CY: SH * (FXC.gyY ?? (wide ? .64 : .7)), TILT: FXC.gyTilt, ROT: -.16, R0: U * .11, RMAX: U * 1.15 };
   G.cos = Math.cos(G.ROT); G.sin = Math.sin(G.ROT);
@@ -37,13 +41,13 @@ function gyBuild() {
   // ---- 静态背景：黑底 + 暖金辉光 + 远处的小金星 + 核心暗心 + 标题后面压暗
   gyBg = gyBgCanvas; gyBg.width = Math.round(SW * REC_K); gyBg.height = Math.round(SH * REC_K);   // 设宽高 = 清空重画   // 导出影片时背景也用高分辨率
   const b = gyBg.getContext('2d'); b.scale(REC_K, REC_K);
-  b.fillStyle = '#030201'; b.fillRect(0, 0, SW, SH);
-  const glow = (rx, ry, stops) => { b.save(); b.translate(G.CX, G.CY); b.rotate(G.ROT); b.scale(rx / ry, 1); const gr = b.createRadialGradient(0, 0, 0, 0, 0, ry); stops.forEach(([o, c]) => gr.addColorStop(o, c)); b.fillStyle = gr; b.beginPath(); b.arc(0, 0, ry, 0, 6.283); b.fill(); b.restore(); };
+  b.fillStyle = thC('#030201'); b.fillRect(0, 0, SW, SH);
+  const glow = (rx, ry, stops) => { b.save(); b.translate(G.CX, G.CY); b.rotate(G.ROT); b.scale(rx / ry, 1); const gr = b.createRadialGradient(0, 0, 0, 0, 0, ry); stops.forEach(([o, c]) => gr.addColorStop(o, thC(c))); b.fillStyle = gr; b.beginPath(); b.arc(0, 0, ry, 0, 6.283); b.fill(); b.restore(); };
   b.globalCompositeOperation = 'lighter';
   glow(G.RMAX * 1.1, G.RMAX * G.TILT * 1.3, [[0, `rgba(255,215,60,${.26 * B})`], [.35, `rgba(240,175,20,${.13 * B})`], [1, 'rgba(150,90,0,0)']]);
   glow(G.R0 * 2.6, G.R0 * 2.6 * G.TILT, [[0, `rgba(255,245,170,${.35 * B})`], [1, 'rgba(255,215,70,0)']]);
   for (let i = 0, n = GY.STARS * k / FXC.gyDensity; i < n; i++) {
-    b.fillStyle = `rgba(255,${200 + (Math.random() * 50) | 0},${90 + (Math.random() * 80) | 0},${(.15 + .55 * Math.random()) * B})`;
+    b.fillStyle = thC(`rgba(255,${200 + (Math.random() * 50) | 0},${90 + (Math.random() * 80) | 0},${(.15 + .55 * Math.random()) * B})`);
     const r = Math.random() < .97 ? .8 + Math.random() : 1.8 + Math.random() * 1.5; b.fillRect(Math.random() * SW, Math.random() * SH, r, r);
   }
   b.globalCompositeOperation = 'source-over';
@@ -97,9 +101,9 @@ function gyFrame(now) {
   }
   for (const [key, path] of groups) {
     const lw = key % 64, al = Math.floor(key / 64) % 13, ci = Math.floor(key / 64 / 13);
-    g.strokeStyle = `rgba(${GY_COLORS[ci]},${al / 12})`; g.lineWidth = lw / 2; g.stroke(path);
+    g.strokeStyle = `rgba(${gyCols[ci]},${al / 12})`; g.lineWidth = lw / 2; g.stroke(path);
   }
-  g.fillStyle = '#ffe48a';
+  g.fillStyle = thC('#ffe48a');
   for (const d of gyDust) {      // 细金粉（小方点，很省资源）
     const a = d.a + gyT * d.w * 6, [x, y] = gyProj(d.r, a);
     g.globalAlpha = d.al * (.6 + .4 * Math.max(0, Math.sin(a))) * (.55 + .45 * Math.sin(d.tw + now / 1000 * d.f)) * B;

@@ -3,19 +3,24 @@
  * burst(n)：n 越大闪光越多（揭晓一位 ≈ 6 下，多位 ≈ 9 下，得主 ≈ 11 下），约 2 秒内陆续闪完。
  * 每一下：极快亮起 → 慢慢熄灭；柔和的微光 + 淡淡的十字星芒（亮度不会让整个画面变白）。
  * 显示 / 亮度 / 数量：控制端「效果控制」（FXC.flashOn、flashPeak、flashAmount）。
- * 需要：stage.js（SW、SH、PREVIEW）、display/fxconf.js（FXC）
+ * 需要：stage.js（SW、SH、PREVIEW）、display/fxconf.js（FXC）、shared/theme.js（thC / thFxKey：主题颜色）
  */
 'use strict';
 
 const fx = $('fx').getContext('2d');
 let flashes = [], running = false;
-const flashSprite = (() => {   // 预画好的闪光光晕
-  const c = mkCanvas(256, 256);
-  const g = c.getContext('2d'), r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.08, 'rgba(255,255,255,.95)'); r.addColorStop(.22, 'rgba(255,246,225,.55)');
-  r.addColorStop(.5, 'rgba(255,225,170,.16)'); r.addColorStop(1, 'rgba(255,210,140,0)');
-  g.fillStyle = r; g.fillRect(0, 0, 256, 256); return c;
-})();
+const flashCanvas = mkCanvas(256, 256);   // 预画好的闪光光晕（只用这一张，换主题颜色时重画）
+let flashKey = null;
+function flashSprite() {
+  const k = thFxKey(); if (k === flashKey) return flashCanvas;
+  flashKey = k;
+  const g = flashCanvas.getContext('2d'), r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.clearRect(0, 0, 256, 256);
+  r.addColorStop(0, thC('rgba(255,255,255,1)')); r.addColorStop(.08, thC('rgba(255,255,255,.95)')); r.addColorStop(.22, thC('rgba(255,246,225,.55)'));
+  r.addColorStop(.5, thC('rgba(255,225,170,.16)')); r.addColorStop(1, thC('rgba(255,210,140,0)'));
+  g.fillStyle = r; g.fillRect(0, 0, 256, 256); return flashCanvas;
+}
+flashSprite();
 function burst(n = 160) {
   if (!FXC.flashOn) return;
   const count = Math.round(n / 30 * FXC.flashAmount * (PREVIEW ? .5 : Math.min(1.8, Math.max(1, SW / 1920 * .8))));
@@ -43,19 +48,20 @@ function stepFx(now) {
   flashes = flashes.filter(f => now < f.t0 + f.dur);
   fx.globalCompositeOperation = 'lighter';
   let white = 0;
+  const spr = flashSprite(), c0 = thC('rgba(255,250,235,0)'), c1 = thC('rgba(255,250,235,.7)');   // 主题颜色（shared/theme.js）
   for (const f of flashes) {
     const t = (now - f.t0) / f.dur;
     if (t < 0) continue;
     const e = t < .12 ? t / .12 : Math.pow(1 - (t - .12) / .88, 2.2);   // 亮起很快，熄灭较慢
     const R = f.r * (.85 + .3 * e);
     fx.globalAlpha = e * FXC.flashPeak;
-    fx.drawImage(flashSprite, f.x - R * 2.2, f.y - R * 2.2, R * 4.4, R * 4.4);
+    fx.drawImage(spr, f.x - R * 2.2, f.y - R * 2.2, R * 4.4, R * 4.4);
     // 星芒：横竖两道长的 + 斜向两道短的
     fx.save(); fx.translate(f.x, f.y); fx.rotate(f.rot);
     for (const [ang, len, w] of [[0, 2.4, .05], [Math.PI / 2, 1.7, .045]]) {
       fx.save(); fx.rotate(ang);
       const L = R * len * (.6 + .4 * e), gr = fx.createLinearGradient(-L, 0, L, 0);
-      gr.addColorStop(0, 'rgba(255,250,235,0)'); gr.addColorStop(.5, 'rgba(255,250,235,.7)'); gr.addColorStop(1, 'rgba(255,250,235,0)');
+      gr.addColorStop(0, c0); gr.addColorStop(.5, c1); gr.addColorStop(1, c0);
       fx.fillStyle = gr; fx.fillRect(-L, -R * w / 2, L * 2, R * w);
       fx.restore();
     }

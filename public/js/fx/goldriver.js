@@ -3,17 +3,18 @@
  * 一层静态背景（黑金渐层 + 放射光线 + 地平线光晕），每次舞台尺寸改变才重画；
  * 上面每帧用「叠加发光」画粒子：粒子沿弯曲的光带从近处（画面下方）流向远处的地平线，越远越小越暗。
  * 提供：goldFx(on)
- * 需要：stage.js（SW、SH、PREVIEW、$）
+ * 需要：stage.js（SW、SH、PREVIEW、$）、shared/theme.js（thC：主题颜色）
  */
 'use strict';
 
 const gc = $('goldfx'), gx = gc.getContext('2d');
-const sprite = (() => {   // 预先画好的发光圆点，比每帧画渐层快很多
-  const c = mkCanvas(64, 64);
-  const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  r.addColorStop(0, 'rgba(255,248,215,1)'); r.addColorStop(.18, 'rgba(255,222,120,.9)'); r.addColorStop(.45, 'rgba(255,184,40,.35)'); r.addColorStop(1, 'rgba(255,160,20,0)');
-  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c;
-})();
+const sprite = mkCanvas(64, 64);   // 预先画好的发光圆点，比每帧画渐层快很多（gBuild() 按主题颜色重画）
+function gSpriteDraw() {
+  const g = sprite.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.clearRect(0, 0, 64, 64);
+  r.addColorStop(0, thC('rgba(255,248,215,1)')); r.addColorStop(.18, thC('rgba(255,222,120,.9)')); r.addColorStop(.45, thC('rgba(255,184,40,.35)')); r.addColorStop(1, thC('rgba(255,160,20,0)'));
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+}
 const gBgCanvas = mkCanvas();   // 静态背景只用这一张（重建时重用）
 let gSkip = false, gBg = null, gW = 0, gH = 0, gParts = [], gSpark = [], gLanes = [], gOn = false, gLast = 0, gSlow = 0;
 const HZ = .57;   // 地平线（光晕中心）在画面高度的位置
@@ -30,17 +31,18 @@ function gLaneU() {   // 光丝集中成几道光带（像参考图的金色气�
 }
 function gBuild() {
   gW = SW; gH = SH;
+  gSpriteDraw();
   gBg = gBgCanvas; gBg.width = Math.round(gW * REC_K); gBg.height = Math.round(gH * REC_K);   // 导出影片时背景也用高分辨率
   const g = gBg.getContext('2d'); g.scale(REC_K, REC_K);
   const cx = gW / 2, hy = gH * HZ, R = Math.max(gW, gH), k = gH / 1080;
   const base = g.createLinearGradient(0, 0, 0, gH);
-  base.addColorStop(0, '#070503'); base.addColorStop(.45, '#140c03'); base.addColorStop(.62, '#2a1803'); base.addColorStop(1, '#060402');
+  base.addColorStop(0, thC('#070503')); base.addColorStop(.45, thC('#140c03')); base.addColorStop(.62, thC('#2a1803')); base.addColorStop(1, thC('#060402'));
   g.fillStyle = base; g.fillRect(0, 0, gW, gH);
   g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 140; i++) {   // 从光晕中心向上放射的细光线
     const a = Math.PI + Math.random() * Math.PI, len = R * (.5 + Math.random() * .7), w = Math.random() * 1.6 + .3;
     const gr = g.createLinearGradient(cx, hy, cx + Math.cos(a) * len, hy + Math.sin(a) * len);
-    gr.addColorStop(0, `rgba(255,200,80,${.05 + Math.random() * .08})`); gr.addColorStop(1, 'rgba(255,200,80,0)');
+    gr.addColorStop(0, thC(`rgba(255,200,80,${.05 + Math.random() * .08})`)); gr.addColorStop(1, thC('rgba(255,200,80,0)'));
     g.strokeStyle = gr; g.lineWidth = w * k;
     g.beginPath(); g.moveTo(cx, hy); g.lineTo(cx + Math.cos(a) * len, hy + Math.sin(a) * len); g.stroke();
   }
@@ -53,7 +55,7 @@ function gBuild() {
     for (let i = 1; i <= seg; i++) {
       const q = gPos(u, i / seg * .985);
       const a = (.04 + .16 * q.ps) * (.6 + .4 * tint);
-      g.strokeStyle = `rgba(255,${190 + Math.round(40 * tint)},${70 + Math.round(60 * tint)},${a})`;
+      g.strokeStyle = thC(`rgba(255,${190 + Math.round(40 * tint)},${70 + Math.round(60 * tint)},${a})`);
       g.lineWidth = (.4 + 2.2 * q.ps) * k;
       g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(q.x, q.y); g.stroke();
       prev = q;
@@ -62,7 +64,7 @@ function gBuild() {
   // 地平线光晕：大片暖光 + 中间一条扁平的亮带
   const glow = (rx, ry, stops) => {
     g.save(); g.translate(cx, hy); g.scale(rx / ry, 1);
-    const r = g.createRadialGradient(0, 0, 0, 0, 0, ry); stops.forEach(([o, c]) => r.addColorStop(o, c));
+    const r = g.createRadialGradient(0, 0, 0, 0, 0, ry); stops.forEach(([o, c]) => r.addColorStop(o, thC(c)));
     g.fillStyle = r; g.beginPath(); g.arc(0, 0, ry, 0, 6.283); g.fill(); g.restore();
   };
   glow(gW * .75, gH * .42, [[0, 'rgba(255,170,30,.5)'], [.35, 'rgba(200,110,10,.2)'], [1, 'rgba(120,60,0,0)']]);

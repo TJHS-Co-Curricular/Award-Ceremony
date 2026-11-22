@@ -5,8 +5,10 @@
  *   （色相相加、饱和度按比例、亮度按比例，0 和 100% 不动）。所以每个变量原本的明暗层次都保留。
  *   全部是默认值时什么都不设，CSS 里原本的颜色照用 = 和 1.62 完全一样。
  * 默认颜色在 CSS 里（display.css / guest.css 的 :root），第一次调用时读出来记住；这里只写变量属于哪个色系。
- * 提供：themeApply(fx)（fx = 效果设定，读 thMain / thHi / thLo / thBg）
- * 需要：无（只用 document）
+ * 特效（canvas、WebGL）用 thC(颜色字串) / thGl([r, g, b])：按 FXC.thMain 转「主色」色系；主色是默认金色时原样返回 = 画面不变。
+ * 后台线程（fx/worker.js）也载入这个文件，所以最上层不能碰 document（只在 themeApply 里用）。
+ * 提供：themeApply(fx)（fx = 效果设定，读 thMain / thHi / thLo / thBg）、thC(c)、thGl(v)、thFxKey()
+ * 需要：无（themeApply 用 document；thC / thGl 读全局 FXC，没有就当默认）
  */
 'use strict';
 
@@ -54,6 +56,36 @@ function thMap(from, to, keepL) {
     if (!keepL) l = l1 >= l0 ? l + (1 - l) * (l0 < 1 ? (l1 - l0) / (1 - l0) : 0) : l * (l0 ? l1 / l0 : 0);
     return thRgb([h, s, l]);
   };
+}
+
+/* ---- 特效用（2.2）：只跟「主色」 ---- */
+let thCKey = '', thCFn = null;
+const thCCache = new Map();
+// 现在的主色；默认金色时返回 ''（= 不用转）。特效用它判断要不要重画预先画好的光点（key 变了才重画）
+function thFxKey() {
+  const m = (typeof FXC !== 'undefined' && FXC && FXC.thMain) || TH_BASE.main;
+  return m === TH_BASE.main ? '' : m;
+}
+function thFxFn() {
+  const k = thFxKey(); if (!k) return null;
+  if (k !== thCKey) { thCKey = k; thCFn = thMap(TH_BASE.main, k); thCCache.clear(); }
+  return thCFn;
+}
+// 'rgba(255,215,60,.26)' / 'rgb(…)' / '#rrggbb' → 转过的同格式字串（透明度不变）；读不懂的原样返回
+function thC(c) {
+  const f = thFxFn(); if (!f) return c;
+  let o = thCCache.get(c); if (o !== undefined) return o;
+  const m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,[^)]*)?\)$/);
+  if (m) { const [r, g, b] = f([+m[1], +m[2], +m[3]]); o = m[4] ? `rgba(${r},${g},${b}${m[4]})` : `rgb(${r},${g},${b})`; }
+  else if (/^#[0-9a-f]{6}$/i.test(c)) o = '#' + f(thHex(c)).map(v => v.toString(16).padStart(2, '0')).join('');
+  else o = c;
+  if (thCCache.size > 20000) thCCache.clear();   // 光河的光丝颜色是连续的，避免越存越多
+  thCCache.set(c, o); return o;
+}
+// WebGL：[r, g, b]（0 ~ 1）→ 转过的 [r, g, b]；默认原样返回同一个数组（数值完全不变）
+function thGl(v) {
+  const f = thFxFn(); if (!f) return v;
+  return f(v.map(x => Math.round(x * 255))).map(x => x / 255);
 }
 
 function themeApply(fx) {

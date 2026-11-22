@@ -52,6 +52,9 @@ function recDrawChars(g, el, conv) {
   }
 }
 // 阴影层：把字形染色、模糊、位移（= CSS drop-shadow，只画一次）
+// 颜色照 display.css 的 CSS 变量取（主题颜色由 shared/theme.js 设在这些变量上；默认 = 原本的金色）
+const recV = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const recRgb = (k, a) => `rgba(${recV(k).split(/\s+/).join(',')},${a})`;   // '--gold-rgb' = 'r g b' → 'rgba(r,g,b,a)'
 function recShadow(mask, color, dy, blur, W, H) {
   const t = recCanvas(W, H), g = t.getContext('2d');
   g.drawImage(mask, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, W, H);
@@ -69,7 +72,7 @@ function recTextLayers(W, H) {
     const m = recCanvas(W, H), g = stageCtx(m); g.fillStyle = '#fff'; recDrawChars(g, en, conv);
     gs.drawImage(recShadow(m, 'rgba(0,0,0,.6)', 4 * K, 9 * K, W, H), 0, 0);
     const b = conv(en.getBoundingClientRect()), gr = g.createLinearGradient(0, b.y, 0, b.y + b.h);
-    gr.addColorStop(0, '#fff6d8'); gr.addColorStop(.45, '#e9c873'); gr.addColorStop(1, '#9a7330');
+    gr.addColorStop(0, recV('--t-title1')); gr.addColorStop(.45, recV('--t-title2')); gr.addColorStop(1, recV('--gold-lo'));
     g.globalCompositeOperation = 'source-in'; g.fillStyle = gr; g.fillRect(0, 0, SW, SH);
     gs.drawImage(m, 0, 0);
   }
@@ -78,14 +81,14 @@ function recTextLayers(W, H) {
   for (const i of document.querySelectorAll('#s-standby .line i')) {
     const q = conv(i.getBoundingClientRect()), last = i === i.parentNode.lastElementChild;
     const gr = gl.createLinearGradient(q.x, 0, q.x + q.w, 0);
-    gr.addColorStop(last ? 1 : 0, 'rgba(247,226,166,0)'); gr.addColorStop(last ? 0 : 1, 'rgba(247,226,166,.9)');
+    gr.addColorStop(last ? 1 : 0, recRgb('--gold-hi-rgb', 0)); gr.addColorStop(last ? 0 : 1, recRgb('--gold-hi-rgb', .9));
     gl.fillStyle = gr; gl.fillRect(q.x, q.y, q.w, q.h);
   }
   const dia = document.querySelector('#s-standby .line b');
   if (dia) {
     const q = conv(dia.getBoundingClientRect()), s = dia.offsetWidth;
     gl.save(); gl.translate(q.x + q.w / 2, q.y + q.h / 2); gl.rotate(Math.PI / 4);
-    gl.strokeStyle = '#f7e2a6'; gl.lineWidth = 1.5; gl.strokeRect(-s / 2 + .75, -s / 2 + .75, s - 1.5, s - 1.5); gl.restore();
+    gl.strokeStyle = recV('--gold-hi'); gl.lineWidth = 1.5; gl.strokeRect(-s / 2 + .75, -s / 2 + .75, s - 1.5, s - 1.5); gl.restore();
   }
   // 日期 / 时间 / 地点 + 其它一行（宣传背景）：实色字 + 阴影 0 3px 14px rgba(0,0,0,.7)，中间的小菱形
   for (const el of [$('evInfo'), $('evNote')]) {
@@ -95,7 +98,7 @@ function recTextLayers(W, H) {
     gs.drawImage(recShadow(m, 'rgba(0,0,0,.7)', 3 * K, 7 * K, W, H), 0, 0);
     g.globalCompositeOperation = 'source-in'; g.fillStyle = cs.color; g.fillRect(0, 0, SW, SH);
     gs.drawImage(m, 0, 0);
-    const gd = stageCtx(stat); gd.globalAlpha = .8; gd.fillStyle = '#f7e2a6';
+    const gd = stageCtx(stat); gd.globalAlpha = .8; gd.fillStyle = recV('--gold-hi');
     for (const s of el.querySelectorAll('s')) {
       const q = conv(s.getBoundingClientRect()), z = s.offsetWidth;
       gd.save(); gd.translate(q.x + q.w / 2, q.y + q.h / 2); gd.rotate(Math.PI / 4); gd.fillRect(-z / 2, -z / 2, z, z); gd.restore();
@@ -110,7 +113,7 @@ function recTextLayers(W, H) {
     const px = Math.max(0, Math.floor((b.x - pad) * K)), py = Math.max(0, Math.floor((b.y - pad) * K));
     title = {
       box: b, mask, px, py, pw: Math.min(W - px, Math.ceil((b.w + pad * 2) * K)), ph: Math.min(H - py, Math.ceil((b.h + pad * 2) * K)),
-      dark: recShadow(mask, 'rgba(0,0,0,.65)', 6 * K, 7 * K, W, H), glow: recShadow(mask, 'rgba(255,190,70,.35)', 0, 13 * K, W, H)
+      dark: recShadow(mask, 'rgba(0,0,0,.65)', 6 * K, 7 * K, W, H), glow: recShadow(mask, recRgb('--glow-rgb', .35), 0, 13 * K, W, H)
     };
     title.tmp = recCanvas(title.pw, title.ph);
   }
@@ -128,11 +131,11 @@ function recTitle(out, L, frac) {
   g.setTransform(K, 0, 0, K, -T.px, -T.py);
   const tri = frac < .5 ? frac * 2 : 2 - frac * 2, e = .5 - .5 * Math.cos(Math.PI * tri);   // 去程 / 回程，两端慢、中间快
   const tw = w * 2.5, ox = (w - tw) * (.95 - 1.07 * e), a = 100 * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a);
-  const Lg = Math.abs(tw * dx) + Math.abs(h * dy);
+  const Lg = Math.abs(tw * dx) + Math.abs(h * dy), cLo = recV('--gold-lo'), cMid = recV('--gold'), cHi = recV('--gold-hi');
   for (let k = -1; k <= 1; k++) {
     const x0 = x + ox + k * tw; if (x0 > x + w || x0 + tw < x) continue;
     const cx = x0 + tw / 2, cy = y + h / 2, gr = g.createLinearGradient(cx - dx * Lg / 2, cy - dy * Lg / 2, cx + dx * Lg / 2, cy + dy * Lg / 2);
-    gr.addColorStop(0, '#9a7330'); gr.addColorStop(.25, '#d9b25f'); gr.addColorStop(.45, '#f7e2a6'); gr.addColorStop(.6, '#d9b25f'); gr.addColorStop(1, '#9a7330');
+    gr.addColorStop(0, cLo); gr.addColorStop(.25, cMid); gr.addColorStop(.45, cHi); gr.addColorStop(.6, cMid); gr.addColorStop(1, cLo);
     g.fillStyle = gr; g.fillRect(x0, y - 4, tw, h + 8);
   }
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'destination-in';
@@ -157,18 +160,18 @@ async function recLogoLayer(W, H, content) {
 /* ---------- 底层背景（= #stage 的 CSS 背景 + 边框） ---------- */
 function recBaseLayers(W, H) {
   const bgc = recCanvas(W, H), g = bgc.getContext('2d'); g.setTransform(W / SW, 0, 0, H / SH, 0, 0);
-  const lin = g.createLinearGradient(0, 0, 0, SH); lin.addColorStop(0, '#0c0a14'); lin.addColorStop(1, '#05040a');
+  const lin = g.createLinearGradient(0, 0, 0, SH); lin.addColorStop(0, recV('--bg1')); lin.addColorStop(1, recV('--bg2'));
   g.fillStyle = lin; g.fillRect(0, 0, SW, SH);
   const ell = (cx, cy, rx, ry, color) => {
     g.save(); g.translate(cx, cy); g.scale(1, ry / rx);
     const r = g.createRadialGradient(0, 0, 0, 0, 0, rx); r.addColorStop(0, color); r.addColorStop(.7, color.replace(/[\d.]+\)$/, '0)'));
     g.fillStyle = r; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore();
   };
-  ell(SW * .5, SH * 1.1, 900, 500, 'rgba(120,40,40,.28)');
-  ell(SW * .5, SH * .38, 1200, 700, 'rgba(217,178,95,.16)');
+  ell(SW * .5, SH * 1.1, 900, 500, recRgb('--red-rgb', .28));
+  ell(SW * .5, SH * .38, 1200, 700, recRgb('--gold-rgb', .16));
   const fr = recCanvas(W, H), f = fr.getContext('2d'); f.setTransform(W / SW, 0, 0, H / SH, 0, 0);
-  f.lineWidth = 1; f.strokeStyle = 'rgba(217,178,95,.22)'; f.strokeRect(36.5, 36.5, SW - 73, SH - 73);
-  f.strokeStyle = 'rgba(217,178,95,.10)'; for (let i = 0; i < 2; i++) f.strokeRect(47.5, 47.5, SW - 95, SH - 95);
+  f.lineWidth = 1; f.strokeStyle = recRgb('--gold-rgb', .22); f.strokeRect(36.5, 36.5, SW - 73, SH - 73);
+  f.strokeStyle = recRgb('--gold-rgb', .10); for (let i = 0; i < 2; i++) f.strokeRect(47.5, 47.5, SW - 95, SH - 95);
   return { bgc, fr };
 }
 

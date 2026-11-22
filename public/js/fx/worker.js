@@ -21,7 +21,8 @@ self.onmessage = e => {
   if (m.init) {
     ({ SW, SH, PREVIEW, FXC, FX_GL } = m.init);
     for (const [id, c] of m.init.canvases) FX_CANVAS[id] = c;
-    importScripts('dust.js', 'flash.js', 'goldriver.js', 'galaxy.js', 'galaxy-gl.js', 'standby.js', 'react.js');
+    // ../shared/theme.js：主题颜色 thC / thGl（主线程模式由 display.html 载入）
+    importScripts('../shared/theme.js', 'dust.js', 'flash.js', 'goldriver.js', 'galaxy.js', 'galaxy-gl.js', 'standby.js', 'react.js');
     fxSizeCanvases(m.init.cw, m.init.ch);
     fxReady = true;
     setInterval(() => {

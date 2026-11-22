@@ -67,7 +67,7 @@ function fxBuild() {
     for (const s of items) card.append(fxRow(s));
     if (items.some(s => s.key === 'logoOn')) card.append(fxLogoRow());
     if (items.some(s => s.key === 'thMain')) card.append(el('div', { style: 'display:flex;gap:8px;align-items:center;margin-top:6px' },
-      el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页的金色系跟着换（特效、图片导出、电子书之后的版本再跟上）'),
+      el('span', { class: 'muted', style: 'flex:1' }, '大屏、嘉宾页、待机特效、闪光、导出影片的金色系跟着换（图片导出、电子书之后的版本再跟上）'),
       el('button', { onclick: fxThemeReset }, '回到默认金色')));
     form.append(card);
   }

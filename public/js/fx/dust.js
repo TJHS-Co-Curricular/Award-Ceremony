@@ -2,7 +2,7 @@
  * 特效 · 背景浮尘：整个舞台底层缓慢飘动的金色微粒（canvas #bg，约 30 fps）。
  * 显示 / 数量：控制端「效果控制」（FXC.dustOn、FXC.dustAmount），改了由 fxconf.js 调 dustBuild() 重建。
  * 提供：dustBuild()
- * 需要：stage.js（SW、SH、PREVIEW）、display/fxconf.js（FXC）
+ * 需要：stage.js（SW、SH、PREVIEW）、display/fxconf.js（FXC）、shared/theme.js（thC：主题颜色）
  */
 'use strict';
 
@@ -25,11 +25,12 @@ let bgOdd = false;
     return;
   }
   bg.clearRect(0, 0, SW, SH);
+  const col = thC('#f2d48a');   // 主题颜色（shared/theme.js）
   for (const d of dust) {
     d.x += d.vx * 2; d.y += d.vy * 2; d.t += .04;   // 隔帧画，步长加倍保持原速度
     if (d.y < -10 || d.x > SW + 10) { d.y = SH + 10; d.x = Math.random() * SW; }
     bg.globalAlpha = d.a * (.6 + .4 * Math.sin(d.t));
-    bg.fillStyle = '#f2d48a';
+    bg.fillStyle = col;
     bg.beginPath(); bg.arc(d.x, d.y, d.r, 0, 6.283); bg.fill();
   }
 })();

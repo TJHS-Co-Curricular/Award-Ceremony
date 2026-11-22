@@ -9,7 +9,9 @@
 'use strict';
 
 // 左边的金色闪光：3 层光点图（和导出图片同一份）做成 CSS 背景，各层用 CSS 动画轮流闪（只动 opacity，不占主线程）
-SPARK_LAYERS.forEach((L, i) => document.documentElement.style.setProperty('--spk' + i, `url("${sparkleTile(L.seed, L.n).toDataURL()}")`));
+// 光点颜色跟主题颜色（sparkleTile 用 thC）；fxconf.js 换主色时再调一次 exSpkSet()
+function exSpkSet() { SPARK_LAYERS.forEach((L, i) => document.documentElement.style.setProperty('--spk' + i, `url("${sparkleTile(L.seed, L.n).toDataURL()}")`)); }
+exSpkSet();
 
 let EXD = null, exKey = '';
 function exStyleSet(st) {

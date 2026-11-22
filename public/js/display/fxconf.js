@@ -31,8 +31,9 @@ function fxUpdate() {
   FXC = next;
   const ch = (...ks) => ks.some(k => old[k] !== next[k]);
   // 需要重建的：等滑杆停下来 0.4 秒再重建一次（拖动时不会连续重建几十次）
-  if (ch('gyBright', 'gyDensity', 'gySize', 'gyX', 'gyY', 'gyTilt')) fxRebuild.gy = true;
-  if (ch('grDensity')) fxRebuild.gr = true;
+  if (ch('gyBright', 'gyDensity', 'gySize', 'gyX', 'gyY', 'gyTilt', 'thMain')) fxRebuild.gy = true;   // thMain：主题颜色，预先画好的背景和光点要重画
+  if (ch('grDensity', 'thMain')) fxRebuild.gr = true;
+  if (ch('thMain') && typeof exSpkSet === 'function') exSpkSet();   // 照片卡左边的闪光光点（display/exstyle.js）
   if (ch('dustOn', 'dustAmount')) fxRebuild.dust = true;
   if (ch('bgScale')) fxRebuild.size = true;
   fxPush(next);   // 新的值马上交给特效（亮度、闪光……不用重建的立即生效）
