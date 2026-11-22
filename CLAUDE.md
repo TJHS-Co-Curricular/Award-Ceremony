@@ -83,6 +83,7 @@ build/build-exe.js        SEA 打包脚本（离线）：bundle() 合并服务�
 build/vendor/             随附的 postject（注入 SEA blob）和 resedit（改 exe 图标与版本信息），都是 MIT
 build/icon/               应用图标源文件：icon.svg（≥48px）、icon-small.svg（≤40px）、icon.ico、PNG
 build/使用说明.txt         便携版说明（只在输出到 dist 时复制）
+docs/awards-template.json 空模版（照 2026 年名单：奖项设定，没有得奖者；新的一年复制成 data/awards.json；import.js 的 impKey() 让「追加到现有奖项」比对大类 / 分类时不看开头的年份）
 start.bat                 启动源码版
 README.md                 用户文档（中文）
 ```

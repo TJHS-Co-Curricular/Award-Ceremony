@@ -129,6 +129,7 @@ function modeOf(t) {
   if (/逐一|逐个|逐個|一个一个|一個一個|^one$/i.test(s)) return "one";
   return null;
 }
+const impKey = (s) => String(s || "").replace(/^\s*(?:19|20)\d{2}\s*(?:年(?!度))?\s*/, "").replace(/\s+/g, "");   // 同 lib/data.js 的 YEAR_RE
 function doImport(replace) {
   const rows = parseRows($("importTxt").value);
   const modeSet = new Map(), chunkSet = new Map(), badMode = new Set();
@@ -150,7 +151,8 @@ function doImport(replace) {
     const [section, sectionSub] = r.sectionSub
       ? [r.section || "", r.sectionSub]
       : splitZhEn(r.section) || [r.section || "", ""];
-    let a = awards.find((x) => x.title === title && (x.group || "") === group && (x.section || "") === section);
+    // 找现有的同一个奖项：大类、分类比对时不看开头的年份和空格（用户 2026-11-22：空模版是 2026，明年 Excel 写 2027 也要并进同一个奖项）
+    let a = awards.find((x) => x.title === title && impKey(x.group) === impKey(group) && impKey(x.section) === impKey(section));
     if (!a) {
       a = { section, sectionSub, group, groupSub, title, subtitle, revealMode: "one", winners: [] };
       awards.push(a);
