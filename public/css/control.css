@@ -204,7 +204,9 @@ summary{cursor:pointer;font-weight:600}
 .ebl{font-size:13px;margin:8px 0 3px;color:var(--muted)}
 .ebnav{display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:8px}
 .ebnav button{padding:5px 12px}
-.ebnav input{width:64px;text-align:center;padding:5px}
+.ebnav input{width:64px;text-align:center;padding:5px;-moz-appearance:textfield;appearance:textfield}
+.ebnav input::-webkit-inner-spin-button,.ebnav input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}   /* 不要上下小箭头：会挤到页码 */
+.ebnav #bEbPreview{margin-left:10px;font-size:12px}
 .ebpv{display:block;margin:0 auto;max-width:100%;max-height:calc(100vh - 200px);width:auto;height:auto;border:1px solid var(--line);border-radius:6px;background:#000}
 code{background:#0c0e12;border:1px solid var(--line);padding:0 5px;border-radius:4px;font-size:12px}
 /* ===== 提示框 ===== */

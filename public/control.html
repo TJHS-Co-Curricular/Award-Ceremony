@@ -265,9 +265,10 @@
           <div class="xmain">
             <div class="ebnav">
               <button id="ebPrev" title="上一页">◀</button>
-              <button id="bEbPreview" title="照现在的设置重新画这一页">第</button><input id="ebPage" type="number" min="1" value="1"><span>页</span>
+              <span>第</span><input id="ebPage" type="number" min="1" value="1" title="输入页码，按 Enter 跳过去"><span>页</span>
               <button id="ebNext" title="下一页">▶</button>
               <span id="ebPages" class="muted" style="font-size:12px"></span>
+              <button id="bEbPreview" title="照现在的设置重新画这一页（照片换了之后用）">↻ 重画</button>
             </div>
             <canvas id="ebPv" width="1280" height="1810" class="ebpv"></canvas>
             <div id="ebPvCap" class="muted" style="font-size:12px;margin-top:8px;text-align:center">—</div>
