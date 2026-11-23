@@ -28,7 +28,8 @@ function enavRender() {
     el('span', { class: 'gt' }, text, sub ? el('small', {}, sub) : null));
   L.forEach((a, i) => {
     const p = L[i - 1];
-    if (a.section && (!p || p.section !== a.section)) box.append(head(' shead', a.section, a.sectionSub, i));
+    if (a.dept && (!p || p.dept !== a.dept)) box.append(head(' dhead', '部门：' + a.dept, a.deptSub, i));   // 所属部门（标签）
+    if (a.section && (!p || p.section !== a.section || p.dept !== a.dept)) box.append(head(' shead', a.section, a.sectionSub, i));
     if (a.group && (!p || p.group !== a.group || p.section !== a.section)) box.append(head('', a.group, a.groupSub, i));
     const w = enavWarn(a);
     box.append(el('div', { class: 'aitem' + (a.group ? ' ing' : ''), 'data-i': i, onclick: () => enavGo(i) },

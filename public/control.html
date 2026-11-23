@@ -223,11 +223,35 @@
         <div class="xgrid">
           <div class="xside">
             <div class="ecard">
-              <div class="head"><b style="flex:1">封面与排序</b></div>
+              <div class="head"><b style="flex:1">封面、排序与配色</b></div>
+              <label class="xr" title="电子书的金色线条、标题、胸花等换成这个颜色；跟大屏 = 用「效果控制」里的主题颜色">配色 <span style="display:flex;gap:6px;align-items:center"><select id="eb_color" style="flex:1"></select><input type="color" id="eb_colorOwn" class="hidden" style="width:48px;height:30px;padding:1px"></span><span></span></label>
+              <label class="xr" title="米白会带一点配色的色调；白色一律纯白；跟大屏背景色 = 用「效果控制」的主题背景色（深色，字自动变浅色）；自定义 = 自己挑颜色">纸张 <span style="display:flex;gap:6px;align-items:center"><select id="eb_paper" style="flex:1"><option value="cream">米白（默认）</option><option value="white">白色</option><option value="screen">跟大屏背景色（深色）</option><option value="own">自定义…</option></select><input type="color" id="eb_paperOwn" class="hidden" style="width:48px;height:30px;padding:1px"></span><span></span></label>
+              <div id="ebPaperWarn" class="hidden" style="font-size:12px;color:var(--warn);margin:-2px 0 6px 138px">⚠ 这个颜色不深不浅，字可能看不清楚；建议选更浅（用深色字）或更深（自动改用浅色字）的颜色</div>
+              <label class="xr" title="活动名称上面一行小字，例：学校名称；留空 = 没有">封面小标题 <input id="eb_coverKicker" maxlength="60" placeholder="例：循人中学（留空 = 没有）"><span></span></label>
               <label class="xr">封面副标题 <input id="eb_coverSub" maxlength="40" placeholder="颁奖纪念特刊"><span></span></label>
-              <label class="xr" title="名称开头是年份时，年份自己一行：封面（2026 / 联课表扬大会）和大类分隔页（2026年 / 成果汇报竞赛奖）">年份单独一行 <input type="checkbox" id="eb_coverYear" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="「奖项编辑」里活动的副标题（例：英文名称）">显示活动副标题 <input type="checkbox" id="eb_coverEvSub" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="「奖项编辑」里的日期 · 时间 · 地点那一行">显示日期时间地点 <input type="checkbox" id="eb_coverInfo" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr">标题位置 <select id="eb_titlePos"><option value="mid">中间（默认）</option><option value="top">上方</option><option value="bottom">下方</option></select><span></span></label>
+              <label class="xr" title="正数往下，负数往上（页面高度的 %）">标题上下微调 <input type="range" id="eb_titleY" min="-40" max="40" step="1"><span id="eb_titleYV"></span></label>
+              <label class="xr" title="活动名称开头是年份时，封面上年份自己一行（2026 / 联课表扬大会）；只管封面">封面年份单独一行 <input type="checkbox" id="eb_coverYear" style="width:auto;justify-self:start"><span></span></label>
+              <label class="xr" title="大类名称开头是年份时，部门 / 大类分隔页上年份自己一行（2026年 / 成果汇报竞赛奖）；和封面分开设">分隔页年份单独一行 <input type="checkbox" id="eb_secYear" style="width:auto;justify-self:start"><span></span></label>
               <label class="xr">印学号 <input type="checkbox" id="eb_showSid" style="width:auto;justify-self:start"><span></span></label>
               <label class="xr" title="现场从低到高公布（第 3 名 → 第 1 名、铜 → 银 → 金）；勾选后电子书在同一分类里倒过来，最高的排前面">最高名次排前面 <input type="checkbox" id="eb_topFirst" style="width:auto;justify-self:start"><span></span></label>
+            </div>
+            <div class="ecard">
+              <div class="head"><b style="flex:1">Logo 与背景</b><span class="muted" style="font-size:12px">只用在电子书，不影响大屏、图片导出、海报</span></div>
+              <label class="xr" title="学校 Logo = 「图片导出」上传的那个（和大屏照片共用）；电子书自己的 = 下面另外上传，只用在电子书">封面 Logo <select id="eb_logoSrc"><option value="school">用学校 Logo（默认）</option><option value="own">电子书自己的 Logo</option><option value="none">不要 Logo</option></select><span></span></label>
+              <div id="ebLogoOwn" class="xr">电子书 Logo <span style="display:flex;gap:6px;align-items:center"><input type="file" id="eb_logoFile" accept="image/*" style="width:auto"><button id="bEbLogoDel">移除</button></span><span></span></div>
+              <label class="xr">Logo 位置 <select id="eb_logoPos"><option value="top">标题上方（默认）</option><option value="tl">左上角</option><option value="tr">右上角</option><option value="bc">底部置中</option></select><span></span></label>
+              <label class="xr">Logo 大小 <input type="range" id="eb_logoSize" min="20" max="300" step="5"><span id="eb_logoSizeV"></span></label>
+              <label class="xr" title="正数往右，负数往左（页面宽度的 %）">左右微调 <input type="range" id="eb_logoX" min="-40" max="40" step="1"><span id="eb_logoXV"></span></label>
+              <label class="xr" title="正数往下，负数往上（页面高度的 %）">上下微调 <input type="range" id="eb_logoY" min="-40" max="40" step="1"><span id="eb_logoYV"></span></label>
+              <div class="xr">封面背景 <span style="display:flex;gap:6px;align-items:center"><input type="file" id="eb_coverBgFile" accept="image/*" style="width:auto"><button id="bEbCoverBgDel">移除</button></span><span></span></div>
+              <div class="xr">每页背景 <span style="display:flex;gap:6px;align-items:center"><input type="file" id="eb_pageBgFile" accept="image/*" style="width:auto"><button id="bEbPageBgDel">移除</button></span><span></span></div>
+              <label class="xr" title="封面背景图片上面盖一层纸张颜色，让字看得清楚；0 = 背景原样">封面背景淡化 <input type="range" id="eb_coverFade" min="0" max="90" step="5"><span id="eb_coverFadeV"></span></label>
+              <label class="xr" title="每页背景图片上面盖一层纸张颜色，让字看得清楚；0 = 背景原样">每页背景淡化 <input type="range" id="eb_bgFade" min="0" max="90" step="5"><span id="eb_bgFadeV"></span></label>
+              <label class="xr" title="封面、分隔页、封底的金色双线框">画金色边框 <input type="checkbox" id="eb_frame" style="width:auto;justify-self:start"><span></span></label>
+              <p class="help">背景：<span id="ebImgInfo"></span>。背景图片按比例铺满整页 A4（多出来的裁掉），建议直的图片；每页背景用在封面以外的所有页。字的颜色跟「纸张」走：背景很深的话，纸张选深色（字会自动变浅色）。</p>
             </div>
             <div class="ecard">
               <div class="head"><b style="flex:1">前言</b><span class="muted" style="font-size:12px">封面后面第一页；没填正文 = 没有前言</span></div>
@@ -424,10 +448,17 @@
       <div class="ewrap">
         <div class="ebar">
           <button id="bAdd">＋ 新增奖项</button>
+          <button id="bDeptSort" title="按所属部门把奖项重新排在一起（现场揭晓顺序也跟着变）">部门排序</button>
           <span class="grow"></span>
           <span id="dirtyTxt" class="muted">已保存</span>
           <button id="bRevert">放弃修改</button>
           <button id="bSave">保存到服务器</button>
+        </div>
+        <!-- 部门排序（js/control/editor.js 的 dsortOpen()，用户定 2026-11-23） -->
+        <div id="dsort" class="ecard hidden">
+          <b>部门排序</b> <span class="muted" style="font-size:12px">用 ↑ ↓ 排好部门的先后，按「照这个顺序重排奖项」：同一部门的奖项排在一起，部门里面的奖项先后不变。现场揭晓顺序也会跟着变；排好后按「保存到服务器」才生效。</span>
+          <div id="dsortList"></div>
+          <div style="display:flex;gap:8px;margin-top:8px"><button id="dsortApply">照这个顺序重排奖项</button><button id="dsortClose">取消</button></div>
         </div>
 
         <div class="ecard">

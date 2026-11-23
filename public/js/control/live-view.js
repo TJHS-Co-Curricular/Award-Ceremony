@@ -156,6 +156,13 @@ function render() {
   const list = $("alist");
   list.textContent = "";
   V.awards.forEach((a, i) => {
+    if (a.dept && (i === 0 || V.awards[i - 1].dept !== a.dept)) {
+      // 所属部门（标签，用户定 2026-11-23）：只在控制端标出来，大屏不显示
+      const run = [];
+      for (let j = i; j < V.awards.length && V.awards[j].dept === a.dept; j++) run.push(V.awards[j]);
+      list.append(el("div", { class: "dhead", title: a.deptSub || "" }, el("span", {}, "部门：" + a.dept),
+        el("span", { class: "tag" }, `${run.filter((x) => s.doneIds.includes(x.id)).length}/${run.length}`)));
+    }
     if (a.section && (i === 0 || V.awards[i - 1].section !== a.section)) {
       // 大类标题行（分类上面一层）
       let e = i;

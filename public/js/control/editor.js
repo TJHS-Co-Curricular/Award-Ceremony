@@ -122,6 +122,9 @@ function renderEditor() {
   const secs = [...new Set(draft.awards.map((a) => a.section).filter(Boolean))];
   ($("sectionList") || document.body.appendChild(el("datalist", { id: "sectionList" })))
     .replaceChildren(...secs.map((g) => el("option", { value: g })));
+  const depts = [...new Set(draft.awards.map((a) => a.dept).filter(Boolean))];
+  ($("deptList") || document.body.appendChild(el("datalist", { id: "deptList" })))
+    .replaceChildren(...depts.map((g) => el("option", { value: g })));
   const box = $("elist");
   box.textContent = "";
   draft.awards.forEach((a, i) => {
@@ -180,7 +183,7 @@ function renderEditor() {
         setDirty(true);
         enavSoon();   // 左边目录跟着改名
       });
-      const pair = { title: "subtitle", group: "groupSub", section: "sectionSub" }[key];
+      const pair = { title: "subtitle", group: "groupSub", section: "sectionSub", dept: "deptSub" }[key];
       if (pair)
         x.addEventListener("change", () => {
           // 「团体网站比赛Societies' Website Competition」→ 自动拆成中文 + 英文
@@ -190,7 +193,7 @@ function renderEditor() {
             a[pair] = ins[pair].value = sp[1];
             setDirty(true);
           }
-          if ((key === "group" || key === "section") && a[key] && !a[pair]) {
+          if ((key === "group" || key === "section" || key === "dept") && a[key] && !a[pair]) {
             // 选了已有分类 / 大类：带出它的英文
             const o = draft.awards.find(
               (y) => y !== a && y[key] === a[key] && y[pair],
@@ -278,6 +281,26 @@ function renderEditor() {
               style: "color:#ff9c9c",
             },
             "删除",
+          ),
+        ),
+        el(
+          "div",
+          { class: "grid2", style: "margin-bottom:10px" },
+          el(
+            "label",
+            { class: "f" },
+            el("span", { title: "这个奖项是哪个部门的成绩。大屏不显示；现场控制的奖项列表会标出来，电子书按部门分开、每个部门一页分隔页" }, "所属部门（可空；例：联课处、训导处）"),
+            (() => {
+              const x = inp("dept", "例如：联课处", 60);
+              x.setAttribute("list", "deptList");
+              return x;
+            })(),
+          ),
+          el(
+            "label",
+            { class: "f" },
+            el("span", {}, "所属部门英文（可空；电子书分隔页用）"),
+            inp("deptSub", "例如：CO-CURRICULUM DEPARTMENT", 120),
           ),
         ),
         el(
@@ -456,6 +479,8 @@ $("evPhotoKicker").addEventListener("change", (e) => {
 $("bAdd").onclick = () => {
   const last = draft.awards[draft.awards.length - 1] || {};
   draft.awards.push({
+    dept: last.dept || "",
+    deptSub: last.deptSub || "",
     section: last.section || "",
     sectionSub: last.sectionSub || "",
     group: last.group || "",
@@ -468,6 +493,37 @@ $("bAdd").onclick = () => {
   setDirty(true);
   renderEditor();
   enavGo(draft.awards.length - 1);
+};
+// 部门排序（用户定 2026-11-23）：列出所有部门（含「没填部门」），↑ ↓ 排先后，
+// 「照这个顺序重排奖项」= 按部门稳定排序（部门里的奖项先后不变）；只改草稿，要按保存才生效
+let dsortOrder = [];
+const DS_NONE = "\x00";   // 没填部门的奖项
+function dsortOpen() {
+  dsortOrder = [...new Set(draft.awards.map((a) => a.dept || DS_NONE))];
+  if (!dsortOrder.some((d) => d !== DS_NONE)) return toast("还没有奖项填了「所属部门」", true);
+  $("dsort").classList.remove("hidden");
+  dsortRender();
+}
+function dsortRender() {
+  const n = (d) => draft.awards.filter((a) => (a.dept || DS_NONE) === d).length;
+  $("dsortList").replaceChildren(...dsortOrder.map((d, i) => {
+    const mv = (k) => { const j = i + k; if (j < 0 || j >= dsortOrder.length) return; [dsortOrder[i], dsortOrder[j]] = [dsortOrder[j], dsortOrder[i]]; dsortRender(); };
+    return el("div", { class: "dsr" },
+      el("span", {}, d === DS_NONE ? "（没填部门）" : d), el("span", { class: "muted" }, n(d) + " 个奖项"),
+      el("button", { onclick: () => mv(-1), title: "往前" }, "↑"), el("button", { onclick: () => mv(1), title: "往后" }, "↓"));
+  }));
+}
+$("bDeptSort").onclick = dsortOpen;
+$("dsortClose").onclick = () => $("dsort").classList.add("hidden");
+$("dsortApply").onclick = () => {
+  const rank = (a) => { const r = dsortOrder.indexOf(a.dept || DS_NONE); return r < 0 ? dsortOrder.length : r; };
+  const before = draft.awards.map((a) => a.id);
+  draft.awards = draft.awards.map((a, i) => [a, i]).sort((x, y) => rank(x[0]) - rank(y[0]) || x[1] - y[1]).map((x) => x[0]);
+  $("dsort").classList.add("hidden");
+  if (draft.awards.every((a, i) => a.id === before[i])) return toast("顺序本来就是这样，没有变动");
+  setDirty(true);
+  renderEditor();
+  toast("已按部门重排，记得按「保存到服务器」");
 };
 $("bRevert").onclick = () => {
   if (!dirty || confirm("放弃所有未保存的修改？")) loadDraft();

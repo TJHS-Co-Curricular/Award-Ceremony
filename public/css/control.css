@@ -91,6 +91,10 @@ h2{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:upperca
 .ghead.live{border-left-color:var(--bad);background:rgba(214,69,69,.12)}
 .aitem.ing{margin-left:10px}
 .ghead.shead{border-left-width:5px;background:rgba(217,178,95,.14)}.ghead.shead .gt{font-size:14px}   /* 大类（分类上面一层） */
+/* 所属部门（标签）：现场控制、奖项编辑目录里，部门换了就有一行 */
+.dhead{display:flex;align-items:center;gap:8px;margin:14px 0 4px;padding:5px 10px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-weight:700;font-size:13px}
+.dhead:first-child{margin-top:0}.dhead span:first-child{flex:1}
+.ghead.dhead{border-left:3px solid var(--info);background:rgba(74,143,224,.1)}.ghead.dhead .gt{color:var(--ink)}
 
 /* ===== 现场控制 · 中：预览、主按钮、消息 ===== */
 .preview{position:relative;width:100%;aspect-ratio:16/9;max-height:52vh;margin:0 auto;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -185,6 +189,9 @@ table.xt tr.off td:not(:first-child){opacity:.35}
 .ewrap{max-width:1100px;margin:0 auto}
 .ebar{position:sticky;top:-18px;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);margin-bottom:14px}
 .ebar .grow{flex:1}
+#dsortList{display:flex;flex-direction:column;gap:4px;margin-top:8px;max-width:520px}
+#dsortList .dsr{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line);border-left:3px solid var(--info);border-radius:4px;background:var(--panel2)}
+#dsortList .dsr span:first-of-type{flex:1;font-weight:700}#dsortList .dsr button{padding:2px 8px}
 #bSave{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
 .dirty{color:var(--warn)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -200,7 +207,8 @@ details{background:var(--panel);border:1px solid var(--line);border-radius:10px;
 summary{cursor:pointer;font-weight:600}
 .help{font-size:12px;color:var(--muted);margin:8px 0}
 /* 电子书分页：左边设置，右边一页 A4 预览（整页放进视窗） */
-#ebook .xr{grid-template-columns:130px 1fr 0;gap:10px 8px}
+#ebook .xr{grid-template-columns:130px minmax(0,1fr) auto;gap:10px 8px}
+#ebook .xr > span[id$="V"]{min-width:46px;text-align:right;font-variant-numeric:tabular-nums}   /* 滑杆右边的数值（Logo 大小、淡化…），留在卡片里面 */
 .ebl{font-size:13px;margin:8px 0 3px;color:var(--muted)}
 .ebnav{display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:8px}
 .ebnav button{padding:5px 12px}

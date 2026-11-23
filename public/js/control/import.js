@@ -38,6 +38,9 @@ function parseRows(text) {
   const SOC_W = "学会|學會|社团|社團|单位|單位|部门|部門|队伍|隊伍|society|club|unit|dept" + (/^(班级|学号|姓名|奖项|备注|类型|照片)$/.test(socL()) ? "" : "|" + socL().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const SOC_HEAD = new RegExp(SOC_W, "i");
   const H = [
+    // 所属部门（用户定 2026-11-23）：表头写「所属部门」，和第 4 栏可能叫「部门」分开；要放在学会前面
+    ["deptSub", /(所属部门|所屬部門|department).*(英文|english|en\b)/i],
+    ["dept", /所属部门|所屬部門|^department$/i],
     ["socName", new RegExp(`(${SOC_W}).*(名|name)`, "i")],
     ["soc", SOC_HEAD],
     // 三个显示设定（要先于「大类」「分类」「学号(编号)」）：值写 显示 / 不显示、列出 / 不列（1.59）
@@ -77,7 +80,7 @@ function parseRows(text) {
         ([k, re]) =>
           map[k] == null &&
           re.test(c) &&
-          (!SOC_HEAD.test(c) || k.startsWith("soc")),
+          (!SOC_HEAD.test(c) || k.startsWith("soc") || k.startsWith("dept")),
       );
       if (hit) map[hit[0]] = j;
     });
@@ -94,6 +97,8 @@ function parseRows(text) {
       return {
         title: g("title"),
         subtitle: g("subtitle"),
+        dept: g("dept"),
+        deptSub: g("deptSub"),
         section: g("section"),
         sectionSub: g("sectionSub"),
         group: g("group"),
@@ -166,6 +171,11 @@ function doImport(replace) {
       awards.push(a);
       const oid = oldIds.get([impKey(section), impKey(group), title].join("\u0001"));
       if (oid) { reuse.set(a, oid); oldIds.delete([impKey(section), impKey(group), title].join("\u0001")); }
+    }
+    if (r.dept) {   // 所属部门：哪一行写都可以（同一个奖项以最后写的为准）
+      const [dept, deptSub] = r.deptSub ? [r.dept, r.deptSub] : splitZhEn(r.dept) || [r.dept, ""];
+      a.dept = dept;
+      if (deptSub) a.deptSub = deptSub;
     }
     a.winners.push(makeWinner(name, rest, photo, type, win));
     added++;

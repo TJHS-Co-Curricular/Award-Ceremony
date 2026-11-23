@@ -162,7 +162,7 @@ async function poLoadBg() {
 }
 
 /* ---- 排版（单位：英寸） ---- */
-function poSecs(P) { const m = new Map(poAwards().map(a => [a.id, a])); return P.ids.map(id => m.get(id)).filter(Boolean); }
+function poSecs(P) { return poAwards().filter(a => P.ids.includes(a.id)); }   // 段落顺序一律跟奖项编辑（部门排序后也跟着变，用户 2026-11-23）
 // 自动标题：这一段的分类和上一段不同 → 「分类 / 奖项」两行；否则只写奖项名
 function poAutoHead(secs, i) {
   const a = secs[i], prev = secs[i - 1];
