@@ -28,6 +28,8 @@ function poClean(v) {
     ids: (Array.isArray(p?.ids) ? p.ids : []).map(String).slice(0, 200),
     style: ['grid', 'panel'].includes(p?.style) ? p.style : 'auto',
     title: String(p?.title || '').slice(0, 200),   // 这张海报的抬头标题（空 = 活动名称）
+    who: ['person', 'team'].includes(p?.who) ? p.who : 'all',   // 放谁：全部 / 只放个人 / 只放团体（维护者 2026-11-25）
+    teamMat: p?.teamMat === true,   // 团体卡要不要上下的奖项素材 / 奖项名（默认不要，维护者 2026-11-25）
     noHead: (Array.isArray(p?.noHead) ? p.noHead : []).map(String).slice(0, 200),   // 不要标题的奖项（id）
     heads: Object.fromEntries(Object.entries(p?.heads && typeof p.heads === 'object' ? p.heads : {}).map(([k, t]) => [String(k), String(t || '').slice(0, 200)]).filter(([, t]) => t.trim()))
   }));
@@ -57,7 +59,15 @@ async function poOpen() {
 const poAwards = () => (draft ? draft.awards.filter(a => a.winners.length) : []);
 const poCur = () => PO.posters[PO.cur];
 // 海报上放谁：入围揭晓的奖项（有标「得主」）只放得主，入围者不放（维护者定 2026-11-22：最佳执委只要得主）；其它奖项放全部
-const poWho = a => exWinners(a);   // export.js：入围揭晓只要得主
+// 再按这张海报的「放谁」筛：只放个人 / 只放团体（维护者 2026-11-25）
+const poWho = (a, P = poCur()) => exWinners(a).filter(w => !P || P.who === 'all' || (P.who === 'team') === (w.type === 'team'));   // export.js：入围揭晓只要得主
+
+// 奖项旁边的人数：入围揭晓写得主 / 入围；按「放谁」筛过时写放几位、共几位
+function poCount(a, P) {
+  const all = exWinners(a).length, n = poWho(a, P).length;
+  if (P.who !== 'all') return n ? `（放 ${n} / 共 ${a.winners.length}）` : `（没有${P.who === 'team' ? '团体' : '个人'}，不放）`;
+  return all < a.winners.length ? `（得主 ${all} / 入围 ${a.winners.length}）` : `（${a.winners.length}）`;
+}
 
 /* ---- 表单 ---- */
 function poBuild() {
@@ -74,6 +84,7 @@ function poBuild() {
   const key = `${P.w}x${P.h}`;
   $('po_size').value = PO_SIZES.some(s => s[0] === key) ? key : 'custom';
   $('po_w').value = P.w; $('po_h').value = P.h;
+  $('po_who').value = P.who; $('po_teamMat').checked = P.teamMat;
   $('po_style').value = P.style || 'auto'; $('po_styleNow').textContent = poStyle(P) === 'panel' ? '现在：分段' : '现在：紧凑网格';
   $('po_panelA').value = PO.panelA; $('po_panelAV').textContent = PO.panelA + '%';
   const awards = poAwards(), sel = poSecs(P);
@@ -81,10 +92,10 @@ function poBuild() {
     const on = P.ids.includes(a.id), i = sel.indexOf(a);
     const row = el('div', { class: 'poa' + (on ? ' on' : '') },
       el('label', {}, el('input', { type: 'checkbox', ...(on ? { checked: '' } : {}), onchange: e => poToggle(a.id, e.target.checked) }),
-        el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, poWho(a).length < a.winners.length ? `（得主 ${poWho(a).length} / 入围 ${a.winners.length}）` : `（${a.winners.length}）`)));
+        el('span', {}, [a.section, a.group].filter(Boolean).join(' · ') + (a.group || a.section ? ' · ' : ''), el('b', {}, a.title)), el('span', { class: 'muted' }, poCount(a, P))));
     const hon = !P.noHead.includes(a.id);
-    if (on && PO.titleOn) row.append(el('label', { class: 'pohd', title: '这个奖项上面要不要大标题（卡片上已经有奖项名）' }, el('input', { type: 'checkbox', ...(hon ? { checked: '' } : {}), onchange: e => poHeadToggle(a.id, e.target.checked) }), '这个奖项要标题'));
-    if (on && PO.titleOn && hon) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
+    if (on && PO.titleOn && i >= 0) row.append(el('label', { class: 'pohd', title: '这个奖项上面要不要大标题（卡片上已经有奖项名）' }, el('input', { type: 'checkbox', ...(hon ? { checked: '' } : {}), onchange: e => poHeadToggle(a.id, e.target.checked) }), '这个奖项要标题'));
+    if (on && PO.titleOn && hon && i >= 0) row.append(el('textarea', { rows: '2', placeholder: '标题（留空 = ' + poAutoHead(sel, i).replace('\n', ' / ') + '）', oninput: e => { const t = e.target.value, hs = poCur().heads; if (t.trim()) hs[a.id] = t; else delete hs[a.id]; poChanged(); } }, P.heads[a.id] || ''));
     return row;
   }) : [el('p', { class: 'muted' }, '还没有得奖者')]));
 }
@@ -123,6 +134,8 @@ $('po_name').oninput = () => { poCur().name = $('po_name').value || '海报'; po
 $('po_title').oninput = () => { poCur().title = $('po_title').value; poChanged(); };
 $('po_size').onchange = () => { const v = $('po_size').value; if (v !== 'custom') { const [w, h] = v.split('x').map(Number); Object.assign(poCur(), { w, h }); } poChanged(); poBuild(); };
 for (const id of ['po_w', 'po_h']) $(id).onchange = () => { Object.assign(poCur(), { w: +$('po_w').value, h: +$('po_h').value }); poChanged(); poBuild(); };
+$('po_who').onchange = () => { poCur().who = $('po_who').value; poChanged(); poBuild(); };
+$('po_teamMat').onchange = () => { poCur().teamMat = $('po_teamMat').checked; poChanged(); };
 $('po_style').onchange = () => { poCur().style = $('po_style').value; poChanged(); poBuild(); };
 $('po_panelA').oninput = () => { PO.panelA = +$('po_panelA').value; $('po_panelAV').textContent = PO.panelA + '%'; poChanged(); };
 $('poPick').onchange = () => { PO.cur = +$('poPick').value; poChanged(); poBuild(); };
@@ -162,7 +175,7 @@ async function poLoadBg() {
 }
 
 /* ---- 排版（单位：英寸） ---- */
-function poSecs(P) { return poAwards().filter(a => P.ids.includes(a.id)); }   // 段落顺序一律跟奖项编辑（部门排序后也跟着变，用户 2026-11-23）
+function poSecs(P) { return poAwards().filter(a => P.ids.includes(a.id) && poWho(a, P).length); }   // 按「放谁」筛完一个都没有的奖项整段不放   // 段落顺序一律跟奖项编辑（部门排序后也跟着变，用户 2026-11-23）
 // 自动标题：这一段的分类和上一段不同 → 「分类 / 奖项」两行；否则只写奖项名
 function poAutoHead(secs, i) {
   const a = secs[i], prev = secs[i - 1];
@@ -197,7 +210,7 @@ function poLayout(P, secs, fam) {
     const parts = secs.map((a, i) => {
       const en = ens[i], efs = fs * .3;
       const th = heads[i].length ? heads[i].length * fs * 1.18 + (en ? efs * 1.9 : 0) + fs * .3 : 0;
-      const rows = Math.ceil(poWho(a).length / cols);
+      const rows = Math.ceil(poWho(a, P).length / cols);
       const h = 2 * pp + th + rows * ch + (rows - 1) * gy;
       total += h;
       return { a, lines: heads[i], en, efs, fs, th, rows, h };
@@ -253,7 +266,7 @@ async function poDraw(P, dpi, card, progress) {
   if (bg) exCover(g, bg, 0, 0, W, H);
   else { const gr = g.createRadialGradient(W / 2, H * .35, 0, W / 2, H * .35, Math.hypot(W, H) * .6); gr.addColorStop(0, thC('#2a2110')); gr.addColorStop(1, thC('#07060c')); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
   if (!L) return { cv, L, secs };
-  const total = secs.reduce((t, a) => t + poWho(a).length, 0), cx = W / 2, inner = P.w - 2 * L.m;
+  const total = secs.reduce((t, a) => t + poWho(a, P).length, 0), cx = W / 2, inner = P.w - 2 * L.m;
   const pad = L.extra / (secs.length + 1);   // 多出来的高度平均分给上下和段与段之间
   let y = L.m, k = 0;
 
@@ -288,7 +301,7 @@ async function poDraw(P, dpi, card, progress) {
     }
     y += s.th;
     // 卡片：每排置中（最后一排人少时也在中间）
-    const who = poWho(s.a), n = who.length;
+    const who = poWho(s.a, P), n = who.length;
     for (let r = 0; r < s.rows; r++) {
       const inRow = Math.min(L.cols, n - r * L.cols), rowW = inRow * L.cw + (inRow - 1) * L.gx, x0 = (P.w - rowW) / 2;
       for (let c2 = 0; c2 < inRow; c2++) {
@@ -315,7 +328,7 @@ async function poDraw(P, dpi, card, progress) {
 // 卡片：跟图片导出同一份设计，但固定 16:9，大小跟海报上的卡片差不多（太小不清楚、太大浪费）
 async function poCard(a, w, px, fam) {
   const rw = Math.max(640, Math.min(3840, Math.round(px))), keep = EXS;
-  EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard, idSide: PO.idSide };   // idSide：学生证照片横排（export.js 的 exIdSide）   // 卡片 Logo：图片导出设计开着、海报也开着才画
+  EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard, idSide: PO.idSide, teamBare: !poCur().teamMat };   // teamBare：团体卡不画上下奖项素材，只留学会；海报的「团体卡显示奖项标志」勾了才画（维护者 2026-11-25）   // idSide：学生证照片横排（export.js 的 exIdSide）   // 卡片 Logo：图片导出设计开着、海报也开着才画
   try { return await exRender(exCardAward(a, w, true), w, fam); } finally { EXS = keep; }   // 海报上都是得主：奖项名去掉「候选人」
 }
 
@@ -326,25 +339,26 @@ async function poPreview() {
   const P = poCur(), box = $('poPvBox'), dpi = Math.max(4, Math.min(40, (box.clientWidth || 900) / P.w, 1100 / P.h));
   const fam = await exUseFonts();
   const { cv, L, secs } = await poDraw(P, dpi, async (a, w) => {
-    const key = `${a.id}|${a.winners.indexOf(w)}|${w.photo || ''}|${w.name}`;
+    const key = `${poCur().teamMat ? 'm' : ''}|${a.id}|${a.winners.indexOf(w)}|${w.photo || ''}|${w.name}`;
     if (!poCards.has(key)) poCards.set(key, await poCard(a, w, 640, fam));
     return poCards.get(key);
   });
   const pv = $('poPv'); pv.width = cv.width; pv.height = cv.height; pv.getContext('2d').drawImage(cv, 0, 0);
-  const n = secs.reduce((t, a) => t + poWho(a).length, 0);
+  const n = secs.reduce((t, a) => t + poWho(a, P).length, 0);
   $('poPvCap').textContent = !secs.length ? '左边勾选要放进这张海报的奖项'
     : !L ? `放不下：${n} 张卡片太多，换大一点的尺寸或分成两张海报`
-    : `${P.w} × ${P.h} 英寸 · ${secs.length} 个奖项 · ${n} 张卡片 · 每排 ${L.cols} 张 · 卡片 ${L.cw.toFixed(2)} × ${L.ch.toFixed(2)} 英寸 · 导出 ${Math.round(P.w * PO.dpi)} × ${Math.round(P.h * PO.dpi)} 像素`;
+    : `${P.w} × ${P.h} 英寸（A4 拼贴 ${(T => `${T.n} 张，${T.land ? '横放' : '直放'} ${T.rows} 排 × ${T.cols} 张`)(poA4Plan(P))}）· ${secs.length} 个奖项 · ${n} 张卡片 · 每排 ${L.cols} 张 · 卡片 ${L.cw.toFixed(2)} × ${L.ch.toFixed(2)} 英寸 · 导出 ${Math.round(P.w * PO.dpi)} × ${Math.round(P.h * PO.dpi)} 像素`;
 }
 async function poExport(kind) {
   if (poBusy) return;
   const P = poCur(), secs = poSecs(P);
   if (!secs.length) return toast('这张海报还没选奖项', true);
-  poBusy = true; const btns = [$('bPoJpg'), $('bPoPdf')]; btns.forEach(b => (b.disabled = true));
+  poBusy = true; const btns = [$('bPoJpg'), $('bPoPdf'), $('bPoA4')]; btns.forEach(b => (b.disabled = true));
   try {
     const fam = await exUseFonts();
     const { cv, L } = await poDraw(P, PO.dpi, (a, w, px) => poCard(a, w, px, fam), (k, n) => { $('poProg').textContent = `生成中 ${k}/${n}…`; });
     if (!L) throw new Error('放不下，换大一点的尺寸或分成两张海报');
+    if (kind === 'a4') return await poA4Export(P, cv, `${safeFile(draft.event.title)}-海报-${safeFile(P.name)}`);   // A4 拼贴：不用先压整张
     $('poProg').textContent = '压缩中…';
     const blob = await new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error('图片太大，浏览器压缩失败：把分辨率调低'))), 'image/jpeg', .92));
     const base = `${safeFile(draft.event.title)}-海报-${safeFile(P.name)}`;
@@ -358,4 +372,55 @@ async function poExport(kind) {
 }
 $('bPoJpg').onclick = () => poExport('jpg');
 $('bPoPdf').onclick = () => poExport('pdf');
+$('bPoA4').onclick = () => poExport('a4');
+
+/* ---- A4 拼贴（维护者 2026-11-25：海报用很多张 A4 印出来再拼；设定的尺寸 = 拼好后的尺寸）----
+ * 每张 A4 四周留白 PO_A4_M（打印机印不到的地方，画剪裁线、编号），里面印海报的一块；
+ * 相邻两张重叠 PO_A4_O：剪掉这张左边 / 上面的白边，压在左边 / 上面那张的虚线上粘（重叠粘贴，维护者定 2026-11-25）。
+ * 海报尺寸照设定，最后一排 / 一列只印用到的部分（维护者定 2026-11-25）。直放、横放哪个张数少用哪个。单位 mm。 */
+const PO_A4_M = 8, PO_A4_O = 10;
+function poA4Plan(P) {
+  const W = P.w * 25.4, H = P.h * 25.4;
+  const one = (pw, ph) => {
+    const cw = pw - 2 * PO_A4_M, ch = ph - 2 * PO_A4_M, sx = cw - PO_A4_O, sy = ch - PO_A4_O;
+    const cols = W <= cw ? 1 : Math.ceil((W - cw) / sx - 1e-6) + 1, rows = H <= ch ? 1 : Math.ceil((H - ch) / sy - 1e-6) + 1;
+    return { pw, ph, cw, ch, sx, sy, cols, rows, n: cols * rows, W, H, land: pw > ph };
+  };
+  const a = one(210, 297), b = one(297, 210);
+  return b.n < a.n ? b : a;
+}
+async function poA4Export(P, src, base) {
+  const T = poA4Plan(P), k = src.width / T.W;   // 每 mm 几个像素（照海报导出的分辨率）
+  const X = v => Math.round(v * k), jpgs = [];
+  for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
+    $('poProg').textContent = `切 A4 ${jpgs.length + 1}/${T.n}…`;
+    const cv = el('canvas'); cv.width = X(T.pw); cv.height = X(T.ph);
+    const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    const x = c * T.sx, y = r * T.sy, w = Math.min(T.cw, T.W - x), h = Math.min(T.ch, T.H - y), M = PO_A4_M;
+    g.drawImage(src, X(x), X(y), X(w), X(h), X(M), X(M), X(w), X(h));
+    // 剪裁线：白边里的短黑线，对准海报这一块的左、上边（和最后一列 / 一排的海报右、下边）
+    g.strokeStyle = '#000'; g.lineWidth = Math.max(1, X(.25)); g.beginPath();
+    const vx = [M, ...(c === T.cols - 1 ? [M + w] : [])], hy = [M, ...(r === T.rows - 1 ? [M + h] : [])];
+    for (const xx of vx) { g.moveTo(X(xx), X(1)); g.lineTo(X(xx), X(M - 1.5)); g.moveTo(X(xx), X(T.ph - 1)); g.lineTo(X(xx), X(T.ph - M + 1.5)); }
+    for (const yy of hy) { g.moveTo(X(1), X(yy)); g.lineTo(X(M - 1.5), X(yy)); g.moveTo(X(T.pw - 1), X(yy)); g.lineTo(X(T.pw - M + 1.5), X(yy)); }
+    g.stroke();
+    // 对齐虚线：右边 / 下面还有下一张时，画在重叠那一条上（粘好后会被盖住）
+    g.save(); g.setLineDash([X(2), X(1.5)]); g.lineWidth = Math.max(1, X(.35)); g.strokeStyle = 'rgba(255,255,255,.9)'; g.beginPath();
+    if (c < T.cols - 1) { g.moveTo(X(M + T.sx), X(M)); g.lineTo(X(M + T.sx), X(M + h)); }
+    if (r < T.rows - 1) { g.moveTo(X(M), X(M + T.sy)); g.lineTo(X(M + w), X(M + T.sy)); }
+    g.stroke(); g.strokeStyle = 'rgba(0,0,0,.9)'; g.lineDashOffset = X(1.75); g.stroke(); g.restore();   // 黑白相间：深色、浅色背景都看得到
+    // 编号、说明（上面白边）
+    g.fillStyle = '#000'; g.textBaseline = 'middle'; g.textAlign = 'left'; g.font = `700 ${X(3.2)}px ${EX_TEXT}`;
+    const tag = `第 ${r + 1} 排 · 第 ${c + 1} 张`; g.fillText(tag, X(M + 3), X(M / 2));
+    g.font = `${X(2.6)}px ${EX_TEXT}`; g.fillStyle = '#444';
+    g.fillText(`（共 ${T.rows} 排 × ${T.cols} 张）${P.name}　${c || r ? '沿短黑线剪掉' + [c ? '左边' : '', r ? '上面' : ''].filter(Boolean).join('和') + '的白边，对准相邻那张的虚线粘' : '第一张：沿短黑线剪掉左边和上面的白边'}`, X(M + 3) + g.measureText(tag).width * 1.25, X(M / 2));
+    jpgs.push({ blob: await new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error('A4 页面压缩失败'))), 'image/jpeg', .92)), w: cv.width, h: cv.height });
+  }
+  $('poProg').textContent = '组合 PDF…';
+  const out = await ebPdf(jpgs, `${draft.event.title} ${P.name}（A4 拼贴）`, T.pw / 25.4 * 72, T.ph / 25.4 * 72);
+  const url = URL.createObjectURL(out), link = el('a', { href: url, download: `${base}-A4拼贴${T.cols}x${T.rows}.pdf`, style: 'display:none' });
+  document.body.append(link); link.click(); setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 60000);
+  $('poProg').textContent = `完成：${T.n} 张 A4（${T.land ? '横放' : '直放'}，${T.rows} 排 × ${T.cols} 张），${mb(out.size)}`;
+  toast(`A4 拼贴已导出：${T.n} 张，打印时选「实际大小 / 100%」，不要「适合页面」`); log(`海报 A4 拼贴「${P.name}」${T.n} 张（${mb(out.size)}）`);
+}
 $('bPoPv').onclick = () => { poCards.clear(); poPreviewSoon(0); };

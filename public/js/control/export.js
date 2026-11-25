@@ -198,8 +198,9 @@ async function exRender(award, w, fam) {
   const HT = exHeadTail(award), head = HT.head, tail = HT.tail;   // 没分类时可能用大类素材（exHeadTail）
   const headFam = HT.grp ? fam.top : fam.topAward;
   // 素材图片：上方 / 下方的「中文 + 英文」找得到同名素材，就整组换成图片（中文和英文两项都隐藏时不画）
-  const headM = S.matOn && (E.top.show || E.topEn.show) && (head[0] || head[1]) ? exMatFind(head[0], head[1]) : null;
-  const tailM = S.matOn && (E.award.show || E.awardEn.show) && (tail[0] || tail[1]) ? exMatFind(tail[0], tail[1]) : null;
+  const bare = S.teamBare && w.type === 'team';   // 海报的团体卡（poster.js 的 poCard 设 teamBare）：上下的奖项素材 / 奖项名都不画，只留团体名 + 学会（维护者 2026-11-25）
+  const headM = !bare && S.matOn && (E.top.show || E.topEn.show) && (head[0] || head[1]) ? exMatFind(head[0], head[1]) : null;
+  const tailM = !bare && S.matOn && (E.award.show || E.awardEn.show) && (tail[0] || tail[1]) ? exMatFind(tail[0], tail[1]) : null;
   const headMat = await exMatImg(headM), tailMat = await exMatImg(tailM);
   cv.mat = [headMat && headM.name, tailMat && tailM.name].filter(Boolean);
   const drawMat = (im, cx, y, maxW, maxH, pos) => { const d = exMatFit(im, maxW, maxH), dx = W * S[pos + 'X'] / 100, dy = H * S[pos + 'Y'] / 100; g.save(); g.shadowColor = 'transparent'; g.drawImage(im, cx - d.w / 2 + dx, y + dy, d.w, d.h); g.restore(); return d.h; };
@@ -254,12 +255,12 @@ async function exRender(award, w, fam) {
     shadow(true);
     let y = H * .04;
     if (headMat) y += drawMat(headMat, cx, y, maxW, H * S.tmatTop / 100, 'tmatTop');
-    if (!headMat && E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
-    if (!headMat && E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
+    if (!bare && !headMat && E.top.show && head[0]) { const px = E.top.size * k * 1.6; y += px * .95; exText(g, head[0], E.top, headFam, px, cx, y, maxW); }
+    if (!bare && !headMat && E.topEn.show && head[1]) { const px = E.topEn.size * k * 1.3; y += px * 1.3; exText(g, head[1].toUpperCase(), E.topEn, fam.topEn, px, cx, y, maxW); }
     shadow(false);
     const top = y + U * .045;
     const zh = soc[0] === w.name ? '' : soc[0];   // 团体名就是学会名时，不重复写中文
-    const block = [['name', w.name, .9], ...(idCard ? [['cls', w.cls, .7], ['sid', w.sid, .7]] : []), ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
+    const block = [['name', w.name, .9], ...(idCard ? [['cls', w.cls, .7], ['sid', w.sid, .7]] : []), ['soc', zh, .7], ['socEn', soc[1], .78], ...(tailMat || bare ? [] : [['award', tail[0], .8], ['awardEn', tail[1], 1]])].filter(([key, t]) => t && E[key].show);
     const matD = tailMat && exMatFit(tailMat, maxW, H * S.tmatAward / 100);   // 团体图自己的大小（默认比个人图小：合照为主）
     const textH = block.reduce((t, [key, , m], i) => t + E[key].size * k * m * 1.3 + (i === 0 && block.length > 1 ? U * .012 : 0), 0);
     const pad = U * .03, below = (matD ? matD.h + U * .05 : U * .02);   // 卡片上下留边；卡片下面的素材图片
