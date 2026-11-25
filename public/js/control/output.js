@@ -4,10 +4,14 @@
  *   outDataUrl(blob)           Blob → data: 网址（翻书网页把每页图片嵌进去用）
  *   outPdf(jpgs, title, W, H)  几张 JPG 组成 PDF，每页一张（W × H 是 pt，默认 A4）
  *   outDownload(blob, name)    让浏览器下载这个文件
+ *   safeFile(text)             文字 → 可以当文件名（1.94 从 export.js 搬来）
  * 图片导出（export.js）、电子书（ebook.js）、海报（poster.js）共用；只用浏览器内建功能，不用第三方库。
  * 需要：core.js（el）
  */
 'use strict';
+
+// 文件名里不能有的字换成 _（Windows 也能保存）
+const safeFile = t => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 60) || '未命名';
 
 function outBlob(cv, type = 'image/jpeg', q = .92, err = '图片生成失败') {
   return new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error(err))), type, q));

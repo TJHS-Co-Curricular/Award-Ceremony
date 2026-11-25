@@ -6,7 +6,7 @@
  *   3 电子书的集锦 / 花絮 / 前言照片找不到的  6 学会编号在对照表里查不到的   7 没有得奖者的奖项
  *   8 入围揭晓没标得主或标了几位      9 指定的字体文件（file:）不在 data/fonts/      10 海报里选了、但名单里已经没有的奖项（1.89）
  * 提供：ckRun()
- * 需要：core.js（api、el、V、dirty）、import.js（SOC、socFind）、export.js（exLoadMats、exMats、exMatFind）、ebook.js（ebClean、ebBtsLine）
+ * 需要：core.js（api、el、V、dirty）、import.js（SOC、socFind）、draw-kit.js（exLoadMats、exMats、exMatFind）、export.js（exHeadTail）、ebook.js（ebClean、ebBtsLine）
  */
 'use strict';
 

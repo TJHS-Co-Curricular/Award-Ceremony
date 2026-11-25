@@ -1,7 +1,7 @@
 /*
  * 控制端 · 自定义字体：选择 / 上传字体、预览（和大屏同一套规则：英文 / 数字字体在前，中文字体在后）。
  * 提供：refreshFonts()、renderFontUI()、fontPrefix()、fontFiles
- * 需要：shared/fonts.js（fontFamily）、export.js（HTML_FONT）
+ * 需要：shared/fonts.js（fontFamily）、draw-kit.js（HTML_FONT）
  */
 "use strict";
 

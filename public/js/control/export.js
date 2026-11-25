@@ -1,16 +1,11 @@
 /*
  * 控制端 · 图片导出分页：每位得奖者一张成品图（canvas 绘制），打包成 ZIP；全部在浏览器里完成，离线可用。
  * 设计存在服务端 data/export-style.json。默认字体读 css/fonts.css（和大屏同一份）。
- * 提供：exOpen()、exFillSel()、HTML_FONT；给电子书 / 海报用：exRender(award, w, fam, S)（S = 设计，默认 EXS；要不同样式就传自己的一份，不要改全局 EXS）
- * 需要：output.js（outBlob、outDownload）、shared/zip.js（makeZip）、shared/fonts.js、shared/theme.js（thC、thUse：主题颜色只换写死的金色；设计里自己选的颜色不动）、fonts.js（fontPrefix、fontFiles）
+ * 提供：exOpen()、exFillSel()；给电子书 / 海报用：EXS、exUseFonts、exRender(award, w, fam, S)（S = 设计，默认 EXS；要不同样式就传自己的一份，不要改全局 EXS）、exLogo、exHeadTail、exAwards、exWinners、exCardAward、exEnsure
+ * 需要：draw-kit.js（字体、写字、读照片 / Logo / 素材）、output.js（outBlob、outDownload、safeFile）、shared/zip.js（makeZip）、shared/fonts.js、shared/theme.js（thC、thUse：主题颜色只换写死的金色；设计里自己选的颜色不动）、fonts.js（fontPrefix、fontFiles）
  */
 'use strict';
 
-// 默认字体 = css/fonts.css 的 --font-serif / --font-sans（和大屏同一份，不用手动同步）
-const fontCss = getComputedStyle(document.documentElement);
-const HTML_FONT = { serif: fontCss.getPropertyValue('--font-serif').trim(), sans: fontCss.getPropertyValue('--font-sans').trim() };
-// 和大屏同一套规则：中文字体 + 英文 / 数字字体套用到所有文字；没设时，奖项名用宋体（serif），其它用黑体（sans）
-let EX_TITLE = HTML_FONT.serif, EX_TEXT = HTML_FONT.sans;
 
 /* 设计（存在服务端 data/export-style.json）。字号单位 pt（PowerPoint 16:9 投影片高 540pt，任何导出尺寸都等比例）。
  * 默认值量自 Picture3。团体图会按固定比例换算（上方 ×1.6、名字 ×0.9 …），不用另外设。 */
@@ -68,9 +63,7 @@ function exClean(v) {
 let EXS = EX_PRESET(), exLoaded = false, exSaveT = 0, exPvT = 0;
 
 async function exUseFonts(S = EXS) {   // 先解析每一项要用的字体（跟随大屏，或在本分页单独指定）
-  const pre = await fontPrefix();
-  EX_TITLE = pre ? `${pre}, ${HTML_FONT.serif}` : HTML_FONT.serif;
-  EX_TEXT = pre ? `${pre}, ${HTML_FONT.sans}` : HTML_FONT.sans;
+  await exBaseFonts();   // draw-kit.js：EX_TITLE / EX_TEXT 跟大屏
   const fam = {};
   for (const [k] of EX_ELEMS) {
     const own = S.elems[k].font ? await fontFamily(S.elems[k].font, 'ex_' + k) : '';
@@ -81,58 +74,6 @@ async function exUseFonts(S = EXS) {   // 先解析每一项要用的字体（�
   await Promise.all(Object.values(fam).map(f => document.fonts.load(`700 40px ${f}`, '陈A'))).catch(() => {});
   return fam;
 }
-const exImgCache = new Map();
-function exLoad(name) {
-  if (!name) return Promise.resolve(null);
-  if (!exImgCache.has(name)) exImgCache.set(name, loadImg('/api/control/photo?name=' + encodeURIComponent(name)).catch(() => null));
-  return exImgCache.get(name);
-}
-/* 素材图片：data/material/（或 mterial/）里的图片，文件名 = 奖项英文名（或中文名）。
- * 比对：只看字母、数字、汉字，不分大小写，结尾的 S 不算（AWARD = AWARDS）；英文写成「Gold」也认得「GOLD AWARD」；
- * 文件名打错一两个字母（长名字）或一个字（中文名）也认得，但要只有一个最接近的才算。 */
-let exMats = [];   // [{ name, v, key }]
-const exMatKey = t => String(t || '').replace(/\.(png|jpe?g|webp|gif)$/i, '').replace(/^\s*(?:19|20)\d{2}\s*(?:年(?!度))?\s*/, '').toUpperCase()   // 开头的年份不算（「2026 学生服务…」也认得没写年份的素材）
-  .replace(/[^0-9A-Z\u3400-\u9fff]/g, '').replace(/S$/, '');
-async function exLoadMats() {
-  try { exMats = (await api('GET', '/api/control/materials')).list.map(m => ({ ...m, key: exMatKey(m.name) })); } catch { exMats = []; }
-}
-function exLev(a, b) {
-  if (Math.abs(a.length - b.length) > 2) return 9;
-  let p = [...Array(b.length + 1).keys()];
-  for (let i = 1; i <= a.length; i++) {
-    const c = [i];
-    for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    p = c;
-  }
-  return p[b.length];
-}
-// 中文 + 英文 → 素材（找不到返回 null）。以英文为准：英文（完全一样 → 打错一点点）都找不到，才用中文
-function exMatFind(zh, en) {
-  const keys = [exMatKey(en), en ? exMatKey(en + ' AWARD') : '', exMatKey(zh)].filter(Boolean);
-  for (const k of keys) {
-    const m = exMats.find(x => x.key === k); if (m) return m;
-    const lim = k.length >= 12 ? 2 : (k.length >= 4 && /[\u3400-\u9fff]/.test(k) ? 1 : 0); if (!lim) continue;
-    const near = exMats.map(m => [m, exLev(k, m.key)]).filter(([, d]) => d <= lim).sort((a, b) => a[1] - b[1]);
-    if (near.length && (near.length === 1 || near[0][1] < near[1][1])) return near[0][0];
-  }
-  return null;
-}
-const exMatCache = new Map();
-function exMatImg(m) {
-  if (!m) return Promise.resolve(null);
-  const id = m.name + '|' + m.v;
-  if (!exMatCache.has(id)) exMatCache.set(id, loadImg('/api/control/material?name=' + encodeURIComponent(m.name) + '&v=' + encodeURIComponent(m.v)).catch(() => null));
-  return exMatCache.get(id);
-}
-// 素材按原比例缩进 宽 maxW × 高 maxH 的框
-function exMatFit(img, maxW, maxH) { const r = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight); return { w: img.naturalWidth * r, h: img.naturalHeight * r }; }
-// 学校 Logo（V.logo = 版本标记，换了 Logo 就重新读）
-let exLogoImg = { ver: null, p: null };
-function exLoadLogo() {
-  const ver = V?.logo || '';
-  if (exLogoImg.ver !== ver) exLogoImg = { ver, p: ver ? loadImg('/media/logo?v=' + encodeURIComponent(ver)).catch(() => null) : Promise.resolve(null) };
-  return exLogoImg.p;
-}
 // 在照片（x, y, 宽 w）右上角画 Logo：正方形框 = w × 大小%，Logo 按原比例缩进框里、贴右上角，不变形
 function exLogo(g, logo, x, y, w, S = EXS) {
   if (!logo || !S.logoOn || !logo.naturalWidth) return;
@@ -141,30 +82,6 @@ function exLogo(g, logo, x, y, w, S = EXS) {
   g.save(); g.globalAlpha = S.logoOpacity / 100; g.shadowColor = 'transparent';
   g.drawImage(logo, x + w - m - lw, y + m, lw, lh);
   g.restore();
-}
-function exWrap(g, text, maxW) {   // 英文按单词换行；中文按字换行
-  const parts = /\s/.test(text) ? text.split(/(\s+)/) : [...text], lines = [];
-  let cur = '';
-  for (const p of parts) { const t = cur + p; if (cur && g.measureText(t.trim()).width > maxW) { lines.push(cur.trim()); cur = p.trimStart(); } else cur = t; }
-  if (cur.trim()) lines.push(cur.trim());
-  return lines;
-}
-function exCover(g, img, x, y, w, h) {   // 照片居中裁切铺满
-  const k = Math.max(w / img.naturalWidth, h / img.naturalHeight), iw = img.naturalWidth * k, ih = img.naturalHeight * k;
-  g.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
-}
-// 按设计画一行字：字号 / 粗体 / 斜体 / 字距 / 颜色；太宽就缩小。返回实际字号（像素）
-function exFont(g, st, fam, px) {
-  g.font = `${st.italic ? 'italic ' : ''}${st.bold ? 700 : 400} ${px}px ${fam}`;
-  if ('letterSpacing' in g) g.letterSpacing = (st.spacing * px) + 'px';
-}
-function exText(g, text, st, fam, px, x, y, maxW) {
-  let s = px;
-  for (;;) { exFont(g, st, fam, s); if (g.measureText(text).width <= maxW || s < 8) break; s *= .94; }
-  g.fillStyle = st.color;
-  g.fillText(text, x + ('letterSpacing' in g ? st.spacing * s / 2 : 0), y);   // 字距会在最后一个字后面多出一段，居中时补回来
-  if ('letterSpacing' in g) g.letterSpacing = '0px';
-  return s;
 }
 
 // 左边的金色闪光小光点（静态）：3 层同大屏（shared/sparkle.js），一格 = 照片高 × 0.9；右边 30% 淡出
@@ -358,7 +275,6 @@ function exIdSide(g, o) {
   return py + ch;
 }
 
-const safeFile = t => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 60) || '未命名';
 
 /* ---- 分页界面 ---- */
 /* ---- 入围揭晓的得主（维护者 2026-11-22）----

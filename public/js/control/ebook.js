@@ -7,7 +7,7 @@
  * 设置（封面副标题、印不印学号、前言、集锦照片文件名、编委、鸣谢）存在服务端 data/ebook.json（GET / PUT /api/control/ebook）。
  * 全部在浏览器里完成；导出的文件只下载到这台电脑。
  * 提供：ebTabOpen()（ui.js 切到「电子书」分页时调用）、ebOpen()、ebExport(kind)、ebPreview()
- * 需要：export.js（exUseFonts、exAwards、exLoad、exLoadLogo、exText、exFont、exWrap、exCover、safeFile、exEnsure、EX_TITLE、EX_TEXT）、output.js（outBlob、outDataUrl、outPdf、outDownload）、
+ * 需要：export.js（exUseFonts、exAwards、exEnsure）、draw-kit.js（exLoad、exLoadLogo、exText、exFont、exWrap、exCover、EX_TITLE、EX_TEXT）、output.js（outBlob、outDataUrl、outPdf、outDownload、safeFile）、
  *       shared/idphoto.js（isIdPhoto）、import.js（socOf）、core.js
  */
 'use strict';

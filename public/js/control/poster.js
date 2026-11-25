@@ -7,7 +7,7 @@
  * 设置存 data/poster.json（GET / PUT /api/control/poster）；背景图片 data/backgrounds/poster.jpg（/api/control/poster-bg）。
  * 提供：poOpen()
  * 需要：core.js（api、el、toast、log、loadImg、mb、draft）、shared/fonts.js（fontFamily）、shared/theme.js（thC）、
- *       export.js（EXS、exEnsure、exLoadMats、exUseFonts、exRender、exCover、safeFile、EX_TITLE）、output.js（outBlob、outPdf、outDownload）
+ *       export.js（EXS、exEnsure、exUseFonts、exRender、exWinners、exCardAward）、draw-kit.js（exLoadMats、exCover、exLoadLogo、EX_TITLE、EX_TEXT）、output.js（outBlob、outPdf、outDownload、safeFile）
  */
 'use strict';
 
