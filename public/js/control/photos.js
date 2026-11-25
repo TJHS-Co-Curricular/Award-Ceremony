@@ -122,12 +122,7 @@ $("bMissCsv").onclick = async () => {
   const d = new Date(),
     p = (n) => String(n).padStart(2, "0");
   const file = `缺少照片名单_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const link = el("a", { href: url, download: file, style: "display:none" });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  outDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), file); // output.js
   const merged = bad.length - out.length;
   toast(`已导出 ${out.length} 位缺少照片的得奖者${merged ? `（去掉重复 ${merged} 行）` : ""}`);
   log(`导出缺少照片名单（${out.length} 位${merged ? `，去掉重复 ${merged} 行` : ""}）`);

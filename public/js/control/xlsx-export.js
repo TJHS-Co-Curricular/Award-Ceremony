@@ -3,7 +3,7 @@
  * 列和「批量导入」、docs/Example.xlsx 一样（大类 … 得主，15 列）+ 三列显示设定（分类编号、大类列出分类、大类编号）+ 所属部门两列，导出的文件复制后贴回「批量导入」就能还原。
  * 用「奖项编辑」的草稿（含还没保存的修改）。xlsx 自己用 makeZip() 组（js/shared/zip.js），不加第三方库。
  * 提供：exportAwardsXlsx()
- * 需要：core.js（draft、toast、log）、zip.js（makeZip）
+ * 需要：core.js（draft、toast、log）、zip.js（makeZip）、output.js（outDownload）
  */
 "use strict";
 
@@ -37,11 +37,7 @@ function exportAwardsXlsx() {
   const blob = xlsxBlob(rows);
   const d = new Date(), p = (n) => String(n).padStart(2, "0");
   const file = `奖项设定_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.xlsx`;
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url; link.download = file;
-  document.body.appendChild(link); link.click(); link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  outDownload(blob, file);
   const people = awards.reduce((t, a) => t + a.winners.length, 0);
   toast(`已导出 ${awards.length} 个奖项、${people} 位得奖者`);
   log(`导出奖项设定 Excel（${awards.length} 个奖项，${people} 位）`);

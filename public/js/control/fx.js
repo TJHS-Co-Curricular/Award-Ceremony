@@ -8,7 +8,7 @@
  * 下方「导出影片」：开一个隐藏的输出页（record=1，display/record.js）逐帧渲染成 .mp4 下载；
  *   「在服务器渲染」：交给服务端（lib/render.js，/api/control/render）在那台电脑上渲染，这里每 1.5 秒看一次进度、提供下载。
  * 提供：fxOpen()、fxClose()、fxDirty
- * 需要：core.js（$、V、api、el、toast、store）
+ * 需要：core.js（$、V、api、el、toast、store）、output.js（outDownload）
  */
 'use strict';
 
@@ -68,8 +68,7 @@ function fxThemeExport() {
   const name = prompt('主题名称（会写进文件，例：2027 蓝色）', '') ?? null; if (name === null) return;
   const o = { 类型: '颁奖系统主题', 名称: name.trim(), 使用说明: '控制端「效果控制 → 主题颜色 → 导入主题」选这个文件。亮色、暗色写 null = 自动跟着主色。' };
   for (const [zh, k] of FX_TH_FIELDS) o[zh] = fxData.all[k] ?? null;
-  const a = el('a', { href: URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' })), download: `主题-${o.名称 || '未命名'}.json` });
-  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  outDownload(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' }), `主题-${o.名称 || '未命名'}.json`);
 }
 async function fxThemeImport(f) {
   try {
@@ -322,8 +321,7 @@ $('bRec').onclick = async () => {
       $('recState').textContent = `${what} ${(p * 100).toFixed(0)}%` + (left != null ? `，大约还要 ${left >= 60 ? Math.floor(left / 60) + ' 分 ' : ''}${left % 60} 秒` : '');
     });
     const name = { standby: '大会背景', promo: '宣传背景', base: '底层背景', flash: '揭晓闪光' }[opt.content];
-    const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}-${opt.seconds}s-${opt.fps}fps.mp4` });
-    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    outDownload(r.blob, `${name}-${sc.name || '输出页'}-${r.width}x${r.height}-${opt.seconds}s-${opt.fps}fps.mp4`);
     $('recState').textContent = `完成：${(r.blob.size / 1048576).toFixed(1)} MB · ${r.codec.startsWith('avc') ? 'H.264' : 'VP9'} · ${r.hw ? '显卡编码' : 'CPU 软件编码'} · 每秒算 ${r.speed.toFixed(1)} 帧 · 用了 ${Math.round((Date.now() - t0) / 1000)} 秒`;
   } catch (e) {
     $('recState').textContent = '没有导出：' + e.message;
@@ -345,8 +343,7 @@ $('bStill').onclick = async () => {
     await new Promise((ok, bad) => { recFrame.onload = ok; setTimeout(() => bad(new Error('输出页打不开')), 20000); });
     const r = await recFrame.contentWindow.recStill({ content }, fxFor(sc.name));
     const name = { standby: '大会背景', promo: '宣传背景', base: '底层背景' }[content];
-    const a = el('a', { href: URL.createObjectURL(r.blob), download: `${name}-${sc.name || '输出页'}-${r.width}x${r.height}.png` });
-    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    outDownload(r.blob, `${name}-${sc.name || '输出页'}-${r.width}x${r.height}.png`);
     $('recState').textContent = `完成：${name}图片 ${r.width}×${r.height}（${(r.blob.size / 1048576).toFixed(1)} MB）`;
   } catch (e) { $('recState').textContent = '没有导出：' + e.message; }
   recFrame.remove(); recFrame = null; recBusy = false;

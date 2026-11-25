@@ -5,7 +5,7 @@
  *   outPdf(jpgs, title, W, H)  几张 JPG 组成 PDF，每页一张（W × H 是 pt，默认 A4）
  *   outDownload(blob, name)    让浏览器下载这个文件
  *   safeFile(text)             文字 → 可以当文件名（1.94 从 export.js 搬来）
- * 图片导出（export.js）、电子书（ebook.js）、海报（poster.js）共用；只用浏览器内建功能，不用第三方库。
+ * 图片导出（export.js）、电子书（ebook.js）、海报（poster.js）共用；1.95 起效果控制（fx.js）、缺少照片名单（photos.js）、导出 Excel（xlsx-export.js）的下载也用 outDownload；只用浏览器内建功能，不用第三方库。
  * 需要：core.js（el）
  */
 'use strict';
