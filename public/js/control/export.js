@@ -1,8 +1,8 @@
 /*
  * 控制端 · 图片导出分页：每位得奖者一张成品图（canvas 绘制），打包成 ZIP；全部在浏览器里完成，离线可用。
  * 设计存在服务端 data/export-style.json。默认字体读 css/fonts.css（和大屏同一份）。
- * 提供：exOpen()、exFillSel()、HTML_FONT
- * 需要：shared/zip.js（makeZip）、shared/fonts.js、shared/theme.js（thC、thUse：主题颜色只换写死的金色；设计里自己选的颜色不动）、fonts.js（fontPrefix、fontFiles）
+ * 提供：exOpen()、exFillSel()、HTML_FONT；给电子书 / 海报用：exRender(award, w, fam, S)（S = 设计，默认 EXS；要不同样式就传自己的一份，不要改全局 EXS）
+ * 需要：output.js（outBlob、outDownload）、shared/zip.js（makeZip）、shared/fonts.js、shared/theme.js（thC、thUse：主题颜色只换写死的金色；设计里自己选的颜色不动）、fonts.js（fontPrefix、fontFiles）
  */
 'use strict';
 
@@ -67,17 +67,17 @@ function exClean(v) {
 }
 let EXS = EX_PRESET(), exLoaded = false, exSaveT = 0, exPvT = 0;
 
-async function exUseFonts() {   // 先解析每一项要用的字体（跟随大屏，或在本分页单独指定）
+async function exUseFonts(S = EXS) {   // 先解析每一项要用的字体（跟随大屏，或在本分页单独指定）
   const pre = await fontPrefix();
   EX_TITLE = pre ? `${pre}, ${HTML_FONT.serif}` : HTML_FONT.serif;
   EX_TEXT = pre ? `${pre}, ${HTML_FONT.sans}` : HTML_FONT.sans;
   const fam = {};
   for (const [k] of EX_ELEMS) {
-    const own = EXS.elems[k].font ? await fontFamily(EXS.elems[k].font, 'ex_' + k) : '';
+    const own = S.elems[k].font ? await fontFamily(S.elems[k].font, 'ex_' + k) : '';
     const base = k === 'award' ? EX_TITLE : EX_TEXT;
     fam[k] = own ? `${own}, ${base}` : base;
   }
-  fam.topAward = EXS.elems.top.font ? fam.top : EX_TITLE;   // 没有分类时，上方放的是奖项名 → 默认用奖项名的字体
+  fam.topAward = S.elems.top.font ? fam.top : EX_TITLE;   // 没有分类时，上方放的是奖项名 → 默认用奖项名的字体
   await Promise.all(Object.values(fam).map(f => document.fonts.load(`700 40px ${f}`, '陈A'))).catch(() => {});
   return fam;
 }
@@ -134,8 +134,8 @@ function exLoadLogo() {
   return exLogoImg.p;
 }
 // 在照片（x, y, 宽 w）右上角画 Logo：正方形框 = w × 大小%，Logo 按原比例缩进框里、贴右上角，不变形
-function exLogo(g, logo, x, y, w) {
-  const S = EXS; if (!logo || !S.logoOn || !logo.naturalWidth) return;
+function exLogo(g, logo, x, y, w, S = EXS) {
+  if (!logo || !S.logoOn || !logo.naturalWidth) return;
   const box = w * S.logoSize / 100, m = w * S.logoMargin / 100, k = Math.min(box / logo.naturalWidth, box / logo.naturalHeight);
   const lw = logo.naturalWidth * k, lh = logo.naturalHeight * k;
   g.save(); g.globalAlpha = S.logoOpacity / 100; g.shadowColor = 'transparent';
@@ -184,8 +184,9 @@ function exSparkle(g, P, H, U) {
   g.drawImage(off, 0, 0);
 }
 
-async function exRender(award, w, fam) {
-  const S = EXS, E = S.elems, img = await exLoad(w.photo), logo = img ? await exLoadLogo() : null;   // Logo 和大屏一样：有照片才加
+// 画一张得奖卡片。S = 设计（默认 = 图片导出的 EXS）：别的地方要不同的样式就传自己的一份，不要去改全局的 EXS（海报 poCard 就是这样）
+async function exRender(award, w, fam, S = EXS) {
+  const E = S.elems, img = await exLoad(w.photo), logo = img ? await exLoadLogo() : null;   // Logo 和大屏一样：有照片才加
   let W = S.size === 'photo' && img ? img.naturalWidth : +S.size.split('x')[0], H = S.size === 'photo' && img ? img.naturalHeight : +S.size.split('x')[1];
   if (!W || !H) { W = 1920; H = 1080; }
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -195,7 +196,7 @@ async function exRender(award, w, fam) {
   const shadow = on => { const a = S.shadow / 100; g.shadowColor = on && a ? `rgba(0,0,0,${Math.min(1, a * 1.25)})` : 'transparent'; g.shadowBlur = on ? U * .02 * a : 0; g.shadowOffsetX = g.shadowOffsetY = on ? U * .005 * a : 0; };
   const soc = socOf(w);   // 学会 [中文, 英文]：有对照表时按编号查（import.js）
   // 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复
-  const HT = exHeadTail(award), head = HT.head, tail = HT.tail;   // 没分类时可能用大类素材（exHeadTail）
+  const HT = exHeadTail(award, null, S), head = HT.head, tail = HT.tail;   // 没分类时可能用大类素材（exHeadTail）
   const headFam = HT.grp ? fam.top : fam.topAward;
   // 素材图片：上方 / 下方的「中文 + 英文」找得到同名素材，就整组换成图片（中文和英文两项都隐藏时不画）
   const bare = S.teamBare && w.type === 'team';   // 海报的团体卡（poster.js 的 poCard 设 teamBare）：上下的奖项素材 / 奖项名都不画，只留团体名 + 学会（维护者 2026-11-25）
@@ -218,7 +219,7 @@ async function exRender(award, w, fam) {
       g.fillStyle = sh; g.fillRect(0, 0, sw, H);
     }
     if (S.sparkle) exSparkle(g, sw, H, U);
-    exLogo(g, logo, 0, 0, W);
+    exLogo(g, logo, 0, 0, W, S);
     shadow(true);
     let y = H * .115;
     if (headMat) y = H * .04 + drawMat(headMat, cx, H * .04, maxW, H * S.matTop / 100, 'matTop') - E.name.size * k * .5;
@@ -287,7 +288,7 @@ async function exRender(award, w, fam) {
     g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(cx0, py + ph - lw / 2, cw, lw);   // 照片和文字之间的金线
     g.restore();
     g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
-    exLogo(g, logo, px0, py, pw);
+    exLogo(g, logo, px0, py, pw, S);
     y = py + ph + pad * .6;
     shadow(true);
     block.forEach(([key, t, m], i) => {
@@ -311,7 +312,7 @@ async function exRender(award, w, fam) {
 
 /* 学生证照片横排（海报导出，维护者 2026-11-22）：直排是照片在上、文字在下，学生证照片是直的，卡片会又窄又长；
  * 横排 = 左边名字 / 班级 / 学号 / 学会 + 右边照片（完整、不裁切），中间一条金线（1.88 起左资料右照片，维护者 2026-11-22），卡片金边、底色和直排一样。
- * EXS.idSide 为真时用：图片导出「团体图 → 学生证横排」（默认打勾，1.87），海报导出的 poCard() 按 PO.idSide 临时盖掉它。返回卡片底边的 y。 */
+ * EXS.idSide 为真时用：图片导出「团体图 → 学生证横排」（默认打勾，1.87），海报导出的 poCard() 传自己的设计 S（idSide = PO.idSide）。返回卡片底边的 y。 */
 function exIdSide(g, o) {
   const { img, logo, block, fam, E, k, U, W, H, top, pad, below, shadow, S } = o;
   const ar = img ? img.naturalWidth / img.naturalHeight : .75;
@@ -338,7 +339,7 @@ function exIdSide(g, o) {
   g.globalAlpha = .6; g.fillStyle = S.teamFrame; g.fillRect(phX - lw / 2, py, lw, ch);   // 文字和照片之间的金线（直的）
   g.restore();
   g.save(); card(); g.strokeStyle = S.teamFrame; g.lineWidth = lw; g.globalAlpha = .85; g.stroke(); g.restore();   // 卡片金边
-  exLogo(g, logo, phX, phY, pw);
+  exLogo(g, logo, phX, phY, pw, S);
   const tcx = cx0 + tw / 2;   // 文字在左边
   let y = py + (ch - textH) / 2;
   shadow(true);
@@ -376,9 +377,9 @@ const exCardAward = (a, w, winOnly) => (winOnly && exIsNominee(a) && w.win ? exW
  * 有分类：上方 = 分类，下方 = 奖项名；没分类：上方 = 奖项名，下方不重复。
  * 没分类、但大类找得到素材图片时：上方 = 大类素材，下方 = 奖项名（用户定 2026-11-22，例：最佳执委 → THE BEST COMMITTEE OF THE YEAR.png）。
  * 大类没有素材就照旧，文字版式不变。list = 找大类英文名用的奖项清单（大类英文名可能只写在其中一个奖项上）。 */
-function exHeadTail(a, list) {
+function exHeadTail(a, list, S = EXS) {
   if (a.group) return { head: [a.group, a.groupSub], tail: [a.title, a.subtitle], grp: true };
-  if (a.section && EXS.matOn) {
+  if (a.section && S.matOn) {
     const sub = a.sectionSub || ((list || exAwards()).find(x => x.section === a.section && x.sectionSub) || {}).sectionSub || '';
     if (exMatFind(a.section, sub)) return { head: [a.section, sub], tail: [a.title, a.subtitle], grp: true, sec: true };
   }
@@ -495,15 +496,13 @@ async function exExport(all) {
       for (const [wi, w] of who(a).entries()) {
         $('exProg').textContent = `生成中 ${++k}/${total}…`; $('exBar').style.width = (k / total * 100) + '%';
         const cv = await exRender(exCardAward(a, w, EXS.winOnly), w, fam);
-        const blob = await new Promise(r => cv.toBlob(r, fmt === 'png' ? 'image/png' : 'image/jpeg', .92));
+        const blob = await outBlob(cv, fmt === 'png' ? 'image/png' : 'image/jpeg', .92);
         const tag = a.revealMode === 'nominee' && w.win ? '-得主' : '';
         files.push({ name: `${dir}/${String(wi + 1).padStart(3, '0')}-${safeFile(w.name)}${tag}.${fmt}`, data: new Uint8Array(await blob.arrayBuffer()) });
       }
     }
-    const zip = makeZip(files), url = URL.createObjectURL(zip);
-    const name = `${safeFile(draft.event.title)}-图片导出${awards.length === 1 ? '-' + safeFile(awards[0].title) : ''}.zip`;
-    const link = el('a', { href: url, download: name, style: 'display:none' }); document.body.append(link); link.click();
-    setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 60000);
+    const zip = makeZip(files);
+    outDownload(zip, `${safeFile(draft.event.title)}-图片导出${awards.length === 1 ? '-' + safeFile(awards[0].title) : ''}.zip`);
     toast(`已导出 ${files.length} 张图片（${mb(zip.size)}）`); log(`图片导出 ${files.length} 张`);
     $('exProg').textContent = `完成：${files.length} 张，${mb(zip.size)}`;
   } catch (e) { toast('导出失败：' + e.message, true); $('exProg').textContent = ''; }

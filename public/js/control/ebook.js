@@ -3,11 +3,11 @@
  *   封面 → 前言（可多页）→ 目录（有页码）→ 活动照片集锦 → 大类分隔页 → 分类标题 + 奖项（每页最多 6 位，2 × 3；只有 1 位就放大）→ 编委 / 鸣谢 → 附录（例：表扬办法）
  * 每页用 canvas 画成 A4（1654 × 2339，约 200 dpi）JPG，全部嵌进同一个 .html：双击用浏览器打开就能翻书，
  * 电脑上两页摊开、手机上一页一页翻；「导出 PDF」每页刚好一张 A4。用户定（2026-11-21）：一页 6 位、米白底、要集锦和编委 / 鸣谢；2026-11-23 拿掉翻书网页的打印、加配色（EB.color / EB.paper）。
- * 「导出 PDF」= 同一套页面直接组成 PDF（ebPdf()，每页一张 A4 JPG），给 Google Drive / Sites、印刷店用。
+ * 「导出 PDF」= 同一套页面直接组成 PDF（output.js 的 outPdf()，每页一张 A4 JPG），给 Google Drive / Sites、印刷店用。
  * 设置（封面副标题、印不印学号、前言、集锦照片文件名、编委、鸣谢）存在服务端 data/ebook.json（GET / PUT /api/control/ebook）。
  * 全部在浏览器里完成；导出的文件只下载到这台电脑。
- * 提供：ebTabOpen()（ui.js 切到「电子书」分页时调用）、ebOpen()、ebExport(kind)、ebPreview()、ebPdf()
- * 需要：export.js（exUseFonts、exAwards、exLoad、exLoadLogo、exText、exFont、exWrap、exCover、safeFile、exEnsure、EX_TITLE、EX_TEXT）、
+ * 提供：ebTabOpen()（ui.js 切到「电子书」分页时调用）、ebOpen()、ebExport(kind)、ebPreview()
+ * 需要：export.js（exUseFonts、exAwards、exLoad、exLoadLogo、exText、exFont、exWrap、exCover、safeFile、exEnsure、EX_TITLE、EX_TEXT）、output.js（outBlob、outDataUrl、outPdf、outDownload）、
  *       shared/idphoto.js（isIdPhoto）、import.js（socOf）、core.js
  */
 'use strict';
@@ -176,7 +176,7 @@ async function ebImgUpload(k, f) {
   const cv = el('canvas'); cv.width = Math.max(1, Math.round(im.naturalWidth * s)); cv.height = Math.max(1, Math.round(im.naturalHeight * s));
   const g = cv.getContext('2d'); if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); }
   g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(r => cv.toBlob(r, png ? 'image/png' : 'image/jpeg', .9));
+  const blob = await outBlob(cv, png ? 'image/png' : 'image/jpeg', .9);
   const r = await fetch('/api/control/ebook-img?k=' + k, { method: 'POST', headers: { 'X-AC': '1', 'Content-Type': png ? 'image/png' : 'image/jpeg' }, body: blob, credentials: 'same-origin' });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
@@ -925,35 +925,7 @@ $('ebPage').onchange = ebPreview;
 $('ebPrev').onclick = () => { $('ebPage').value = (+$('ebPage').value || 1) - 1; ebPreview(); };
 $('ebNext').onclick = () => { $('ebPage').value = (+$('ebPage').value || 1) + 1; ebPreview(); };
 
-const ebJpg = cv => new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error('图片生成失败'))), 'image/jpeg', EB_Q));
-const ebDataUrl = b => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(new Error('图片读取失败')); r.readAsDataURL(b); });
-
-/* 最简单的 PDF：每页一张 A4，里面一张 JPG（DCTDecode，原样放进去，不重新压缩）。不用第三方库。 */
-async function ebPdf(jpgs, title, W = 595.28, H = 841.89) {   // 默认 A4（pt）；海报导出（poster.js）传实际尺寸
-  const enc = new TextEncoder(), parts = [], xref = [];
-  let off = 0;
-  const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); off += b.length; };
-  const obj = (n, ...body) => { xref[n] = off; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
-  const N = jpgs.length;
-  const utf16 = t => '<FEFF' + [...String(t)].map(c => { const u = c.codePointAt(0);
-    if (u < 0x10000) return u.toString(16).padStart(4, '0');
-    const v = u - 0x10000; return ((v >> 10) + 0xd800).toString(16) + ((v & 0x3ff) + 0xdc00).toString(16); }).join('').toUpperCase() + '>';
-  push('%PDF-1.4\n'); push(new Uint8Array([37, 226, 227, 207, 211, 10]));   // 二进制标记
-  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
-  obj(2, `<< /Type /Pages /Count ${N} /Kids [${jpgs.map((_, i) => `${4 + i * 3} 0 R`).join(' ')}] >>`);
-  obj(3, `<< /Title ${utf16(title)} /Producer (Award Ceremony) >>`);
-  for (const [i, j] of jpgs.entries()) {
-    const pg = 4 + i * 3, ct = pg + 1, im = pg + 2, draw = `q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`;
-    obj(pg, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${im} 0 R >> >> /Contents ${ct} 0 R >>`);
-    obj(ct, `<< /Length ${draw.length} >>\nstream\n${draw}\nendstream`);
-    const bytes = new Uint8Array(await j.blob.arrayBuffer());
-    obj(im, `<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`, bytes, '\nendstream');
-  }
-  const start = off, size = 4 + N * 3;
-  push(`xref\n0 ${size}\n0000000000 65535 f \n` + Array.from({ length: size - 1 }, (_, i) => String(xref[i + 1]).padStart(10, '0') + ' 00000 n \n').join(''));
-  push(`trailer\n<< /Size ${size} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${start}\n%%EOF\n`);
-  return new Blob(parts, { type: 'application/pdf' });
-}
+const ebJpg = cv => outBlob(cv, 'image/jpeg', EB_Q);   // output.js
 
 // kind = 'html'（翻书网页）或 'pdf'
 async function ebExport(kind) {
@@ -971,13 +943,11 @@ async function ebExport(kind) {
     }
     const title = ctx.ev.title || '表扬大会';
     $('ebProg').textContent = kind === 'pdf' ? '组合 PDF…' : '组合网页…';
-    const blob = kind === 'pdf' ? await ebPdf(jpgs, title + ' · 纪念特刊')
-      : new Blob([ebHtml({ title, w: EB_PW, h: EB_PH, pages: await Promise.all(jpgs.map(j => ebDataUrl(j.blob))), caps: plan.pages.map(ebCap), toc: plan.toc, icon: ebIcon(ctx.logo) })], { type: 'text/html;charset=utf-8' });
+    const blob = kind === 'pdf' ? await outPdf(jpgs, title + ' · 纪念特刊')
+      : new Blob([ebHtml({ title, w: EB_PW, h: EB_PH, pages: await Promise.all(jpgs.map(j => outDataUrl(j.blob))), caps: plan.pages.map(ebCap), toc: plan.toc, icon: ebIcon(ctx.logo) })], { type: 'text/html;charset=utf-8' });
     const d = new Date(), p = n => String(n).padStart(2, '0');
     const name = `${safeFile(title)}-纪念特刊_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.${kind === 'pdf' ? 'pdf' : 'html'}`;
-    const url = URL.createObjectURL(blob), link = el('a', { href: url, download: name, style: 'display:none' });
-    document.body.append(link); link.click();
-    setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 60000);
+    outDownload(blob, name);
     const what = kind === 'pdf' ? 'PDF' : '电子书';
     toast(`${what}已导出：${N} 页（${mb(blob.size)}）`); log(`导出${what} ${N} 页，${people} 位得奖者`);
     $('ebProg').textContent = `${what}完成：${N} 页，${mb(blob.size)}`;

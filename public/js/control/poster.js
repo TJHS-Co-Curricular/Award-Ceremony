@@ -3,11 +3,11 @@
  *   一张海报 = 背景图片 + 几段（每段 = 一个奖项：大标题 + 那个奖项所有得奖者的卡片）。
  *   尺寸用英寸（预设 51×43、24×43、11×43，也可以自己填；1.86 起不再写联课处的海报名，方便别的部门用），卡片大小和列数自动算：所有段都放得下、卡片最大。
  *   入围揭晓的奖项只放得主（poWho）。
- *   卡片 = exRender()（export.js，跟图片导出同一份设计），固定 16:9；导出 JPG，或按实际尺寸的 PDF（ebPdf，ebook.js）。
+ *   卡片 = exRender()（export.js，跟图片导出同一份设计），固定 16:9；导出 JPG，或按实际尺寸的 PDF（output.js 的 outPdf）。
  * 设置存 data/poster.json（GET / PUT /api/control/poster）；背景图片 data/backgrounds/poster.jpg（/api/control/poster-bg）。
  * 提供：poOpen()
  * 需要：core.js（api、el、toast、log、loadImg、mb、draft）、shared/fonts.js（fontFamily）、shared/theme.js（thC）、
- *       export.js（EXS、exEnsure、exLoadMats、exUseFonts、exRender、exCover、safeFile、EX_TITLE）、ebook.js（ebPdf）
+ *       export.js（EXS、exEnsure、exLoadMats、exUseFonts、exRender、exCover、safeFile、EX_TITLE）、output.js（outBlob、outPdf、outDownload）
  */
 'use strict';
 
@@ -155,7 +155,7 @@ $('poBgFile').onchange = async e => {
     const k = Math.min(1, PO_BG_EDGE / Math.max(im.naturalWidth, im.naturalHeight));
     const cv = el('canvas'); cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k));
     const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height);
-    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .9));
+    const blob = await outBlob(cv, 'image/jpeg', .9);
     const r = await fetch('/api/control/poster-bg', { method: 'POST', headers: { 'X-AC': '1', 'Content-Type': 'image/jpeg' }, body: blob, credentials: 'same-origin' });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
@@ -327,9 +327,9 @@ async function poDraw(P, dpi, card, progress) {
 }
 // 卡片：跟图片导出同一份设计，但固定 16:9，大小跟海报上的卡片差不多（太小不清楚、太大浪费）
 async function poCard(a, w, px, fam) {
-  const rw = Math.max(640, Math.min(3840, Math.round(px))), keep = EXS;
-  EXS = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard, idSide: PO.idSide, teamBare: !poCur().teamMat };   // teamBare：团体卡不画上下奖项素材，只留学会；海报的「团体卡显示奖项标志」勾了才画（维护者 2026-11-25）   // idSide：学生证照片横排（export.js 的 exIdSide）   // 卡片 Logo：图片导出设计开着、海报也开着才画
-  try { return await exRender(exCardAward(a, w, true), w, fam); } finally { EXS = keep; }   // 海报上都是得主：奖项名去掉「候选人」
+  const rw = Math.max(640, Math.min(3840, Math.round(px)));
+  const S = { ...EXS, size: `${rw}x${Math.round(rw * 9 / 16)}`, logoOn: EXS.logoOn && PO.logoCard, idSide: PO.idSide, teamBare: !poCur().teamMat };   // teamBare：团体卡不画上下奖项素材，只留学会；海报的「团体卡显示奖项标志」勾了才画（维护者 2026-11-25）   // idSide：学生证照片横排（export.js 的 exIdSide）   // 卡片 Logo：图片导出设计开着、海报也开着才画
+  return exRender(exCardAward(a, w, true), w, fam, S);   // 海报自己的一份设计，不动图片导出的 EXS；海报上都是得主：奖项名去掉「候选人」
 }
 
 /* ---- 预览、导出 ---- */
@@ -360,11 +360,10 @@ async function poExport(kind) {
     if (!L) throw new Error('放不下，换大一点的尺寸或分成两张海报');
     if (kind === 'a4') return await poA4Export(P, cv, `${safeFile(draft.event.title)}-海报-${safeFile(P.name)}`);   // A4 拼贴：不用先压整张
     $('poProg').textContent = '压缩中…';
-    const blob = await new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error('图片太大，浏览器压缩失败：把分辨率调低'))), 'image/jpeg', .92));
+    const blob = await outBlob(cv, 'image/jpeg', .92, '图片太大，浏览器压缩失败：把分辨率调低');
     const base = `${safeFile(draft.event.title)}-海报-${safeFile(P.name)}`;
-    const out = kind === 'pdf' ? await ebPdf([{ blob, w: cv.width, h: cv.height }], `${draft.event.title} ${P.name}`, P.w * 72, P.h * 72) : blob;
-    const url = URL.createObjectURL(out), link = el('a', { href: url, download: `${base}.${kind === 'pdf' ? 'pdf' : 'jpg'}`, style: 'display:none' });
-    document.body.append(link); link.click(); setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 60000);
+    const out = kind === 'pdf' ? await outPdf([{ blob, w: cv.width, h: cv.height }], `${draft.event.title} ${P.name}`, P.w * 72, P.h * 72) : blob;
+    outDownload(out, `${base}.${kind === 'pdf' ? 'pdf' : 'jpg'}`);
     $('poProg').textContent = `完成：${cv.width}×${cv.height}，${mb(out.size)}`;
     toast('海报已导出'); log(`海报导出「${P.name}」${kind.toUpperCase()}（${mb(out.size)}）`);
   } catch (e) { toast('导出失败：' + e.message, true); $('poProg').textContent = ''; }
@@ -414,12 +413,11 @@ async function poA4Export(P, src, base) {
     const tag = `第 ${r + 1} 排 · 第 ${c + 1} 张`; g.fillText(tag, X(M + 3), X(M / 2));
     g.font = `${X(2.6)}px ${EX_TEXT}`; g.fillStyle = '#444';
     g.fillText(`（共 ${T.rows} 排 × ${T.cols} 张）${P.name}　${c || r ? '沿短黑线剪掉' + [c ? '左边' : '', r ? '上面' : ''].filter(Boolean).join('和') + '的白边，对准相邻那张的虚线粘' : '第一张：沿短黑线剪掉左边和上面的白边'}`, X(M + 3) + g.measureText(tag).width * 1.25, X(M / 2));
-    jpgs.push({ blob: await new Promise((ok, bad) => cv.toBlob(b => (b ? ok(b) : bad(new Error('A4 页面压缩失败'))), 'image/jpeg', .92)), w: cv.width, h: cv.height });
+    jpgs.push({ blob: await outBlob(cv, 'image/jpeg', .92, 'A4 页面压缩失败'), w: cv.width, h: cv.height });
   }
   $('poProg').textContent = '组合 PDF…';
-  const out = await ebPdf(jpgs, `${draft.event.title} ${P.name}（A4 拼贴）`, T.pw / 25.4 * 72, T.ph / 25.4 * 72);
-  const url = URL.createObjectURL(out), link = el('a', { href: url, download: `${base}-A4拼贴${T.cols}x${T.rows}.pdf`, style: 'display:none' });
-  document.body.append(link); link.click(); setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 60000);
+  const out = await outPdf(jpgs, `${draft.event.title} ${P.name}（A4 拼贴）`, T.pw / 25.4 * 72, T.ph / 25.4 * 72);
+  outDownload(out, `${base}-A4拼贴${T.cols}x${T.rows}.pdf`);
   $('poProg').textContent = `完成：${T.n} 张 A4（${T.land ? '横放' : '直放'}，${T.rows} 排 × ${T.cols} 张），${mb(out.size)}`;
   toast(`A4 拼贴已导出：${T.n} 张，打印时选「实际大小 / 100%」，不要「适合页面」`); log(`海报 A4 拼贴「${P.name}」${T.n} 张（${mb(out.size)}）`);
 }
